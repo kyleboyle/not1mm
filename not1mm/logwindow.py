@@ -14,8 +14,8 @@ import queue
 from json import loads
 
 import math
-from PyQt5 import QtCore, QtGui, QtWidgets, uic
-from PyQt5.QtCore import Qt, QItemSelectionModel
+from PyQt6 import QtCore, QtGui, QtWidgets, uic
+from PyQt6.QtCore import Qt, QItemSelectionModel
 
 import not1mm.fsutils as fsutils
 from not1mm.lib.database import DataBase
@@ -110,7 +110,7 @@ class LogWindow(QtWidgets.QWidget):
         self.checkmark = QtGui.QPixmap(str(fsutils.APP_DATA_PATH / "check.png"))
         self.checkicon = QtGui.QIcon()
         self.checkicon.addPixmap(self.checkmark)
-        self.generalLog.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+        self.generalLog.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.CustomContextMenu)
         self.generalLog.customContextMenuRequested.connect(self.edit_contact_selected)
         for column_number, column_name in self.columns.items():
             self.generalLog.setHorizontalHeaderItem(
@@ -123,7 +123,7 @@ class LogWindow(QtWidgets.QWidget):
         self.generalLog.cellDoubleClicked.connect(self.double_clicked)
         self.generalLog.cellChanged.connect(self.cell_changed)
 
-        self.focusedLog.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+        self.focusedLog.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.CustomContextMenu)
         self.focusedLog.customContextMenuRequested.connect(
             self.edit_focused_contact_selected
         )
@@ -160,40 +160,6 @@ class LogWindow(QtWidgets.QWidget):
         cmd["station"] = platform.node()
 
         self.multicast_interface.send_as_json(cmd)
-
-    def setDarkMode(self, dark: bool):
-        """testing"""
-
-        if dark:
-            darkPalette = QtGui.QPalette()
-            darkColor = QtGui.QColor(45, 45, 45)
-            disabledColor = QtGui.QColor(127, 127, 127)
-            darkPalette.setColor(QtGui.QPalette.Window, darkColor)
-            darkPalette.setColor(QtGui.QPalette.WindowText, Qt.white)
-            darkPalette.setColor(QtGui.QPalette.Base, QtGui.QColor(18, 18, 18))
-            darkPalette.setColor(QtGui.QPalette.AlternateBase, darkColor)
-            darkPalette.setColor(QtGui.QPalette.Text, Qt.white)
-            darkPalette.setColor(
-                QtGui.QPalette.Disabled, QtGui.QPalette.Text, disabledColor
-            )
-            darkPalette.setColor(QtGui.QPalette.Button, darkColor)
-            darkPalette.setColor(QtGui.QPalette.ButtonText, Qt.white)
-            darkPalette.setColor(
-                QtGui.QPalette.Disabled, QtGui.QPalette.ButtonText, disabledColor
-            )
-            darkPalette.setColor(QtGui.QPalette.BrightText, Qt.red)
-            darkPalette.setColor(QtGui.QPalette.Link, QtGui.QColor(42, 130, 218))
-            darkPalette.setColor(QtGui.QPalette.Highlight, QtGui.QColor(42, 130, 218))
-            darkPalette.setColor(QtGui.QPalette.HighlightedText, Qt.black)
-            darkPalette.setColor(
-                QtGui.QPalette.Disabled, QtGui.QPalette.HighlightedText, disabledColor
-            )
-
-            self.setPalette(darkPalette)
-        else:
-            palette = self.style().standardPalette()
-            self.setPalette(palette)
-
 
     def get_column(self, name: str) -> int:
         """
@@ -252,7 +218,6 @@ class LogWindow(QtWidgets.QWidget):
         self.n1mm.send_lookup_packets = self.pref.get("send_n1mm_lookup", False)
         self.n1mm.send_score_packets = self.pref.get("send_n1mm_score", False)
         self.n1mm.radio_info["StationName"] = self.pref.get("n1mm_station_name", "")
-        self.setDarkMode(self.pref.get("darkmode", False))
 
     def load_new_db(self) -> None:
         """
@@ -754,7 +719,7 @@ class LogWindow(QtWidgets.QWidget):
             self.generalLog.setItem(
                 number_of_rows, self.get_column("YYYY-MM-DD HH:MM:SS"), first_item
             )
-            self.generalLog.setCurrentItem(first_item, QItemSelectionModel.NoUpdate)
+            self.generalLog.setCurrentItem(first_item, QtCore.QItemSelectionModel.SelectionFlag.NoUpdate)
             self.generalLog.item(
                 number_of_rows, self.get_column("YYYY-MM-DD HH:MM:SS")
             ).setTextAlignment(0x0004 | 0x0080)
@@ -906,8 +871,6 @@ class LogWindow(QtWidgets.QWidget):
                         column = "Freq (Khz)"
                     self.generalLog.setColumnHidden(self.get_column(column), False)
                     self.focusedLog.setColumnHidden(self.get_column(column), False)
-            if json_data.get("cmd", "") == "DARKMODE":
-                self.setDarkMode(json_data.get("state", False))
 
 
     def show_like_calls(self, call: str) -> None:
@@ -940,7 +903,7 @@ class LogWindow(QtWidgets.QWidget):
             self.focusedLog.setItem(
                 number_of_rows, self.get_column("YYYY-MM-DD HH:MM:SS"), first_item
             )
-            self.focusedLog.setCurrentItem(first_item, QItemSelectionModel.NoUpdate)
+            self.focusedLog.setCurrentItem(first_item, QtCore.QItemSelectionModel.SelectionFlag.NoUpdate)
             try:
                 self.focusedLog.item(
                     number_of_rows, self.get_column("YYYY-MM-DD HH:MM:SS")
@@ -1079,9 +1042,9 @@ class LogWindow(QtWidgets.QWidget):
         None
         """
         message_box = QtWidgets.QMessageBox()
-        message_box.setIcon(QtWidgets.QMessageBox.Information)
+        message_box.setIcon(QtWidgets.QMessageBox.Icon.Information)
         message_box.setText(message)
         message_box.setWindowTitle("Information")
-        message_box.setStandardButtons(QtWidgets.QMessageBox.Ok)
-        _ = message_box.exec_()
+        message_box.setStandardButtons(QtWidgets.QMessageBox.StandardButton.Ok)
+        _ = message_box.exec()
 

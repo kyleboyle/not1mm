@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>310</width>
+    <width>200</width>
     <height>600</height>
    </rect>
   </property>
@@ -71,7 +71,7 @@
        </font>
       </property>
       <property name="text">
-       <string>Telnet</string>
+       <string>DX Cluster</string>
       </property>
      </widget>
     </item>

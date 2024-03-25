@@ -12,7 +12,7 @@ authors = [
   { name="Michael Bridak", email="michael.bridak@gmail.com" },
 ]
 dependencies = [
-    "PyQt5",
+    "PyQt6",
     "requests",
     "dicttoxml",
     "xmltodict",
@@ -23,7 +23,8 @@ dependencies = [
     "numpy",
     "notctyparser >= 23.6.21",
     "rapidfuzz",
-    "appdata"
+    "appdata",
+    "pyqtdarktheme"
 ]
 classifiers = [
     "Programming Language :: Python :: 3",

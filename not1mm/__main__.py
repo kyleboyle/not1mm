@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
-"""
-NOT1MM Logger
-"""
+
 # pylint: disable=unused-import, c-extension-no-member, no-member, invalid-name, too-many-lines, no-name-in-module
 # pylint: disable=logging-fstring-interpolation, logging-not-lazy
 
@@ -11,30 +9,28 @@ import datetime
 import importlib
 import locale
 import logging
-from logging.handlers import RotatingFileHandler
 import os
-
 import platform
-import re
 import socket
-import subprocess
 import sys
 import threading
 import uuid
-
 from json import dumps, loads
+from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from shutil import copyfile
 
 import notctyparser
-import psutil
 import sounddevice as sd
 import soundfile as sf
-from PyQt5 import QtCore, QtGui, QtWidgets, uic
-from PyQt5.QtCore import QDir, Qt
-from PyQt5.QtGui import QFontDatabase
-from PyQt5.QtWidgets import QFileDialog, QDockWidget
+from PyQt6 import QtCore, QtGui, QtWidgets, uic
+from PyQt6.QtCore import QDir, Qt
+from PyQt6.QtGui import QFontDatabase
+from PyQt6.QtWidgets import QFileDialog, QDockWidget
 
+import not1mm.fsutils as fsutils
+from not1mm.bandmap import BandMapWindow
+from not1mm.checkwindow import CheckWindow
 from not1mm.lib.about import About
 from not1mm.lib.cat_interface import CAT
 from not1mm.lib.cwinterface import CW
@@ -57,46 +53,20 @@ from not1mm.lib.lookup import HamQTH, QRZlookup
 from not1mm.lib.multicast import Multicast
 from not1mm.lib.n1mm import N1MM
 from not1mm.lib.new_contest import NewContest
-from not1mm.lib.super_check_partial import SCP
 from not1mm.lib.select_contest import SelectContest
 from not1mm.lib.settings import Settings
+from not1mm.lib.super_check_partial import SCP
 from not1mm.lib.version import __version__
 from not1mm.lib.versiontest import VersionTest
-
-import not1mm.fsutils as fsutils
 from not1mm.logwindow import LogWindow
-from not1mm.checkwindow import CheckWindow
-from not1mm.bandmap import BandMapWindow
 from not1mm.vfo import VfoWindow
+
+import qdarktheme
 
 CTYFILE = {}
 
 with open(fsutils.APP_DATA_PATH / "cty.json", "rt", encoding="utf-8") as c_file:
     CTYFILE = loads(c_file.read())
-
-poll_time = datetime.datetime.now()
-
-
-def check_process(name: str) -> bool:
-    """
-    Checks to see if the name of the program is in the active process list.
-
-    Parameters
-    ----------
-    name : str
-
-    Returns
-    -------
-    Bool
-    """
-    for proc in psutil.process_iter():
-        try:
-            if len(proc.cmdline()) == 2:
-                if name in proc.cmdline()[1] and "python" in proc.cmdline()[0]:
-                    return True
-        except (psutil.NoSuchProcess, psutil.ZombieProcess, psutil.AccessDenied):
-            continue
-    return False
 
 
 class MainWindow(QtWidgets.QMainWindow):
@@ -176,8 +146,6 @@ class MainWindow(QtWidgets.QMainWindow):
     cw_entry_visible = False
     last_focus = None
     oldtext = ""
-    text_color = Qt.black
-    current_palette = None
 
     log_window = None
     check_window = None
@@ -187,8 +155,8 @@ class MainWindow(QtWidgets.QMainWindow):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         logger.info("MainWindow: __init__")
-        self.setCorner(Qt.TopRightCorner, Qt.RightDockWidgetArea)
-        self.setCorner(Qt.BottomRightCorner, Qt.RightDockWidgetArea)
+        self.setCorner(Qt.Corner.TopRightCorner, Qt.DockWidgetArea.RightDockWidgetArea)
+        self.setCorner(Qt.Corner.BottomRightCorner, Qt.DockWidgetArea.RightDockWidgetArea)
         data_path = fsutils.APP_DATA_PATH / "main.ui"
         uic.loadUi(data_path, self)
         self.cw_entry.hide()
@@ -204,7 +172,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.cw_entry.returnPressed.connect(self.toggle_cw_entry)
 
         self.actionCW_Macros.triggered.connect(self.cw_macros_state_changed)
-        self.actionDark_Mode_2.triggered.connect(self.dark_mode_state_changed)
+        self.actionDark_Mode.triggered.connect(self.dark_mode_state_changed)
         self.actionCommand_Buttons.triggered.connect(self.command_buttons_state_change)
         self.actionLog_Window.triggered.connect(self.launch_log_window)
         self.actionBandmap.triggered.connect(self.launch_bandmap_window)
@@ -261,40 +229,40 @@ class MainWindow(QtWidgets.QMainWindow):
         self.radio_green = QtGui.QPixmap(str(icon_path / "radio_green.png"))
         self.radio_icon.setPixmap(self.radio_grey)
 
-        self.F1.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+        self.F1.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.CustomContextMenu)
         self.F1.customContextMenuRequested.connect(lambda x: self.edit_macro(self.F1))
         self.F1.clicked.connect(lambda x: self.process_function_key(self.F1))
-        self.F2.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+        self.F2.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.CustomContextMenu)
         self.F2.customContextMenuRequested.connect(lambda x: self.edit_macro(self.F2))
         self.F2.clicked.connect(lambda x: self.process_function_key(self.F2))
-        self.F3.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+        self.F3.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.CustomContextMenu)
         self.F3.customContextMenuRequested.connect(lambda x: self.edit_macro(self.F3))
         self.F3.clicked.connect(lambda x: self.process_function_key(self.F3))
-        self.F4.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+        self.F4.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.CustomContextMenu)
         self.F4.customContextMenuRequested.connect(lambda x: self.edit_macro(self.F4))
         self.F4.clicked.connect(lambda x: self.process_function_key(self.F4))
-        self.F5.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+        self.F5.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.CustomContextMenu)
         self.F5.customContextMenuRequested.connect(lambda x: self.edit_macro(self.F5))
         self.F5.clicked.connect(lambda x: self.process_function_key(self.F5))
-        self.F6.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+        self.F6.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.CustomContextMenu)
         self.F6.customContextMenuRequested.connect(lambda x: self.edit_macro(self.F6))
         self.F6.clicked.connect(lambda x: self.process_function_key(self.F6))
-        self.F7.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+        self.F7.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.CustomContextMenu)
         self.F7.customContextMenuRequested.connect(lambda x: self.edit_macro(self.F7))
         self.F7.clicked.connect(lambda x: self.process_function_key(self.F7))
-        self.F8.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+        self.F8.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.CustomContextMenu)
         self.F8.customContextMenuRequested.connect(lambda x: self.edit_macro(self.F8))
         self.F8.clicked.connect(lambda x: self.process_function_key(self.F8))
-        self.F9.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+        self.F9.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.CustomContextMenu)
         self.F9.customContextMenuRequested.connect(lambda x: self.edit_macro(self.F9))
         self.F9.clicked.connect(lambda x: self.process_function_key(self.F9))
-        self.F10.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+        self.F10.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.CustomContextMenu)
         self.F10.customContextMenuRequested.connect(lambda x: self.edit_macro(self.F10))
         self.F10.clicked.connect(lambda x: self.process_function_key(self.F10))
-        self.F11.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+        self.F11.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.CustomContextMenu)
         self.F11.customContextMenuRequested.connect(lambda x: self.edit_macro(self.F11))
         self.F11.clicked.connect(lambda x: self.process_function_key(self.F11))
-        self.F12.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+        self.F12.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.CustomContextMenu)
         self.F12.customContextMenuRequested.connect(lambda x: self.edit_macro(self.F12))
         self.F12.clicked.connect(lambda x: self.process_function_key(self.F12))
 
@@ -483,74 +451,6 @@ class MainWindow(QtWidgets.QMainWindow):
                     "You can udate to the current version by using:\npip install -U not1mm"
                 )
 
-    def setDarkMode(self, dark):
-        """testing"""
-
-        logger.debug(f"Dark mode set to: {dark}")
-
-        cmd = {}
-        cmd["cmd"] = "DARKMODE"
-        cmd["state"] = dark
-        cmd["station"] = platform.node()
-        self.multicast_interface.send_as_json(cmd)
-
-        if dark:
-            darkPalette = QtGui.QPalette()
-            darkColor = QtGui.QColor(45, 45, 45)
-
-            disabledColor = QtGui.QColor(127, 127, 127)
-            darkPalette.setColor(QtGui.QPalette.Window, darkColor)
-            darkPalette.setColor(QtGui.QPalette.WindowText, Qt.white)
-            darkPalette.setColor(QtGui.QPalette.Base, QtGui.QColor(18, 18, 18))
-            darkPalette.setColor(QtGui.QPalette.AlternateBase, darkColor)
-            darkPalette.setColor(QtGui.QPalette.Text, Qt.white)
-            darkPalette.setColor(
-                QtGui.QPalette.Disabled, QtGui.QPalette.Text, disabledColor
-            )
-            darkPalette.setColor(QtGui.QPalette.Button, darkColor)
-            darkPalette.setColor(QtGui.QPalette.ButtonText, Qt.white)
-            darkPalette.setColor(
-                QtGui.QPalette.Disabled, QtGui.QPalette.ButtonText, disabledColor
-            )
-            darkPalette.setColor(QtGui.QPalette.BrightText, Qt.red)
-            darkPalette.setColor(QtGui.QPalette.Link, QtGui.QColor(42, 130, 218))
-            darkPalette.setColor(QtGui.QPalette.Highlight, QtGui.QColor(42, 130, 218))
-            darkPalette.setColor(QtGui.QPalette.HighlightedText, Qt.black)
-            darkPalette.setColor(
-                QtGui.QPalette.Disabled, QtGui.QPalette.HighlightedText, disabledColor
-            )
-            self.current_palette = darkPalette
-            self.setPalette(darkPalette)
-            self.text_color = Qt.white
-            self.menuFile.setPalette(darkPalette)
-            self.menuHelp.setPalette(darkPalette)
-            self.menuOther.setPalette(darkPalette)
-            self.menuView.setPalette(darkPalette)
-            self.menuWindow.setPalette(darkPalette)
-            self.callsign.setPalette(darkPalette)
-            self.sent.setPalette(darkPalette)
-            self.receive.setPalette(darkPalette)
-            self.other_1.setPalette(darkPalette)
-            self.other_2.setPalette(darkPalette)
-            self.cw_entry.setPalette(darkPalette)
-
-        else:
-            palette = self.style().standardPalette()
-            self.current_palette = palette
-            self.setPalette(palette)
-            self.menuFile.setPalette(palette)
-            self.menuHelp.setPalette(palette)
-            self.menuOther.setPalette(palette)
-            self.menuView.setPalette(palette)
-            self.menuWindow.setPalette(palette)
-            self.callsign.setPalette(palette)
-            self.sent.setPalette(palette)
-            self.receive.setPalette(palette)
-            self.other_1.setPalette(palette)
-            self.other_2.setPalette(palette)
-            self.cw_entry.setPalette(palette)
-            self.text_color = Qt.black
-
     def set_radio_icon(self, state: int) -> None:
         """
         Change CAT icon state
@@ -615,7 +515,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.oldtext = newtext
             return
         if self.cw is not None:
-            self.cw.sendcw(newtext[len(self.oldtext) :])
+            self.cw.sendcw(newtext[len(self.oldtext):])
         self.oldtext = newtext
 
     def change_to_band_and_mode(self, band: int, mode: str) -> None:
@@ -656,25 +556,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.multicast_interface.send_as_json(cmd)
         app.quit()
 
-    @staticmethod
-    def check_process(name: str) -> bool:
-        """
-        Checks to see if program is in the active process list.
-
-        Parameters
-        ----------
-        name : str
-
-        Returns
-        -------
-        Bool
-        """
-
-        for proc in psutil.process_iter():
-            if bool(re.match(name, proc.name().lower())):
-                return True
-        return False
-
     def show_message_box(self, message: str) -> None:
         """
         Displays a dialog box with a message.
@@ -689,13 +570,11 @@ class MainWindow(QtWidgets.QMainWindow):
         """
 
         message_box = QtWidgets.QMessageBox()
-        if self.current_palette:
-            message_box.setPalette(self.current_palette)
-        message_box.setIcon(QtWidgets.QMessageBox.Information)
+        message_box.setIcon(QtWidgets.QMessageBox.Icon.Information)
         message_box.setText(message)
         message_box.setWindowTitle("Information")
-        message_box.setStandardButtons(QtWidgets.QMessageBox.Ok)
-        _ = message_box.exec_()
+        message_box.setStandardButtons(QtWidgets.QMessageBox.StandardButton.Ok)
+        _ = message_box.exec()
 
     def show_about_dialog(self) -> None:
         """
@@ -711,9 +590,6 @@ class MainWindow(QtWidgets.QMainWindow):
         """
 
         self.about_dialog = About(fsutils.APP_DATA_PATH)
-        if self.current_palette:
-            self.about_dialog.setPalette(self.current_palette)
-
         self.about_dialog.donors.setSource(
             QtCore.QUrl.fromLocalFile(fsutils.APP_DATA_PATH / "donors.html")
         )
@@ -733,8 +609,6 @@ class MainWindow(QtWidgets.QMainWindow):
         """
 
         self.about_dialog = About(fsutils.MODULE_PATH)
-        if self.current_palette:
-            self.about_dialog.setPalette(self.current_palette)
 
         self.about_dialog.setWindowTitle("Help")
         self.about_dialog.setGeometry(0, 0, 800, 600)
@@ -777,8 +651,6 @@ class MainWindow(QtWidgets.QMainWindow):
         """
 
         self.configuration_dialog = Settings(fsutils.APP_DATA_PATH, self.pref)
-        if self.current_palette:
-            self.configuration_dialog.setPalette(self.current_palette)
         self.configuration_dialog.usehamdb_radioButton.hide()
         self.configuration_dialog.show()
         self.configuration_dialog.accepted.connect(self.edit_configuration_return)
@@ -798,7 +670,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.configuration_dialog.save_changes()
         self.write_preference()
-        #logger.debug("%s", f"{self.pref}")
+        # logger.debug("%s", f"{self.pref}")
         self.readpreferences()
 
     def new_database(self) -> None:
@@ -890,8 +762,6 @@ class MainWindow(QtWidgets.QMainWindow):
 
         if contests:
             self.contest_dialog = SelectContest(fsutils.APP_DATA_PATH)
-            if self.current_palette:
-                self.contest_dialog.setPalette(self.current_palette)
 
             self.contest_dialog.contest_list.setRowCount(0)
             self.contest_dialog.contest_list.setColumnCount(4)
@@ -992,11 +862,6 @@ class MainWindow(QtWidgets.QMainWindow):
             return
 
         self.contest_dialog = NewContest(fsutils.APP_DATA_PATH)
-        if self.current_palette:
-            self.contest_dialog.setPalette(self.current_palette)
-            self.contest_dialog.exchange.setPalette(self.current_palette)
-            self.contest_dialog.operators.setPalette(self.current_palette)
-            self.contest_dialog.contest.setPalette(self.current_palette)
 
         self.contest_dialog.setWindowTitle("Edit Contest")
         self.contest_dialog.title.setText("")
@@ -1180,7 +1045,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 cty.dump(fsutils.APP_DATA_PATH / "cty.json")
                 self.show_message_box("cty file updated.")
                 with open(
-                    fsutils.APP_DATA_PATH / "cty.json", "rt", encoding="utf-8"
+                        fsutils.APP_DATA_PATH / "cty.json", "rt", encoding="utf-8"
                 ) as ctyfile:
                     globals()["CTYFILE"] = loads(ctyfile.read())
             else:
@@ -1307,13 +1172,13 @@ class MainWindow(QtWidgets.QMainWindow):
             log_widget = LogWindow()
             self.log_window = QDockWidget(log_widget.property("windowTitle"), self)
             self.log_window.setWidget(log_widget)
-            self.addDockWidget(Qt.BottomDockWidgetArea, self.log_window)
+            self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, self.log_window)
         self.log_window.show()
 
     def launch_bandmap_window(self) -> None:
         if not self.bandmap_window:
             self.bandmap_window = BandMapWindow()
-            self.addDockWidget(Qt.RightDockWidgetArea, self.bandmap_window)
+            self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.bandmap_window)
         self.bandmap_window.show()
 
     def launch_check_window(self) -> None:
@@ -1321,7 +1186,7 @@ class MainWindow(QtWidgets.QMainWindow):
             check_widget = CheckWindow()
             self.check_window = QDockWidget(check_widget.property("windowTitle"), self)
             self.check_window.setWidget(check_widget)
-            self.addDockWidget(Qt.RightDockWidgetArea, self.check_window)
+            self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.check_window)
         self.check_window.show()
 
     def launch_vfo(self) -> None:
@@ -1330,9 +1195,9 @@ class MainWindow(QtWidgets.QMainWindow):
             vfo_widget = VfoWindow()
             self.vfo_window = QDockWidget(vfo_widget.property("windowTitle"), self)
             self.vfo_window.setWidget(vfo_widget)
-            self.addDockWidget(Qt.RightDockWidgetArea, self.vfo_window)
+            #self.addDockWidget(Qt.DockWidgetArea.NoDockWidgetArea, self.vfo_window)
+            self.vfo_window.setFloating(True)
         self.vfo_window.show()
-
 
     def clear_band_indicators(self) -> None:
         """
@@ -1348,13 +1213,9 @@ class MainWindow(QtWidgets.QMainWindow):
         """
         for _, indicators in self.all_mode_indicators.items():
             for _, indicator in indicators.items():
-                indicator.setFrameShape(QtWidgets.QFrame.NoFrame)
-                if self.text_color == Qt.black:
-                    indicator.setStyleSheet(
-                        "font-family: JetBrains Mono; color: black;"
-                    )
-                else:
-                    indicator.setStyleSheet("font-family: JetBrains Mono; color: white")
+                indicator.setFrameShape(QtWidgets.QFrame.Shape.NoFrame)
+                indicator.setStyleSheet("font-family: JetBrains Mono;")
+
 
     def set_band_indicator(self, band: str) -> None:
         """
@@ -1374,7 +1235,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.clear_band_indicators()
             indicator = self.all_mode_indicators[self.current_mode].get(band, None)
             if indicator:
-                indicator.setFrameShape(QtWidgets.QFrame.Box)
+                indicator.setFrameShape(QtWidgets.QFrame.Shape.Box)
                 indicator.setStyleSheet("font-family: JetBrains Mono; color: green;")
 
     def closeEvent(self, _event) -> None:
@@ -1399,7 +1260,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.pref["window_x"] = self.pos().x()
         self.pref["window_y"] = self.pos().y()
         self.write_preference()
-
 
     def cty_lookup(self, callsign: str) -> list:
         """Lookup callsign in cty.dat file.
@@ -1464,7 +1324,7 @@ class MainWindow(QtWidgets.QMainWindow):
         if event.key() == Qt.Key.Key_K:
             self.toggle_cw_entry()
             return
-        if event.key() == Qt.Key_S and modifier == Qt.ControlModifier:
+        if event.key() == Qt.Key.Key_S and modifier == Qt.KeyboardModifier.ControlModifier:
             freq = self.radio_state.get("vfoa")
             dx = self.callsign.text()
             if freq and dx:
@@ -1475,7 +1335,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 cmd["freq"] = float(int(freq) / 1000)
                 self.multicast_interface.send_as_json(cmd)
             return
-        if event.key() == Qt.Key_M and modifier == Qt.ControlModifier:
+        if event.key() == Qt.Key.Key_M and modifier == Qt.KeyboardModifier.ControlModifier:
             freq = self.radio_state.get("vfoa")
             dx = self.callsign.text()
             if freq and dx:
@@ -1486,7 +1346,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 cmd["freq"] = float(int(freq) / 1000)
                 self.multicast_interface.send_as_json(cmd)
             return
-        if event.key() == Qt.Key_G and modifier == Qt.ControlModifier:
+        if event.key() == Qt.Key.Key_G and modifier == Qt.KeyboardModifier.ControlModifier:
             dx = self.callsign.text()
             if dx:
                 cmd = {}
@@ -1496,11 +1356,11 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.multicast_interface.send_as_json(cmd)
             return
         if (
-            event.key() == Qt.Key.Key_Escape and modifier != Qt.ControlModifier
+                event.key() == Qt.Key.Key_Escape and modifier != Qt.KeyboardModifier.ControlModifier
         ):  # pylint: disable=no-member
             self.clearinputs()
             return
-        if event.key() == Qt.Key.Key_Escape and modifier == Qt.ControlModifier:
+        if event.key() == Qt.Key.Key_Escape and modifier == Qt.KeyboardModifier.ControlModifier:
             if self.cw is not None:
                 if self.cw.servertype == 1:
                     self.cw.sendcw("\x1b4")
@@ -1517,7 +1377,7 @@ class MainWindow(QtWidgets.QMainWindow):
             cmd["station"] = platform.node()
             self.multicast_interface.send_as_json(cmd)
             return
-        if event.key() == Qt.Key.Key_PageUp and modifier != Qt.ControlModifier:
+        if event.key() == Qt.Key.Key_PageUp and modifier != Qt.KeyboardModifier.ControlModifier:
             if self.cw is not None:
                 self.cw.speed += 1
                 self.cw_speed.setValue(self.cw.speed)
@@ -1526,7 +1386,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 if self.cw.servertype == 2:
                     self.cw.set_winkeyer_speed(self.cw_speed.value())
             return
-        if event.key() == Qt.Key.Key_PageDown and modifier != Qt.ControlModifier:
+        if event.key() == Qt.Key.Key_PageDown and modifier != Qt.KeyboardModifier.ControlModifier:
             if self.cw is not None:
                 self.cw.speed -= 1
                 self.cw_speed.setValue(self.cw.speed)
@@ -1538,7 +1398,7 @@ class MainWindow(QtWidgets.QMainWindow):
         if event.key() == Qt.Key.Key_Tab or event.key() == Qt.Key.Key_Backtab:
             if self.sent.hasFocus():
                 logger.debug("From sent")
-                if modifier == Qt.ShiftModifier:
+                if modifier == Qt.KeyboardModifier.ShiftModifier:
                     prev_tab = self.tab_prev.get(self.sent)
                     prev_tab.setFocus()
                     prev_tab.deselect()
@@ -1551,7 +1411,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 return
             if self.receive.hasFocus():
                 logger.debug("From receive")
-                if modifier == Qt.ShiftModifier:
+                if modifier == Qt.KeyboardModifier.ShiftModifier:
                     prev_tab = self.tab_prev.get(self.receive)
                     prev_tab.setFocus()
                     prev_tab.deselect()
@@ -1564,7 +1424,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 return
             if self.other_1.hasFocus():
                 logger.debug("From other_1")
-                if modifier == Qt.ShiftModifier:
+                if modifier == Qt.KeyboardModifier.ShiftModifier:
                     prev_tab = self.tab_prev.get(self.other_1)
                     prev_tab.setFocus()
                     prev_tab.deselect()
@@ -1577,7 +1437,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 return
             if self.other_2.hasFocus():
                 logger.debug("From other_2")
-                if modifier == Qt.ShiftModifier:
+                if modifier == Qt.KeyboardModifier.ShiftModifier:
                     prev_tab = self.tab_prev.get(self.other_2)
                     prev_tab.setFocus()
                     prev_tab.deselect()
@@ -1595,7 +1455,7 @@ class MainWindow(QtWidgets.QMainWindow):
                     self.dupe_indicator.show()
                 else:
                     self.dupe_indicator.hide()
-                if modifier == Qt.ShiftModifier:
+                if modifier == Qt.KeyboardModifier  .ShiftModifier:
                     prev_tab = self.tab_prev.get(self.callsign)
                     prev_tab.setFocus()
                     prev_tab.deselect()
@@ -1614,29 +1474,29 @@ class MainWindow(QtWidgets.QMainWindow):
                     next_tab.deselect()
                     next_tab.end(False)
                 return
-        if event.key() == Qt.Key_F1:
+        if event.key() == Qt.Key.Key_F1:
             self.process_function_key(self.F1)
-        if event.key() == Qt.Key_F2:
+        if event.key() == Qt.Key.Key_F2:
             self.process_function_key(self.F2)
-        if event.key() == Qt.Key_F3:
+        if event.key() == Qt.Key.Key_F3:
             self.process_function_key(self.F3)
-        if event.key() == Qt.Key_F4:
+        if event.key() == Qt.Key.Key_F4:
             self.process_function_key(self.F4)
-        if event.key() == Qt.Key_F5:
+        if event.key() == Qt.Key.Key_F5:
             self.process_function_key(self.F5)
-        if event.key() == Qt.Key_F6:
+        if event.key() == Qt.Key.Key_F6:
             self.process_function_key(self.F6)
-        if event.key() == Qt.Key_F7:
+        if event.key() == Qt.Key.Key_F7:
             self.process_function_key(self.F7)
-        if event.key() == Qt.Key_F8:
+        if event.key() == Qt.Key.Key_F8:
             self.process_function_key(self.F8)
-        if event.key() == Qt.Key_F9:
+        if event.key() == Qt.Key.Key_F9:
             self.process_function_key(self.F9)
-        if event.key() == Qt.Key_F10:
+        if event.key() == Qt.Key.Key_F10:
             self.process_function_key(self.F10)
-        if event.key() == Qt.Key_F11:
+        if event.key() == Qt.Key.Key_F11:
             self.process_function_key(self.F11)
-        if event.key() == Qt.Key_F12:
+        if event.key() == Qt.Key.Key_F12:
             self.process_function_key(self.F12)
 
     def set_window_title(self) -> None:
@@ -1656,7 +1516,7 @@ class MainWindow(QtWidgets.QMainWindow):
         if self.contest:
             contest_name = self.contest.name
         line = (
-            f"vfoa:{round(vfoa,2)} "
+            f"vfoa:{round(vfoa, 2)} "
             f"mode:{self.radio_state.get('mode', '')} "
             f"OP:{self.current_op} {contest_name} "
             f"- Not1MM v{__version__}"
@@ -1844,10 +1704,6 @@ class MainWindow(QtWidgets.QMainWindow):
         logger.debug("New contest Dialog")
 
         self.contest_dialog = NewContest(fsutils.APP_DATA_PATH)
-        if self.current_palette:
-            self.contest_dialog.setPalette(self.current_palette)
-            self.contest_dialog.exchange.setPalette(self.current_palette)
-            self.contest_dialog.operators.setPalette(self.current_palette)
 
         self.contest_dialog.accepted.connect(self.save_contest)
         self.contest_dialog.dateTimeEdit.setDate(QtCore.QDate.currentDate())
@@ -1915,8 +1771,6 @@ class MainWindow(QtWidgets.QMainWindow):
         logger.debug("Station Settings selected")
 
         self.settings_dialog = EditStation(fsutils.APP_DATA_PATH)
-        if self.current_palette:
-            self.settings_dialog.setPalette(self.current_palette)
 
         self.settings_dialog.accepted.connect(self.save_settings)
         self.settings_dialog.Call.setText(self.station.get("Call", ""))
@@ -1991,6 +1845,9 @@ class MainWindow(QtWidgets.QMainWindow):
         if len(contest_count) == 0:
             self.new_contest_dialog()
 
+    def set_dark_mode(self, enabled):
+        qdarktheme.setup_theme(theme="dark" if enabled else "light", corner_shape="sharp",)
+
     def edit_macro(self, function_key) -> None:
         """
         Show edit macro dialog for function key.
@@ -2006,9 +1863,6 @@ class MainWindow(QtWidgets.QMainWindow):
         """
 
         self.edit_macro_dialog = EditMacro(function_key, fsutils.APP_DATA_PATH)
-
-        if self.current_palette:
-            self.edit_macro_dialog.setPalette(self.current_palette)
 
         self.edit_macro_dialog.accepted.connect(self.edited_macro)
         self.edit_macro_dialog.open()
@@ -2211,10 +2065,10 @@ class MainWindow(QtWidgets.QMainWindow):
         logger.debug("writepreferences")
         try:
             with open(
-                fsutils.CONFIG_FILE, "wt", encoding="utf-8"
+                    fsutils.CONFIG_FILE, "wt", encoding="utf-8"
             ) as file_descriptor:
                 file_descriptor.write(dumps(self.pref, indent=4))
-                #logger.info("writing: %s", self.pref)
+                # logger.info("writing: %s", self.pref)
         except IOError as exception:
             logger.critical("writepreferences: %s", exception)
 
@@ -2235,14 +2089,14 @@ class MainWindow(QtWidgets.QMainWindow):
         try:
             if os.path.exists(fsutils.CONFIG_FILE):
                 with open(
-                    fsutils.CONFIG_FILE, "rt", encoding="utf-8"
+                        fsutils.CONFIG_FILE, "rt", encoding="utf-8"
                 ) as file_descriptor:
                     self.pref = loads(file_descriptor.read())
                     logger.info("%s", self.pref)
             else:
                 logger.info("No preference file. Writing preference.")
                 with open(
-                    fsutils.CONFIG_FILE, "wt", encoding="utf-8"
+                        fsutils.CONFIG_FILE, "wt", encoding="utf-8"
                 ) as file_descriptor:
                     self.pref = self.pref_ref.copy()
                     file_descriptor.write(dumps(self.pref, indent=4))
@@ -2291,11 +2145,11 @@ class MainWindow(QtWidgets.QMainWindow):
         self.multicast_interface.ready_read_connect(self.watch_udp)
 
         if self.pref.get("darkmode"):
-            self.actionDark_Mode_2.setChecked(True)
-            self.setDarkMode(True)
+            self.actionDark_Mode.setChecked(True)
+            self.set_dark_mode(True)
         else:
-            self.setDarkMode(False)
-            self.actionDark_Mode_2.setChecked(False)
+            self.set_dark_mode(False)
+            self.actionDark_Mode.setChecked(False)
 
         self.rig_control = None
 
@@ -2387,8 +2241,8 @@ class MainWindow(QtWidgets.QMainWindow):
             json_data = self.multicast_interface.read_datagram_as_json()
             if json_data:
                 if (
-                    json_data.get("cmd", "") == "GETCOLUMNS"
-                    and json_data.get("station", "") == platform.node()
+                        json_data.get("cmd", "") == "GETCOLUMNS"
+                        and json_data.get("station", "") == platform.node()
                 ):
                     if hasattr(self.contest, "columns"):
                         cmd = {}
@@ -2397,8 +2251,8 @@ class MainWindow(QtWidgets.QMainWindow):
                         cmd["COLUMNS"] = self.contest.columns
                         self.multicast_interface.send_as_json(cmd)
                 if (
-                    json_data.get("cmd", "") == "TUNE"
-                    and json_data.get("station", "") == platform.node()
+                        json_data.get("cmd", "") == "TUNE"
+                        and json_data.get("station", "") == platform.node()
                 ):
                     # b'{"cmd": "TUNE", "freq": 7.0235, "spot": "MM0DGI"}'
                     vfo = json_data.get("freq")
@@ -2414,8 +2268,8 @@ class MainWindow(QtWidgets.QMainWindow):
                     window.raise_()
 
                 if (
-                    json_data.get("cmd", "") == "GETWORKEDLIST"
-                    and json_data.get("station", "") == platform.node()
+                        json_data.get("cmd", "") == "GETWORKEDLIST"
+                        and json_data.get("station", "") == platform.node()
                 ):
                     result = self.database.get_calls_and_bands()
                     cmd = {}
@@ -2433,9 +2287,9 @@ class MainWindow(QtWidgets.QMainWindow):
                     self.multicast_interface.send_as_json(cmd)
 
     def dark_mode_state_changed(self) -> None:
-        self.pref["darkmode"] = self.actionDark_Mode_2.isChecked()
+        self.pref["darkmode"] = self.actionDark_Mode.isChecked()
         self.write_preference()
-        self.setDarkMode(self.actionDark_Mode_2.isChecked())
+        self.set_dark_mode(self.actionDark_Mode.isChecked())
 
     def cw_macros_state_changed(self) -> None:
         """
@@ -2793,7 +2647,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 )
                 self.heading_distance.setText(
                     f"Regional Hdg {heading}° LP {reciprocol(heading)}° / "
-                    f"distance {int(kilometers*0.621371)}mi {kilometers}km"
+                    f"distance {int(kilometers * 0.621371)}mi {kilometers}km"
                 )
                 self.contact["CountryPrefix"] = primary_pfx
                 self.contact["ZN"] = int(cq)
@@ -2841,7 +2695,7 @@ class MainWindow(QtWidgets.QMainWindow):
                         kilometers = distance(self.station.get("GridSquare"), theirgrid)
                         self.heading_distance.setText(
                             f"{theirgrid} Hdg {heading}° LP {reciprocol(heading)}° / "
-                            f"distance {int(kilometers*0.621371)}mi {kilometers}km"
+                            f"distance {int(kilometers * 0.621371)}mi {kilometers}km"
                         )
 
     def check_dupe(self, call: str) -> bool:
@@ -2906,11 +2760,7 @@ class MainWindow(QtWidgets.QMainWindow):
         None
         """
 
-
         self.opon_dialog = OpOn(fsutils.APP_DATA_PATH)
-
-        if self.current_palette:
-            self.opon_dialog.setPalette(self.current_palette)
 
         self.opon_dialog.accepted.connect(self.new_op)
         self.opon_dialog.open()
@@ -2977,7 +2827,7 @@ class MainWindow(QtWidgets.QMainWindow):
         -------
         None
         """
-
+        poll_time = datetime.datetime.now() + datetime.timedelta(seconds=2)
         self.set_radio_icon(0)
         if self.rig_control:
             if self.rig_control.online is False:
@@ -3015,7 +2865,7 @@ class MainWindow(QtWidgets.QMainWindow):
                     info_dirty = True
                     self.radio_state["bw"] = bw
 
-                if datetime.datetime.now() > globals()["poll_time"] or info_dirty:
+                if datetime.datetime.now() > poll_time or info_dirty:
                     logger.debug("VFO: %s  MODE: %s BW: %s", vfo, mode, bw)
                     self.set_window_title()
                     cmd = {}
@@ -3036,9 +2886,7 @@ class MainWindow(QtWidgets.QMainWindow):
                                 self.pref.get("run_state", False)
                             )
                             self.n1mm.send_radio()
-                    globals()[
-                        "poll_time"
-                    ] = datetime.datetime.now() + datetime.timedelta(seconds=10)
+                    poll_time = datetime.datetime.now() + datetime.timedelta(seconds=10)
 
     def edit_cw_macros(self) -> None:
         """
@@ -3224,10 +3072,12 @@ def run() -> None:
     """
     Main Entry
     """
-    logger.debug(f"Resolved OS file system paths: MODULE_PATH {fsutils.MODULE_PATH}, USER_DATA_PATH {fsutils.USER_DATA_PATH}, CONFIG_PATH {fsutils.CONFIG_PATH}")
+    logger.debug(
+        f"Resolved OS file system paths: MODULE_PATH {fsutils.MODULE_PATH}, USER_DATA_PATH {fsutils.USER_DATA_PATH}, CONFIG_PATH {fsutils.CONFIG_PATH}")
     install_icons()
-    timer.start(250)
+    rig_poll_timer.start(250)
     sys.exit(app.exec())
+
 
 DEBUG_ENABLED = False
 if Path("./debug").exists():
@@ -3243,8 +3093,8 @@ logging.basicConfig(
         logging.StreamHandler()
     ]
 )
-logging.getLogger('PyQt5.uic.uiparser').setLevel('INFO')
-logging.getLogger('PyQt5.uic.properties').setLevel('INFO')
+logging.getLogger('PyQt6.uic.uiparser').setLevel('INFO')
+logging.getLogger('PyQt6.uic.properties').setLevel('INFO')
 os.environ["QT_QPA_PLATFORMTHEME"] = "gnome"
 app = QtWidgets.QApplication(sys.argv)
 
@@ -3258,8 +3108,8 @@ y = window.pref.get("window_y", -1)
 window.setGeometry(x, y, width, height)
 window.callsign.setFocus()
 window.show()
-timer = QtCore.QTimer()
-timer.timeout.connect(window.poll_radio)
+rig_poll_timer = QtCore.QTimer()
+rig_poll_timer.timeout.connect(window.poll_radio)
 
 if __name__ == "__main__":
     run()
