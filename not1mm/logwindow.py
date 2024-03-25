@@ -95,7 +95,9 @@ class LogWindow(QtWidgets.QWidget):
         self.n1mm = None
         self.load_pref()
 
-        self.dbname = fsutils.USER_DATA_PATH / self.pref.get("current_database", "ham.db")
+        self.dbname = fsutils.USER_DATA_PATH / self.pref.get(
+            "current_database", "ham.db"
+        )
         self.database = DataBase(self.dbname, fsutils.USER_DATA_PATH)
 
         self.database.current_contest = self.pref.get("contest", 0)
@@ -232,7 +234,9 @@ class LogWindow(QtWidgets.QWidget):
         None
         """
         self.load_pref()
-        self.dbname = fsutils.USER_DATA_PATH / self.pref.get("current_database", "ham.db")
+        self.dbname = fsutils.USER_DATA_PATH / self.pref.get(
+            "current_database", "ham.db"
+        )
         self.database = DataBase(self.dbname, fsutils.APP_DATA_PATH)
         self.database.current_contest = self.pref.get("contest", 0)
         self.contact = self.database.empty_contact
@@ -871,7 +875,6 @@ class LogWindow(QtWidgets.QWidget):
                         column = "Freq (Khz)"
                     self.generalLog.setColumnHidden(self.get_column(column), False)
                     self.focusedLog.setColumnHidden(self.get_column(column), False)
-
 
     def show_like_calls(self, call: str) -> None:
         """

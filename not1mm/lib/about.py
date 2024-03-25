@@ -1,5 +1,6 @@
 """The About Dialog"""
 
+# pylint: disable=c-extension-no-member
 from PyQt6 import QtWidgets, uic
 
 
