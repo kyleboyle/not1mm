@@ -7,9 +7,9 @@ from xmlrpc.server import SimpleXMLRPCRequestHandler
 logging.basicConfig(level=logging.WARNING)
 
 radio_state = {
-    "freq": "14032000",
-    "mode": "CW",
-    "bw": "50",
+    "freq": "14120000",
+    "mode": "USB",
+    "bw": "2700",
     "ptt": 0,
 }
 
@@ -66,7 +66,7 @@ def get_version():
     return "1.4.8"
 
 
-print("Stupid server to fake an flrig CAT control server.")
+print("Stupid server to fake an flrig CAT control server. binding to 0.0.0.0 : 12345")
 
 # Create server
 with SimpleXMLRPCServer(

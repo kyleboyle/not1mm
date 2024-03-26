@@ -976,7 +976,8 @@ class DataBase:
                 conn.row_factory = self.row_factory
                 cursor = conn.cursor()
                 cursor.execute(
-                    f"select call, band from DXLOG where call like '%{call}%' and ContestNR = {self.current_contest};"
+                    "select call, band from DXLOG where call like ? and ContestNR = ?;",
+                    (f"%{call.replace('?', '_')}%", self.current_contest)
                 )
                 result = cursor.fetchall()
                 worked_list = {}

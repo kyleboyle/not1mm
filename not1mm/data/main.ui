@@ -19,12 +19,6 @@
     <verstretch>0</verstretch>
    </sizepolicy>
   </property>
-  <property name="font">
-   <font>
-    <family>JetBrains Mono</family>
-    <pointsize>11</pointsize>
-   </font>
-  </property>
   <property name="focusPolicy">
    <enum>Qt::NoFocus</enum>
   </property>
@@ -54,6 +48,12 @@
        <layout class="QHBoxLayout" name="mainsection">
         <item>
          <widget class="QFrame" name="Band_Mode_Frame_CW">
+          <property name="font">
+           <font>
+            <family>JetBrains Mono</family>
+            <pointsize>11</pointsize>
+           </font>
+          </property>
           <property name="minimumSize">
            <size>
             <width>40</width>
@@ -227,6 +227,12 @@
         </item>
         <item>
          <widget class="QFrame" name="Band_Mode_Frame_SSB">
+          <property name="font">
+           <font>
+            <family>JetBrains Mono</family>
+            <pointsize>11</pointsize>
+           </font>
+          </property>
           <property name="minimumSize">
            <size>
             <width>40</width>
@@ -400,6 +406,12 @@
         </item>
         <item>
          <widget class="QFrame" name="Band_Mode_Frame_RTTY">
+          <property name="font">
+           <font>
+            <family>JetBrains Mono</family>
+            <pointsize>11</pointsize>
+           </font>
+          </property>
           <property name="minimumSize">
            <size>
             <width>40</width>
@@ -577,14 +589,20 @@
         <item>
          <layout class="QVBoxLayout" name="main_dialog" stretch="0,0,0,0,0,0">
           <item>
-           <layout class="QHBoxLayout" name="horizontalLayout" stretch="2,1,1,2,2">
+           <layout class="QHBoxLayout" name="qso_row1" stretch="2,1,1,2,2">
+            <!--property name="spacing"><number>4</number></property-->
             <item>
              <widget class="QFrame" name="callsignfield">
               <layout class="QVBoxLayout" name="input_call">
+               <property name="spacing"><number>0</number></property>
+               <property name="margin"><number>0</number></property>
                <item>
                 <widget class="QLabel" name="callsign_label">
                  <property name="text">
                   <string>Callsign</string>
+                 </property>
+                 <property name="alignment">
+                  <set>Qt::AlignBottom|Qt::AlignLeading|Qt::AlignLeft</set>
                  </property>
                 </widget>
                </item>
@@ -606,7 +624,7 @@
                   <string>enter callsign here</string>
                  </property>
                  <property name="styleSheet">
-                  <string notr="true">text-transform: uppercase;</string>
+                  <string notr="true">QLineEdit {text-transform: uppercase; border-bottom-width: 2px; height:1.8em;}</string>
                  </property>
                 </widget>
                </item>
@@ -616,10 +634,12 @@
             <item>
              <widget class="QFrame" name="field1">
               <layout class="QVBoxLayout" name="input_snt">
+               <property name="spacing"><number>0</number></property>
+               <property name="margin"><number>0</number></property>
                <item>
                 <widget class="QLabel" name="snt_label">
                  <property name="text">
-                  <string>SNT</string>
+                  <string>Snt RST</string>
                  </property>
                  <property name="alignment">
                   <set>Qt::AlignBottom|Qt::AlignLeading|Qt::AlignLeft</set>
@@ -641,7 +661,7 @@
                   <string>RST Sent</string>
                  </property>
                  <property name="styleSheet">
-                  <string notr="true">text-transform: uppercase;</string>
+                  <string notr="true">QLineEdit {border-bottom-width: 2px; height:1.8em}</string>
                  </property>
                 </widget>
                </item>
@@ -651,10 +671,12 @@
             <item>
              <widget class="QFrame" name="field2">
               <layout class="QVBoxLayout" name="input_rcv">
+               <property name="spacing"><number>0</number></property>
+               <property name="margin"><number>0</number></property>
                <item>
                 <widget class="QLabel" name="rcv_label">
                  <property name="text">
-                  <string>RCV</string>
+                  <string>Rcv RST</string>
                  </property>
                  <property name="alignment">
                   <set>Qt::AlignBottom|Qt::AlignLeading|Qt::AlignLeft</set>
@@ -676,7 +698,7 @@
                   <string>RST Received</string>
                  </property>
                  <property name="styleSheet">
-                  <string notr="true">text-transform: uppercase;</string>
+                  <string notr="true">QLineEdit {border-bottom-width: 2px; height:1.8em}</string>
                  </property>
                 </widget>
                </item>
@@ -686,6 +708,8 @@
             <item>
              <widget class="QFrame" name="field3">
               <layout class="QVBoxLayout" name="input_other">
+               <property name="spacing"><number>0</number></property>
+               <property name="margin"><number>0</number></property>
                <item>
                 <widget class="QLabel" name="other_label">
                  <property name="text">
@@ -708,7 +732,7 @@
                   <enum>Qt::ClickFocus</enum>
                  </property>
                  <property name="styleSheet">
-                  <string notr="true">text-transform: uppercase;</string>
+                  <string notr="true">QLineEdit {border-bottom-width: 2px; height:1.8em}</string>
                  </property>
                 </widget>
                </item>
@@ -721,6 +745,8 @@
                <property name="sizeConstraint">
                 <enum>QLayout::SetDefaultConstraint</enum>
                </property>
+               <property name="spacing"><number>0</number></property>
+               <property name="margin"><number>0</number></property>
                <item>
                 <widget class="QLabel" name="exch_label">
                  <property name="text">
@@ -749,7 +775,7 @@
                   <enum>Qt::ClickFocus</enum>
                  </property>
                  <property name="styleSheet">
-                  <string notr="true">text-transform: uppercase;</string>
+                  <string notr="true">QLineEdit {border-bottom-width: 2px; height:1.8em;}</string>
                  </property>
                 </widget>
                </item>
@@ -894,7 +920,6 @@
           <item>
            <widget class="QFrame" name="Button_Row1">
             <layout class="QHBoxLayout" name="ButtonRow1">
-
              <property name="sizeConstraint">
               <enum>QLayout::SetNoConstraint</enum>
              </property>

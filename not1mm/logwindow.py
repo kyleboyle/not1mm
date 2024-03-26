@@ -25,9 +25,6 @@ from not1mm.lib.n1mm import N1MM
 
 logger = logging.getLogger(__name__)
 
-# os.environ["QT_QPA_PLATFORMTHEME"] = "gnome"
-
-
 def safe_float(the_input: any, default=0.0) -> float:
     """
     Convert a string or int to a float.
@@ -489,8 +486,6 @@ class LogWindow(QtWidgets.QWidget):
         self.get_log()
         self.focusedLog.scrollToItem(self.focusedLog.item(row, column))
 
-    def dummy(self):
-        """the dummy"""
 
     def edit_focused_contact_selected(self, clicked_cell) -> None:
         """

@@ -69,6 +69,16 @@ CTYFILE = {}
 with open(fsutils.APP_DATA_PATH / "cty.json", "rt", encoding="utf-8") as c_file:
     CTYFILE = loads(c_file.read())
 
+qss = """QFrame#Band_Mode_Frame_CW QLabel, QFrame#Band_Mode_Frame_RTTY QLabel, QFrame#Band_Mode_Frame_SSB QLabel {
+            font-size: 11pt;
+            font-family: 'JetBrains Mono';
+        }
+        
+        QFrame#Button_Row1 QPushButton, QFrame#Button_Row2 QPushButton{
+            font-size: 11pt;
+            font-family: 'JetBrains Mono';
+        }
+"""
 
 class MainWindow(QtWidgets.QMainWindow):
     """
@@ -1190,6 +1200,7 @@ class MainWindow(QtWidgets.QMainWindow):
         if not self.bandmap_window:
             self.bandmap_window = BandMapWindow()
             self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.bandmap_window)
+
         self.bandmap_window.show()
 
     def launch_check_window(self) -> None:
@@ -1226,7 +1237,7 @@ class MainWindow(QtWidgets.QMainWindow):
         for _, indicators in self.all_mode_indicators.items():
             for _, indicator in indicators.items():
                 indicator.setFrameShape(QtWidgets.QFrame.Shape.NoFrame)
-                indicator.setStyleSheet("font-family: JetBrains Mono;")
+                indicator.setStyleSheet(None)
 
 
     def set_band_indicator(self, band: str) -> None:
@@ -1248,7 +1259,7 @@ class MainWindow(QtWidgets.QMainWindow):
             indicator = self.all_mode_indicators[self.current_mode].get(band, None)
             if indicator:
                 indicator.setFrameShape(QtWidgets.QFrame.Shape.Box)
-                indicator.setStyleSheet("font-family: JetBrains Mono; color: green;")
+                indicator.setStyleSheet("QLabel { color : green; }")
 
     def closeEvent(self, _event) -> None:
         """
@@ -1858,7 +1869,14 @@ class MainWindow(QtWidgets.QMainWindow):
             self.new_contest_dialog()
 
     def set_dark_mode(self, enabled):
-        qdarktheme.setup_theme(theme="dark" if enabled else "light", corner_shape="sharp",)
+
+        qdarktheme.setup_theme(theme="dark" if enabled else "light", corner_shape="sharp",
+                               additional_qss=qss
+                               )
+        if self.bandmap_window:
+            self.bandmap_window.get_settings()
+            self.bandmap_window.update()
+
 
     def edit_macro(self, function_key) -> None:
         """

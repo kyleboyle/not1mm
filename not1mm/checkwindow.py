@@ -156,7 +156,6 @@ class CheckWindow(QWidget):
                 continue
             listItem = QListWidgetItem(item)
             self.masterList.addItem(listItem)
-            self.masterList.show()
 
     def log_list(self, call: str) -> None:
         """
@@ -177,7 +176,6 @@ class CheckWindow(QWidget):
             for calls in result:
                 listItem = QListWidgetItem(calls)
                 self.logList.addItem(listItem)
-                self.logList.show()
 
     def telnet_list(self, spots: list) -> None:
         """
@@ -198,4 +196,3 @@ class CheckWindow(QWidget):
                 call = calls.get("callsign", "")
                 listItem = QListWidgetItem(call)
                 self.telnetList.addItem(listItem)
-                self.telnetList.show()

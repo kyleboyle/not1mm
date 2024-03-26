@@ -361,7 +361,12 @@ class BandMapWindow(QtWidgets.QDockWidget):
         """Get the settings."""
         if os.path.exists(fsutils.CONFIG_FILE):
             with open(fsutils.CONFIG_FILE, "rt", encoding="utf-8") as file_descriptor:
-                return loads(file_descriptor.read())
+                self.settings = loads(file_descriptor.read())
+                if self.settings.get("darkmode"):
+                    self.text_color = QtGui.QColor(228, 231, 235)
+                else:
+                    self.text_color = QtGui.QColor(77, 81, 87)
+                return self.settings
 
     def connect(self):
         """Connect to the cluster."""
@@ -524,7 +529,7 @@ class BandMapWindow(QtWidgets.QDockWidget):
         self.update_stations()
 
     def update(self):
-        """doc"""
+
         try:
             self.update_timer.setInterval(UPDATE_INTERVAL)
         except AttributeError:
@@ -716,8 +721,8 @@ class BandMapWindow(QtWidgets.QDockWidget):
                 text.document().setDocumentMargin(0)
                 text.setPos(60, text_y - (text.boundingRect().height() / 2))
                 text.setFlags(
-                    QtWidgets.QGraphicsItem.ItemIsFocusable
-                    | QtWidgets.QGraphicsItem.ItemIsSelectable
+                    QtWidgets.QGraphicsItem.GraphicsItemFlag.ItemIsFocusable
+                    | QtWidgets.QGraphicsItem.GraphicsItemFlag.ItemIsSelectable
                     | text.flags()
                 )
                 text.setProperty("freq", items.get("freq"))
