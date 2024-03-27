@@ -6,91 +6,156 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>200</width>
+    <width>237</width>
     <height>600</height>
    </rect>
   </property>
-  <property name="font">
-   <font>
-    <family>JetBrains Mono</family>
-    <pointsize>12</pointsize>
-   </font>
+  <property name="focusPolicy">
+   <enum>Qt::NoFocus</enum>
   </property>
   <property name="windowTitle">
    <string>Check Partial</string>
   </property>
-   <layout class="QGridLayout" name="gridLayout">
-    <property name="bottomMargin"><number>2</number></property>
-    <property name="topMargin"><number>2</number></property>
-    <property name="leftMargin"><number>2</number></property>
-    <property name="rightMargin"><number>2</number></property>
-    <item row="1" column="1">
-     <widget class="QListWidget" name="masterList"/>
-    </item>
-    <item row="1" column="3">
-     <widget class="QListWidget" name="callhistoryList"/>
-    </item>
-    <item row="1" column="2">
-     <widget class="QListWidget" name="telnetList"/>
-    </item>
-    <item row="1" column="0">
-     <widget class="QListWidget" name="logList"/>
-    </item>
-    <item row="0" column="0">
-     <widget class="QLabel" name="logListLabel">
-      <property name="font">
-       <font>
-        <family>JetBrains Mono</family>
-        <pointsize>10</pointsize>
-       </font>
+  <layout class="QGridLayout" name="checkpartialgridlayout">
+   <property name="margin" stdset="0">
+    <number>2</number>
+   </property>
+   <item row="1" column="1">
+    <widget class="QScrollArea" name="masterAreaScroll">
+     <property name="focusPolicy">
+      <enum>Qt::ClickFocus</enum>
+     </property>
+     <property name="sizeAdjustPolicy">
+      <enum>QAbstractScrollArea::AdjustToContents</enum>
+     </property>
+     <property name="widgetResizable">
+      <bool>true</bool>
+     </property>
+     <widget class="QWidget" name="masterScrollWidget">
+      <property name="geometry">
+       <rect>
+        <x>0</x>
+        <y>0</y>
+        <width>69</width>
+        <height>574</height>
+       </rect>
       </property>
-      <property name="text">
-       <string>Log</string>
-      </property>
+      <layout class="QVBoxLayout" name="masterLayout">
+       <property name="spacing">
+        <number>0</number>
+       </property>
+       <property name="margin" stdset="0">
+        <number>0</number>
+       </property>
+      </layout>
      </widget>
-    </item>
-    <item row="0" column="1">
-     <widget class="QLabel" name="masterListLabel">
-      <property name="font">
-       <font>
-        <family>JetBrains Mono</family>
-        <pointsize>10</pointsize>
-       </font>
+    </widget>
+   </item>
+   <item row="1" column="2">
+    <widget class="QScrollArea" name="dxcAreaScroll">
+     <property name="focusPolicy">
+      <enum>Qt::ClickFocus</enum>
+     </property>
+     <property name="sizeAdjustPolicy">
+      <enum>QAbstractScrollArea::AdjustToContents</enum>
+     </property>
+     <property name="widgetResizable">
+      <bool>true</bool>
+     </property>
+     <widget class="QWidget" name="dxcScrollWidget">
+      <property name="geometry">
+       <rect>
+        <x>0</x>
+        <y>0</y>
+        <width>69</width>
+        <height>574</height>
+       </rect>
       </property>
-      <property name="text">
-       <string>Master</string>
-      </property>
+      <layout class="QVBoxLayout" name="dxcLayout">
+       <property name="spacing">
+        <number>0</number>
+       </property>
+       <property name="margin" stdset="0">
+        <number>0</number>
+       </property>
+      </layout>
      </widget>
-    </item>
-    <item row="0" column="2">
-     <widget class="QLabel" name="telnetListLabel">
-      <property name="font">
-       <font>
-        <family>JetBrains Mono</family>
-        <pointsize>10</pointsize>
-       </font>
+    </widget>
+   </item>
+   <item row="1" column="0">
+    <widget class="QScrollArea" name="qsoAreaScroll">
+     <property name="focusPolicy">
+      <enum>Qt::ClickFocus</enum>
+     </property>
+     <property name="sizeAdjustPolicy">
+      <enum>QAbstractScrollArea::AdjustToContents</enum>
+     </property>
+     <property name="widgetResizable">
+      <bool>true</bool>
+     </property>
+     <widget class="QWidget" name="qsoScrollWidget">
+      <property name="geometry">
+       <rect>
+        <x>0</x>
+        <y>0</y>
+        <width>69</width>
+        <height>574</height>
+       </rect>
       </property>
-      <property name="text">
-       <string>DX Cluster</string>
-      </property>
+      <layout class="QVBoxLayout" name="qsoLayout">
+       <property name="spacing">
+        <number>0</number>
+       </property>
+       <property name="margin" stdset="0">
+        <number>0</number>
+       </property>
+      </layout>
      </widget>
-    </item>
-    <item row="0" column="3">
-     <widget class="QLabel" name="callhistoryListLabel">
-      <property name="font">
-       <font>
-        <family>JetBrains Mono</family>
-        <pointsize>10</pointsize>
-       </font>
-      </property>
-      <property name="text">
-       <string>Call</string>
-      </property>
-     </widget>
-    </item>
-   </layout>
-  </widget>
-
+    </widget>
+   </item>
+   <item row="0" column="0">
+    <widget class="QLabel" name="logListLabel">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Log</string>
+     </property>
+    </widget>
+   </item>
+   <item row="0" column="1">
+    <widget class="QLabel" name="masterListLabel">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Master</string>
+     </property>
+    </widget>
+   </item>
+   <item row="0" column="2">
+    <widget class="QLabel" name="telnetListLabel">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>DXC</string>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <tabstops>
+  <tabstop>dxcAreaScroll</tabstop>
+  <tabstop>qsoAreaScroll</tabstop>
+  <tabstop>masterAreaScroll</tabstop>
+ </tabstops>
  <resources/>
  <connections/>
 </ui>

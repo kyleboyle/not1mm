@@ -18,8 +18,10 @@ from json import loads
 
 from PyQt6 import QtCore, QtGui, QtWidgets, uic, QtNetwork
 from PyQt6.QtCore import Qt
+from PyQt6.QtWidgets import QGraphicsView
 
 import not1mm.fsutils as fsutils
+from not1mm.lib import timeutils
 from not1mm.lib.multicast import Multicast
 
 logger = logging.getLogger(__name__)
@@ -27,6 +29,7 @@ logger = logging.getLogger(__name__)
 PIXELSPERSTEP = 10
 UPDATE_INTERVAL = 2000
 
+# TODO worked list can grow indefinitely. would probably be better to query database for dup or use common dupe code
 
 class Band:
     """the band"""
@@ -110,7 +113,7 @@ class Database:
             )
         }
 
-    def get_like_calls(self, call: str) -> dict:
+    def get_like_calls(self, call: str) -> list:
         """
         Returns spots where the spotted callsigns contain the supplied string.
 
@@ -127,7 +130,8 @@ class Database:
         """
         try:
             self.cursor.execute(
-                f"select distinct callsign from spots where callsign like '%{call}%' ORDER by callsign ASC;"
+                f"select distinct callsign from spots where callsign like ?;",
+                (f"%{call.replace('?', '_')}%",)
             )
             result = self.cursor.fetchall()
             return result
@@ -310,7 +314,6 @@ class BandMapWindow(QtWidgets.QDockWidget):
     rxMark = []
     rx_freq = None
     tx_freq = None
-    something = None
     lineitemlist = []
     textItemList = []
     connected = False
@@ -319,6 +322,7 @@ class BandMapWindow(QtWidgets.QDockWidget):
     worked_list = {}
     multicast_interface = None
     text_color = QtGui.QColor(45, 45, 45)
+    graphicsView: QGraphicsView = None
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -365,7 +369,7 @@ class BandMapWindow(QtWidgets.QDockWidget):
                 if self.settings.get("darkmode"):
                     self.text_color = QtGui.QColor(228, 231, 235)
                 else:
-                    self.text_color = QtGui.QColor(77, 81, 87)
+                    self.text_color = QtGui.QColor(20, 20, 20)
                 return self.settings
 
     def connect(self):
@@ -472,7 +476,7 @@ class BandMapWindow(QtWidgets.QDockWidget):
                 continue
             if packet.get("cmd", "") == "WORKED":
                 self.worked_list = packet.get("worked", {})
-                logger.debug("%s", f"{self.worked_list}")
+                logger.debug(f"{self.worked_list}")
                 continue
             if packet.get("cmd", "") == "CALLCHANGED":
                 call = packet.get("call", "")
@@ -549,20 +553,20 @@ class BandMapWindow(QtWidgets.QDockWidget):
             if i % 5 == 0:
                 length = 15
             self.bandmap_scene.addLine(
-                10,
+                0,
                 i * PIXELSPERSTEP,
-                length + 10,
+                length,
                 i * PIXELSPERSTEP,
                 QtGui.QPen(self.text_color),
             )
             if i % 5 == 0:  # Add Frequency
                 freq = self.currentBand.start + step * i
                 text = f"{freq:.3f}"
-                self.something = self.bandmap_scene.addText(text)
-                self.something.setDefaultTextColor(self.text_color)
-                self.something.setPos(
-                    -(self.something.boundingRect().width()) + 10,
-                    i * PIXELSPERSTEP - (self.something.boundingRect().height() / 2),
+                textItem = self.bandmap_scene.addText(text)
+                textItem.setDefaultTextColor(self.text_color)
+                textItem.setPos(
+                    -(textItem.boundingRect().width()), # + 10,
+                    i * PIXELSPERSTEP - (textItem.boundingRect().height() / 2),
                 )
 
         freq = self.currentBand.end + step * steps
@@ -645,16 +649,16 @@ class BandMapWindow(QtWidgets.QDockWidget):
 
         poly = QtGui.QPolygonF()
 
-        poly.append(QtCore.QPointF(21, Yposition))
-        poly.append(QtCore.QPointF(10, Yposition - 7))
-        poly.append(QtCore.QPointF(10, Yposition + 7))
+        poly.append(QtCore.QPointF(11, Yposition))
+        poly.append(QtCore.QPointF(0, Yposition - 7))
+        poly.append(QtCore.QPointF(0, Yposition + 7))
         pen = QtGui.QPen()
         brush = QtGui.QBrush(color)
         currentPolygon.append(self.bandmap_scene.addPolygon(poly, pen, brush))
 
     def draw_bandwidth(self, freq, _step, color, currentPolygon) -> None:
         """bandwidth"""
-        logger.debug("%s", f"mark:{currentPolygon} f:{freq} b:{self.bandwidth}")
+        logger.debug(f"mark:{currentPolygon} f:{freq} b:{self.bandwidth}")
         self.clear_freq_mark(currentPolygon)
         if freq < self.currentBand.start or freq > self.currentBand.end:
             return
@@ -664,14 +668,15 @@ class BandMapWindow(QtWidgets.QDockWidget):
                 (Decimal(str(self.bandwidth)) / 2) / 1000000
             )
             bw_end = Decimal(str(freq)) + ((Decimal(str(self.bandwidth)) / 2) / 1000000)
-            logger.debug("%s", f"s:{bw_start} e:{bw_end}")
+
+            #logger.debug(f"s:{bw_start} e:{bw_end}")
             Yposition_neg = self.Freq2ScenePos(bw_start).y()
             Yposition_pos = self.Freq2ScenePos(bw_end).y()
             poly = QtGui.QPolygonF()
-            poly.append(QtCore.QPointF(15, Yposition_neg))
-            poly.append(QtCore.QPointF(20, Yposition_neg))
-            poly.append(QtCore.QPointF(20, Yposition_pos))
-            poly.append(QtCore.QPointF(15, Yposition_pos))
+            poly.append(QtCore.QPointF(5, Yposition_neg))
+            poly.append(QtCore.QPointF(10, Yposition_neg))
+            poly.append(QtCore.QPointF(10, Yposition_pos))
+            poly.append(QtCore.QPointF(5, Yposition_pos))
             pen = QtGui.QPen()
             brush = QtGui.QBrush(color)
             currentPolygon.append(self.bandmap_scene.addPolygon(poly, pen, brush))
@@ -691,7 +696,6 @@ class BandMapWindow(QtWidgets.QDockWidget):
             f"{len(result)} spots in range {self.currentBand.start} - {self.currentBand.end}"
         )
 
-        entity = ""
         if result:
             min_y = 0.0
             for items in result:
@@ -708,25 +712,31 @@ class BandMapWindow(QtWidgets.QDockWidget):
                 text_y = max(min_y + 5, freq_y)
                 self.lineitemlist.append(
                     self.bandmap_scene.addLine(
-                        22, freq_y, 55, text_y, QtGui.QPen(pen_color)
+                        22, freq_y, 45, text_y, QtGui.QPen(pen_color)
                     )
                 )
                 text = self.bandmap_scene.addText(
                     items.get("callsign")
-                    + " @ "
-                    + entity
-                    + " "
-                    + items.get("ts").split()[1][:-3]
+                    + " " + timeutils.time_ago(items.get("ts"))
+                    + " " + items.get("comment")[:40]
                 )
+                text.setHtml("<span style='font-family: JetBrains Mono;'>"
+                    + items.get("callsign") + "</span> - "
+                    + timeutils.time_ago(items.get("ts"))
+                    + " - " + items.get("comment")[:40])
                 text.document().setDocumentMargin(0)
-                text.setPos(60, text_y - (text.boundingRect().height() / 2))
+
+                text.setPos(50, text_y - (text.boundingRect().height() / 2))
                 text.setFlags(
                     QtWidgets.QGraphicsItem.GraphicsItemFlag.ItemIsFocusable
                     | QtWidgets.QGraphicsItem.GraphicsItemFlag.ItemIsSelectable
                     | text.flags()
                 )
                 text.setProperty("freq", items.get("freq"))
-                text.setToolTip(items.get("comment"))
+                text.setToolTip(items.get("callsign")
+                                + " - " + str(items.get("freq"))
+                                + " - " + items.get("ts")
+                                + " - " + items.get("comment"))
                 text.setDefaultTextColor(pen_color)
                 min_y = text_y + text.boundingRect().height() / 2
                 self.textItemList.append(text)
@@ -810,12 +820,12 @@ class BandMapWindow(QtWidgets.QDockWidget):
                 spot["callsign"] = dx
                 spot["spotter"] = spotter
                 spot["comment"] = comment
-                logger.debug(f"{spot}")
                 try:
                     spot["freq"] = float(freq) / 1000
                     self.spots.addspot(spot)
                 except ValueError:
                     logger.debug(f"couldn't parse freq from datablock {data}")
+                logger.debug(f"{spot}")
                 return
             if self.callsignField.text().upper() in data:
                 self.connectButton.setStyleSheet("color: green;")
@@ -869,3 +879,4 @@ class BandMapWindow(QtWidgets.QDockWidget):
     def closeEvent(self, _event: QtGui.QCloseEvent) -> None:
         """Triggered when instance closes."""
         self.close_cluster()
+

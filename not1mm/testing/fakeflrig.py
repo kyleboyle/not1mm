@@ -58,6 +58,7 @@ def get_bw():
 
 def set_bw(bandwidth):
     """set bandwidth"""
+    logging.warning("%s", f"bandwidth set to: {bandwidth}")
     radio_state["bw"] = bandwidth
 
 

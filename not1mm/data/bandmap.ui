@@ -13,7 +13,7 @@
   <property name="windowTitle">
    <string>BandMap</string>
   </property>
-  <widget class="QWidget">
+  <widget class="QWidget" name="widget">
    <layout class="QVBoxLayout" name="verticalLayout_2">
     <property name="spacing">
      <number>6</number>
@@ -41,6 +41,9 @@
       </item>
       <item>
        <widget class="QLineEdit" name="callsignField">
+        <property name="focusPolicy">
+         <enum>Qt::ClickFocus</enum>
+        </property>
         <property name="accessibleName">
          <string>callsign</string>
         </property>
@@ -54,6 +57,9 @@
       </item>
       <item>
        <widget class="QPushButton" name="connectButton">
+        <property name="focusPolicy">
+         <enum>Qt::ClickFocus</enum>
+        </property>
         <property name="accessibleName">
          <string>connect</string>
         </property>
@@ -69,9 +75,11 @@
     </item>
     <item>
      <widget class="QScrollArea" name="scrollArea">
+      <property name="focusPolicy">
+       <enum>Qt::ClickFocus</enum>
+      </property>
       <property name="font">
        <font>
-        <family>JetBrains Mono</family>
         <pointsize>9</pointsize>
        </font>
       </property>
@@ -83,23 +91,23 @@
         <rect>
          <x>0</x>
          <y>0</y>
-         <width>367</width>
-         <height>546</height>
+         <width>369</width>
+         <height>558</height>
         </rect>
        </property>
        <property name="font">
         <font>
-         <family>JetBrains Mono</family>
          <pointsize>9</pointsize>
         </font>
        </property>
        <layout class="QVBoxLayout" name="verticalLayout">
-        <property name="margin"><number>0</number></property>
+        <property name="margin" stdset="0">
+         <number>0</number>
+        </property>
         <item>
          <widget class="QGraphicsView" name="graphicsView">
           <property name="font">
            <font>
-            <family>JetBrains Mono</family>
             <pointsize>6</pointsize>
            </font>
           </property>
@@ -207,6 +215,9 @@
       </item>
       <item>
        <widget class="QSpinBox" name="clear_spot_olderSpinBox">
+        <property name="focusPolicy">
+         <enum>Qt::ClickFocus</enum>
+        </property>
         <property name="accessibleName">
          <string>clear spots older than</string>
         </property>

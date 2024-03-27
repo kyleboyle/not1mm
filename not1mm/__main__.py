@@ -27,7 +27,7 @@ import soundfile as sf
 from PyQt6 import QtCore, QtGui, QtWidgets, uic
 from PyQt6.QtCore import QDir, Qt
 from PyQt6.QtGui import QFontDatabase
-from PyQt6.QtWidgets import QFileDialog, QDockWidget
+from PyQt6.QtWidgets import QFileDialog, QDockWidget, QWidget, QLineEdit
 
 import not1mm.fsutils as fsutils
 from not1mm.bandmap import BandMapWindow
@@ -78,6 +78,15 @@ qss = """QFrame#Band_Mode_Frame_CW QLabel, QFrame#Band_Mode_Frame_RTTY QLabel, Q
             font-size: 11pt;
             font-family: 'JetBrains Mono';
         }
+        QFrame#Button_Row1 QPushButton, QFrame#Button_Row2 QPushButton{
+            font-size: 11pt;
+            font-family: 'JetBrains Mono';
+        }
+        
+        QLineEdit#callsign {
+        font-family: 'JetBrains Mono';
+        }
+
 """
 
 class MainWindow(QtWidgets.QMainWindow):
@@ -158,10 +167,14 @@ class MainWindow(QtWidgets.QMainWindow):
     last_focus = None
     oldtext = ""
 
+    callsign: QLineEdit = None
+    check_callsign_external_last_call: str = None
     log_window = None
     check_window = None
     bandmap_window = None
     vfo_window = None
+
+    rig_poll_timer = QtCore.QTimer()
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -220,6 +233,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.score.setText("0")
         self.callsign.textEdited.connect(self.callsign_changed)
         self.callsign.returnPressed.connect(self.save_contact)
+        self.callsign.editingFinished.connect(self.callsign_editing_finished)
+
         self.sent.returnPressed.connect(self.save_contact)
         self.receive.returnPressed.connect(self.save_contact)
         self.other_1.returnPressed.connect(self.save_contact)
@@ -465,6 +480,10 @@ class MainWindow(QtWidgets.QMainWindow):
                     "There is a newer version of not1mm available.\n"
                     "You can udate to the current version by using:\npip install -U not1mm"
                 )
+        self.radio_state_broadcast_time = datetime.datetime.now() + datetime.timedelta(seconds=2)
+
+        self.rig_poll_timer.timeout.connect(self.poll_radio)
+        self.rig_poll_timer.start(250)
 
     def set_radio_icon(self, state: int) -> None:
         """
@@ -1018,6 +1037,23 @@ class MainWindow(QtWidgets.QMainWindow):
                     else:
                         self.cw_speed.hide()
 
+                # set qso entry tab order
+                next_widget = self.callsign
+                count = 0
+                while True:
+                    count += 1
+                    current_focus = next_widget
+                    if count > 1 and current_focus == self.callsign:
+                        break
+                    next_widget: QWidget = self.tab_next.get(current_focus)
+                    if next_widget:
+                        logger.debug(f"set tab order {current_focus.accessibleName()} -> {next_widget.accessibleName()}")
+                        self.setTabOrder(current_focus, next_widget)
+                    else:
+                        break
+                    if count > len(self.tab_next) + 1:
+                        break
+
                 cmd = {}
                 cmd["cmd"] = "NEWDB"
                 cmd["station"] = platform.node()
@@ -1261,7 +1297,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 indicator.setFrameShape(QtWidgets.QFrame.Shape.Box)
                 indicator.setStyleSheet("QLabel { color : green; }")
 
-    def closeEvent(self, _event) -> None:
+    def closeEvent(self, event) -> None:
         """
         Write window size and position to config file.
 
@@ -1283,6 +1319,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.pref["window_x"] = self.pos().x()
         self.pref["window_y"] = self.pos().y()
         self.write_preference()
+        self.rig_poll_timer.stop()
+        event.accept()
 
     def cty_lookup(self, callsign: str) -> list:
         """Lookup callsign in cty.dat file.
@@ -1345,12 +1383,13 @@ class MainWindow(QtWidgets.QMainWindow):
 
         modifier = event.modifiers()
         if event.key() == Qt.Key.Key_K:
-            self.toggle_cw_entry()
-            return
+            if self.current_mode == "CW":
+                self.toggle_cw_entry()
+                return
         if event.key() == Qt.Key.Key_S and modifier == Qt.KeyboardModifier.ControlModifier:
             freq = self.radio_state.get("vfoa")
             dx = self.callsign.text()
-            if freq and dx:
+            if len(dx) > 3 and freq and dx:
                 cmd = {}
                 cmd["cmd"] = "SPOTDX"
                 cmd["station"] = platform.node()
@@ -1361,7 +1400,7 @@ class MainWindow(QtWidgets.QMainWindow):
         if event.key() == Qt.Key.Key_M and modifier == Qt.KeyboardModifier.ControlModifier:
             freq = self.radio_state.get("vfoa")
             dx = self.callsign.text()
-            if freq and dx:
+            if len(dx) > 2 and freq and dx:
                 cmd = {}
                 cmd["cmd"] = "MARKDX"
                 cmd["station"] = platform.node()
@@ -1418,85 +1457,6 @@ class MainWindow(QtWidgets.QMainWindow):
                 if self.cw.servertype == 2:
                     self.cw.set_winkeyer_speed(self.cw_speed.value())
             return
-        if event.key() == Qt.Key.Key_Tab or event.key() == Qt.Key.Key_Backtab:
-            if self.sent.hasFocus():
-                logger.debug("From sent")
-                if modifier == Qt.KeyboardModifier.ShiftModifier:
-                    prev_tab = self.tab_prev.get(self.sent)
-                    prev_tab.setFocus()
-                    prev_tab.deselect()
-                    prev_tab.end(False)
-                else:
-                    next_tab = self.tab_next.get(self.sent)
-                    next_tab.setFocus()
-                    next_tab.deselect()
-                    next_tab.end(False)
-                return
-            if self.receive.hasFocus():
-                logger.debug("From receive")
-                if modifier == Qt.KeyboardModifier.ShiftModifier:
-                    prev_tab = self.tab_prev.get(self.receive)
-                    prev_tab.setFocus()
-                    prev_tab.deselect()
-                    prev_tab.end(False)
-                else:
-                    next_tab = self.tab_next.get(self.receive)
-                    next_tab.setFocus()
-                    next_tab.deselect()
-                    next_tab.end(False)
-                return
-            if self.other_1.hasFocus():
-                logger.debug("From other_1")
-                if modifier == Qt.KeyboardModifier.ShiftModifier:
-                    prev_tab = self.tab_prev.get(self.other_1)
-                    prev_tab.setFocus()
-                    prev_tab.deselect()
-                    prev_tab.end(False)
-                else:
-                    next_tab = self.tab_next.get(self.other_1)
-                    next_tab.setFocus()
-                    next_tab.deselect()
-                    next_tab.end(False)
-                return
-            if self.other_2.hasFocus():
-                logger.debug("From other_2")
-                if modifier == Qt.KeyboardModifier.ShiftModifier:
-                    prev_tab = self.tab_prev.get(self.other_2)
-                    prev_tab.setFocus()
-                    prev_tab.deselect()
-                    prev_tab.end(False)
-                else:
-                    next_tab = self.tab_next.get(self.other_2)
-                    next_tab.setFocus()
-                    next_tab.deselect()
-                    next_tab.end(False)
-                return
-            if self.callsign.hasFocus():
-                logger.debug("From callsign")
-                self.check_callsign(self.callsign.text())
-                if self.check_dupe(self.callsign.text()):
-                    self.dupe_indicator.show()
-                else:
-                    self.dupe_indicator.hide()
-                if modifier == Qt.KeyboardModifier  .ShiftModifier:
-                    prev_tab = self.tab_prev.get(self.callsign)
-                    prev_tab.setFocus()
-                    prev_tab.deselect()
-                    prev_tab.end(False)
-                else:
-                    text = self.callsign.text()
-                    text = text.upper()
-                    _thethread = threading.Thread(
-                        target=self.check_callsign2,
-                        args=(text,),
-                        daemon=True,
-                    )
-                    _thethread.start()
-                    next_tab = self.tab_next.get(self.callsign)
-                    next_tab.setFocus()
-                    next_tab.deselect()
-                    next_tab.end(False)
-                return
         if event.key() == Qt.Key.Key_F1:
             self.process_function_key(self.F1)
         if event.key() == Qt.Key.Key_F2:
@@ -1606,6 +1566,30 @@ class MainWindow(QtWidgets.QMainWindow):
         cmd["station"] = platform.node()
         cmd["call"] = ""
         self.multicast_interface.send_as_json(cmd)
+
+    def callsign_editing_finished(self) -> None:
+        """This signal is invoked after the enter button is pressed so it doesn't conflict with saving a qso.
+        This signal is used to handle the "callsign loses focus" event. if the call sign is empty it means the
+        qso has been persisted and we can do nothing
+        """
+        callsign_value = self.callsign.text().strip().upper()
+        if not callsign_value:
+            return
+        logger.debug(f'callsign field exit value {callsign_value}')
+        self.check_callsign(callsign_value)
+        if self.check_dupe(callsign_value):
+            self.dupe_indicator.show()
+        else:
+            self.dupe_indicator.hide()
+
+        _thethread = threading.Thread(
+            target=self.check_callsign_external,
+            args=(callsign_value,),
+            daemon=True,
+        )
+        _thethread.start()
+
+
 
     def save_contact(self) -> None:
         """
@@ -1869,10 +1853,15 @@ class MainWindow(QtWidgets.QMainWindow):
             self.new_contest_dialog()
 
     def set_dark_mode(self, enabled):
-
         qdarktheme.setup_theme(theme="dark" if enabled else "light", corner_shape="sharp",
-                               additional_qss=qss
+                               additional_qss=qss,
+                               custom_colors={
+                                   "[light]": {
+                                       "foreground": "#141414",
+                                   }
+                               }
                                )
+
         if self.bandmap_window:
             self.bandmap_window.get_settings()
             self.bandmap_window.update()
@@ -2539,7 +2528,7 @@ class MainWindow(QtWidgets.QMainWindow):
             else:
                 self.dupe_indicator.hide()
             _thethread = threading.Thread(
-                target=self.check_callsign2,
+                target=self.check_callsign_external,
                 args=(text,),
                 daemon=True,
             )
@@ -2661,8 +2650,7 @@ class MainWindow(QtWidgets.QMainWindow):
         """
 
         result = self.cty_lookup(callsign)
-        debug_result = f"{result}"
-        logger.debug("%s", debug_result)
+        logger.debug(f"cty lookup result {result}")
         if result:
             for a in result.items():
                 entity = a[1].get("entity", "")
@@ -2694,7 +2682,7 @@ class MainWindow(QtWidgets.QMainWindow):
                     if self.contest:
                         self.contest.prefill(self)
 
-    def check_callsign2(self, callsign) -> None:
+    def check_callsign_external(self, callsign) -> None:
         """
         Check the callsign after it has been entered.
         Look up the callsign in the callsign database.
@@ -2711,24 +2699,28 @@ class MainWindow(QtWidgets.QMainWindow):
         """
 
         callsign = callsign.strip()
-        debug_lookup = f"{self.look_up}"
-        logger.debug("%s, %s", callsign, debug_lookup)
+        if self.check_callsign_external_last_call != callsign:
+            logger.debug("check_callsign_full duplicate lookup, aborting...")
+            return
+
+        logger.debug(f"check_callsign_full {callsign}, {self.look_up}")
         if hasattr(self.look_up, "session"):
             if self.look_up.session:
-                response = self.look_up.lookup(callsign)
-                debug_response = f"{response}"
-                logger.debug("The Response: %s\n", debug_response)
-                if response:
-                    theirgrid = response.get("grid")
-                    self.contact["GridSquare"] = theirgrid
-                    _theircountry = response.get("country")
-                    if self.station.get("GridSquare", ""):
-                        heading = bearing(self.station.get("GridSquare", ""), theirgrid)
-                        kilometers = distance(self.station.get("GridSquare"), theirgrid)
-                        self.heading_distance.setText(
-                            f"{theirgrid} Hdg {heading}° LP {reciprocol(heading)}° / "
-                            f"distance {int(kilometers * 0.621371)}mi {kilometers}km"
-                        )
+                    response = self.look_up.lookup(callsign)
+                    debug_response = f"{response}"
+                    logger.debug("The Response: %s\n", debug_response)
+                    if response:
+                        self.check_callsign_external_last_call = callsign
+                        theirgrid = response.get("grid")
+                        self.contact["GridSquare"] = theirgrid
+                        _theircountry = response.get("country")
+                        if self.station.get("GridSquare", ""):
+                            heading = bearing(self.station.get("GridSquare", ""), theirgrid)
+                            kilometers = distance(self.station.get("GridSquare"), theirgrid)
+                            self.heading_distance.setText(
+                                f"{theirgrid} Hdg {heading}° LP {reciprocol(heading)}° / "
+                                f"distance {int(kilometers * 0.621371)}mi {kilometers}km"
+                            )
 
     def check_dupe(self, call: str) -> bool:
         """Checks if a callsign is a dupe on current band/mode."""
@@ -2750,8 +2742,7 @@ class MainWindow(QtWidgets.QMainWindow):
             result = self.database.check_dupe_on_band_mode(call, band, mode)
         if self.contest.dupe_type == 4:
             result = {"isdupe": False}
-        debugline = f"{result}"
-        logger.debug("%s", debugline)
+        logger.debug(f"{result}")
         return result.get("isdupe", False)
 
     def setmode(self, mode: str) -> None:
@@ -2859,7 +2850,6 @@ class MainWindow(QtWidgets.QMainWindow):
         -------
         None
         """
-        poll_time = datetime.datetime.now() + datetime.timedelta(seconds=2)
         self.set_radio_icon(0)
         if self.rig_control:
             if self.rig_control.online is False:
@@ -2897,7 +2887,7 @@ class MainWindow(QtWidgets.QMainWindow):
                     info_dirty = True
                     self.radio_state["bw"] = bw
 
-                if datetime.datetime.now() > poll_time or info_dirty:
+                if datetime.datetime.now() > self.radio_state_broadcast_time or info_dirty:
                     logger.debug("VFO: %s  MODE: %s BW: %s", vfo, mode, bw)
                     self.set_window_title()
                     cmd = {}
@@ -2918,7 +2908,8 @@ class MainWindow(QtWidgets.QMainWindow):
                                 self.pref.get("run_state", False)
                             )
                             self.n1mm.send_radio()
-                    poll_time = datetime.datetime.now() + datetime.timedelta(seconds=10)
+                    self.radio_state_broadcast_time = datetime.datetime.now() + datetime.timedelta(seconds=10)
+
 
     def edit_cw_macros(self) -> None:
         """
@@ -3116,9 +3107,15 @@ def run() -> None:
     """
     logger.debug(
         f"Resolved OS file system paths: MODULE_PATH {fsutils.MODULE_PATH}, USER_DATA_PATH {fsutils.USER_DATA_PATH}, CONFIG_PATH {fsutils.CONFIG_PATH}")
-
     install_icons()
-    rig_poll_timer.start(250)
+    window = MainWindow()
+    height = window.pref.get("window_height", 300)
+    width = window.pref.get("window_width", 700)
+    x = window.pref.get("window_x", -1)
+    y = window.pref.get("window_y", -1)
+    window.setGeometry(x, y, width, height)
+    window.callsign.setFocus()
+    window.show()
     sys.exit(app.exec())
 
 
@@ -3144,16 +3141,6 @@ app = QtWidgets.QApplication(sys.argv)
 
 families = load_fonts_from_dir(os.fspath(fsutils.APP_DATA_PATH))
 logger.info(f"font families {families}")
-window = MainWindow()
-height = window.pref.get("window_height", 300)
-width = window.pref.get("window_width", 700)
-x = window.pref.get("window_x", -1)
-y = window.pref.get("window_y", -1)
-window.setGeometry(x, y, width, height)
-window.callsign.setFocus()
-window.show()
-rig_poll_timer = QtCore.QTimer()
-rig_poll_timer.timeout.connect(window.poll_radio)
 
 if __name__ == "__main__":
     run()

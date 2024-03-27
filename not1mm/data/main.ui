@@ -48,17 +48,16 @@
        <layout class="QHBoxLayout" name="mainsection">
         <item>
          <widget class="QFrame" name="Band_Mode_Frame_CW">
-          <property name="font">
-           <font>
-            <family>JetBrains Mono</family>
-            <pointsize>11</pointsize>
-           </font>
-          </property>
           <property name="minimumSize">
            <size>
             <width>40</width>
             <height>0</height>
            </size>
+          </property>
+          <property name="font">
+           <font>
+            <pointsize>11</pointsize>
+           </font>
           </property>
           <property name="lineWidth">
            <number>0</number>
@@ -227,17 +226,16 @@
         </item>
         <item>
          <widget class="QFrame" name="Band_Mode_Frame_SSB">
-          <property name="font">
-           <font>
-            <family>JetBrains Mono</family>
-            <pointsize>11</pointsize>
-           </font>
-          </property>
           <property name="minimumSize">
            <size>
             <width>40</width>
             <height>0</height>
            </size>
+          </property>
+          <property name="font">
+           <font>
+            <pointsize>11</pointsize>
+           </font>
           </property>
           <property name="frameShape">
            <enum>QFrame::NoFrame</enum>
@@ -406,17 +404,16 @@
         </item>
         <item>
          <widget class="QFrame" name="Band_Mode_Frame_RTTY">
-          <property name="font">
-           <font>
-            <family>JetBrains Mono</family>
-            <pointsize>11</pointsize>
-           </font>
-          </property>
           <property name="minimumSize">
            <size>
             <width>40</width>
             <height>0</height>
            </size>
+          </property>
+          <property name="font">
+           <font>
+            <pointsize>11</pointsize>
+           </font>
           </property>
           <property name="frameShape">
            <enum>QFrame::NoFrame</enum>
@@ -590,12 +587,15 @@
          <layout class="QVBoxLayout" name="main_dialog" stretch="0,0,0,0,0,0">
           <item>
            <layout class="QHBoxLayout" name="qso_row1" stretch="2,1,1,2,2">
-            <!--property name="spacing"><number>4</number></property-->
             <item>
              <widget class="QFrame" name="callsignfield">
               <layout class="QVBoxLayout" name="input_call">
-               <property name="spacing"><number>0</number></property>
-               <property name="margin"><number>0</number></property>
+               <property name="spacing">
+                <number>0</number>
+               </property>
+               <property name="margin" stdset="0">
+                <number>0</number>
+               </property>
                <item>
                 <widget class="QLabel" name="callsign_label">
                  <property name="text">
@@ -610,12 +610,8 @@
                 <widget class="QLineEdit" name="callsign">
                  <property name="font">
                   <font>
-                   <family>JetBrains Mono</family>
                    <pointsize>20</pointsize>
                   </font>
-                 </property>
-                 <property name="focusPolicy">
-                  <enum>Qt::ClickFocus</enum>
                  </property>
                  <property name="accessibleName">
                   <string>callsign</string>
@@ -634,8 +630,12 @@
             <item>
              <widget class="QFrame" name="field1">
               <layout class="QVBoxLayout" name="input_snt">
-               <property name="spacing"><number>0</number></property>
-               <property name="margin"><number>0</number></property>
+               <property name="spacing">
+                <number>0</number>
+               </property>
+               <property name="margin" stdset="0">
+                <number>0</number>
+               </property>
                <item>
                 <widget class="QLabel" name="snt_label">
                  <property name="text">
@@ -650,12 +650,8 @@
                 <widget class="QLineEdit" name="sent">
                  <property name="font">
                   <font>
-                   <family>JetBrains Mono</family>
                    <pointsize>20</pointsize>
                   </font>
-                 </property>
-                 <property name="focusPolicy">
-                  <enum>Qt::ClickFocus</enum>
                  </property>
                  <property name="accessibleName">
                   <string>RST Sent</string>
@@ -671,8 +667,12 @@
             <item>
              <widget class="QFrame" name="field2">
               <layout class="QVBoxLayout" name="input_rcv">
-               <property name="spacing"><number>0</number></property>
-               <property name="margin"><number>0</number></property>
+               <property name="spacing">
+                <number>0</number>
+               </property>
+               <property name="margin" stdset="0">
+                <number>0</number>
+               </property>
                <item>
                 <widget class="QLabel" name="rcv_label">
                  <property name="text">
@@ -687,13 +687,12 @@
                 <widget class="QLineEdit" name="receive">
                  <property name="font">
                   <font>
-                   <family>JetBrains Mono</family>
                    <pointsize>20</pointsize>
                   </font>
                  </property>
-                 <property name="focusPolicy">
-                  <enum>Qt::ClickFocus</enum>
-                 </property>
+                 <!--property name="focusPolicy">
+                  <enum>Qt::TabFocus</enum>
+                 </property-->
                  <property name="accessibleName">
                   <string>RST Received</string>
                  </property>
@@ -708,8 +707,12 @@
             <item>
              <widget class="QFrame" name="field3">
               <layout class="QVBoxLayout" name="input_other">
-               <property name="spacing"><number>0</number></property>
-               <property name="margin"><number>0</number></property>
+               <property name="spacing">
+                <number>0</number>
+               </property>
+               <property name="margin" stdset="0">
+                <number>0</number>
+               </property>
                <item>
                 <widget class="QLabel" name="other_label">
                  <property name="text">
@@ -724,12 +727,14 @@
                 <widget class="QLineEdit" name="other_1">
                  <property name="font">
                   <font>
-                   <family>JetBrains Mono</family>
                    <pointsize>20</pointsize>
                   </font>
                  </property>
-                 <property name="focusPolicy">
-                  <enum>Qt::ClickFocus</enum>
+                 <!--property name="focusPolicy">
+                  <enum>Qt::TabFocus</enum>
+                 </property-->
+                 <property name="accessibleName">
+                  <string>edit field3</string>
                  </property>
                  <property name="styleSheet">
                   <string notr="true">QLineEdit {border-bottom-width: 2px; height:1.8em}</string>
@@ -742,11 +747,15 @@
             <item>
              <widget class="QFrame" name="field4">
               <layout class="QVBoxLayout" name="verticalLayout_2">
+               <property name="spacing">
+                <number>0</number>
+               </property>
                <property name="sizeConstraint">
                 <enum>QLayout::SetDefaultConstraint</enum>
                </property>
-               <property name="spacing"><number>0</number></property>
-               <property name="margin"><number>0</number></property>
+               <property name="margin" stdset="0">
+                <number>0</number>
+               </property>
                <item>
                 <widget class="QLabel" name="exch_label">
                  <property name="text">
@@ -767,12 +776,14 @@
                 <widget class="QLineEdit" name="other_2">
                  <property name="font">
                   <font>
-                   <family>JetBrains Mono</family>
                    <pointsize>20</pointsize>
                   </font>
                  </property>
-                 <property name="focusPolicy">
-                  <enum>Qt::ClickFocus</enum>
+                 <!--property name="focusPolicy">
+                  <enum>Qt::TabFocus</enum>
+                 </property-->
+                 <property name="accessibleName">
+                  <string>edit field4</string>
                  </property>
                  <property name="styleSheet">
                   <string notr="true">QLineEdit {border-bottom-width: 2px; height:1.8em;}</string>
@@ -889,7 +900,6 @@
               </property>
               <property name="font">
                <font>
-                <family>JetBrains Mono</family>
                 <pointsize>20</pointsize>
                 <bold>true</bold>
                </font>
@@ -1308,7 +1318,7 @@
      <x>0</x>
      <y>0</y>
      <width>878</width>
-     <height>30</height>
+     <height>24</height>
     </rect>
    </property>
    <property name="nativeMenuBar">

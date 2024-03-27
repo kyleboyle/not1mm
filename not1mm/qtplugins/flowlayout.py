@@ -1,4 +1,3 @@
-import sys
 from PyQt6.QtCore import Qt, QMargins, QPoint, QRect, QSize
 from PyQt6.QtWidgets import QLayout,  QSizePolicy
 
@@ -9,7 +8,6 @@ class FlowLayout(QLayout):
 
         if parent is not None:
             self.setContentsMargins(QMargins(0, 0, 0, 0))
-
         self._item_list = []
 
     def __del__(self):
@@ -26,8 +24,10 @@ class FlowLayout(QLayout):
     def itemAt(self, index):
         if 0 <= index < len(self._item_list):
             return self._item_list[index]
-
         return None
+
+    def removeAllItems(self):
+        self._item_list.clear()
 
     def takeAt(self, index):
         if 0 <= index < len(self._item_list):
@@ -68,12 +68,12 @@ class FlowLayout(QLayout):
         spacing = self.spacing()
 
         for item in self._item_list:
-            style = item.widget().style()
+            style = item.style()
             layout_spacing_x = style.layoutSpacing(
-                QSizePolicy.Policy.PushButton, QSizePolicy.Policy.PushButton, Qt.Orientation.Horizontal
+                QSizePolicy.ControlType.Label, QSizePolicy.ControlType.Label, Qt.Orientation.Horizontal
             )
             layout_spacing_y = style.layoutSpacing(
-                QSizePolicy.Policy.PushButton, QSizePolicy.Policy.PushButton, Qt.Orientation.Vertical
+                QSizePolicy.ControlType.Label, QSizePolicy.ControlType.Label, Qt.Orientation.Vertical
             )
             space_x = spacing + layout_spacing_x
             space_y = spacing + layout_spacing_y

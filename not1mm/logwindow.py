@@ -689,22 +689,6 @@ class LogWindow(QtWidgets.QWidget):
         None
         """
 
-        # The horizontal flags are:
-
-        # Constant	Value	Description
-        # Qt::AlignLeft	0x0001	Aligns with the left edge.
-        # Qt::AlignRight	0x0002	Aligns with the right edge.
-        # Qt::AlignHCenter	0x0004	Centers horizontally in the available space.
-        # Qt::AlignJustify	0x0008	Justifies the text in the available space.
-
-        # The vertical flags are:
-
-        # Constant	Value	Description
-        # Qt::AlignTop	0x0020	Aligns with the top.
-        # Qt::AlignBottom	0x0040	Aligns with the bottom.
-        # Qt::AlignVCenter	0x0080	Centers vertically in the available space.
-        # Qt::AlignBaseline	0x0100	Aligns with the baseline.
-
         logger.debug("Getting Log")
         self.generalLog.blockSignals(True)
         self.focusedLog.blockSignals(True)
