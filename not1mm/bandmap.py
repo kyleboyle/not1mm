@@ -684,17 +684,14 @@ class BandMapWindow(QtWidgets.QDockWidget):
     def update_stations(self):
         """doc"""
         self.update_timer.setInterval(UPDATE_INTERVAL)
-        if not self.connected:
+        if not self.isVisible():
             return
-
         self.clear_all_callsign_from_scene()
         self.spot_aging()
         step, _digits = self.determine_step_digits()
 
         result = self.spots.getspotsinband(self.currentBand.start, self.currentBand.end)
-        logger.debug(
-            f"{len(result)} spots in range {self.currentBand.start} - {self.currentBand.end}"
-        )
+        #logger.debug(f"{len(result)} spots in range {self.currentBand.start} - {self.currentBand.end}")
 
         if result:
             min_y = 0.0

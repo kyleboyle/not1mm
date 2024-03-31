@@ -1,18 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
  <class>LogWindow</class>
- <widget class="QWidget" name="LogWindow">
-  <property name="geometry">
-   <rect>
-    <x>0</x>
-    <y>0</y>
-    <width>825</width>
-    <height>392</height>
-   </rect>
-  </property>
+ <widget class="QDockWidget" name="LogWindow">
   <property name="windowTitle">
    <string>QSO Logs</string>
   </property>
+  <widget class="QWidget">
   <layout class="QVBoxLayout" name="verticalLayout">
    <property name="margin" stdset="0">
     <number>2</number>
@@ -22,18 +15,12 @@
      <property name="orientation">
       <enum>Qt::Vertical</enum>
      </property>
-     <widget class="QTableWidget" name="generalLog">
-      <property name="font">
-       <font/>
-      </property>
+     <widget class="QTableView" name="qsoTable">
       <property name="focusPolicy">
        <enum>Qt::ClickFocus</enum>
       </property>
      </widget>
-     <widget class="QTableWidget" name="focusedLog">
-      <property name="font">
-       <font/>
-      </property>
+     <widget class="QTableView" name="stationHistoryTable">
       <property name="focusPolicy">
        <enum>Qt::ClickFocus</enum>
       </property>
@@ -41,6 +28,7 @@
     </widget>
    </item>
   </layout>
+ </widget>
  </widget>
  <resources/>
  <connections/>

@@ -16,7 +16,7 @@ from json import loads, JSONDecodeError
 import serial
 from PyQt6 import QtCore, QtGui, QtWidgets, uic
 from PyQt6.QtCore import Qt, QTimer
-from PyQt6.QtWidgets import QWidget
+from PyQt6.QtWidgets import QWidget, QDockWidget
 
 import not1mm.fsutils as fsutils
 from not1mm.lib.cat_interface import CAT
@@ -24,8 +24,7 @@ from not1mm.lib.multicast import Multicast
 
 logger = logging.getLogger(__name__)
 
-
-class VfoWindow(QWidget):
+class VfoWindow(QDockWidget):
     """The VFO window."""
 
     pref = {}
@@ -155,10 +154,6 @@ class VfoWindow(QWidget):
         # app.processEvents()
 
     def watch_udp(self) -> None:
-        """
-        Watch for a 'HALT' UPD packet from not1mm.
-        Exit app if found.
-        """
         while self.multicast_interface.server_udp.hasPendingDatagrams():
             datagram = self.multicast_interface.getpacket()
             try:

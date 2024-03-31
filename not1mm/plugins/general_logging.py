@@ -16,11 +16,11 @@ cabrillo_name = "General-Logging"
 mode = "BOTH"  # CW SSB BOTH RTTY
 columns = [0, 1, 2, 3, 4, 16, 17]
 columns = [
-    "YYYY-MM-DD HH:MM:SS",
+    "TS",
     "Call",
     "Freq",
-    "Snt",
-    "Rcv",
+    "SNT",
+    "RCV",
     "Name",
     "Comment",
 ]

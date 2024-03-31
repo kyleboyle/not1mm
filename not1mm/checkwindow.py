@@ -10,22 +10,22 @@ import os
 import platform
 import queue
 from json import loads
-import difflib
 
+import Levenshtein
 from PyQt6 import uic
-from PyQt6.QtWidgets import QLabel, QVBoxLayout
-from PyQt6.QtWidgets import QWidget
+from PyQt6.QtCore import QEvent
+from PyQt6.QtGui import QMouseEvent
+from PyQt6.QtWidgets import QLabel, QVBoxLayout, QDockWidget, QWidget
 
 import not1mm.fsutils as fsutils
 from not1mm.lib.database import DataBase
 from not1mm.lib.multicast import Multicast
 from not1mm.lib.super_check_partial import SCP
-import Levenshtein
 
 logger = logging.getLogger(__name__)
 
 
-class CheckWindow(QWidget):
+class CheckWindow(QDockWidget):
     """The check window. Shows list or probable stations."""
 
     multicast_interface = None
@@ -38,6 +38,8 @@ class CheckWindow(QWidget):
 
     character_remove_color = '#cc3333'
     character_add_color = '#3333cc'
+
+    masterScrollWidget:QWidget = None
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -80,7 +82,7 @@ class CheckWindow(QWidget):
                 ) as file_descriptor:
                     self.pref = loads(file_descriptor.read())
                     logger.info(f"loaded config file from {fsutils.CONFIG_FILE}")
-                if self.pref["darkmode"]:
+                if self.pref.get("darkmode", None):
                     # red darkmode
                     self.character_remove_color = '#990000'
                     # blue darkmode
@@ -202,7 +204,7 @@ class CheckWindow(QWidget):
                             label_text += f"<span style='background-color: {self.character_remove_color};'>{call[i1:i2]}</span>"
                         elif tag == 'insert' or tag == 'delete':
                             label_text += f"<span style='background-color: {self.character_add_color};'>{call[i1:i2]}</span>"
-                    labels.append((Levenshtein.hamming(call, self.call), QLabel(label_text)))
+                    labels.append((Levenshtein.hamming(call, self.call), CallLabel(label_text, call=call, multicast=self.multicast_interface)))
 
         for _, label in sorted(labels, key=lambda x: x[0]):
             label.setStyleSheet("QLabel {letter-spacing: 0.15em; font-family: 'JetBrains Mono';}")
@@ -210,3 +212,19 @@ class CheckWindow(QWidget):
         # top aligns
         layout.addStretch(0)
 
+
+class CallLabel(QLabel):
+    call: str = None
+    multicast = None
+    def __init__(self, *args, call=None, multicast=None):
+        super().__init__(*args)
+        self.call = call
+        self.multicast = multicast
+
+    def mouseDoubleClickEvent(self, e: QMouseEvent) -> None:
+        if self.call and self.multicast:
+            logger.debug(f"callsign label click, sending call change to {self.call}")
+            cmd = {"cmd": "CHANGECALL",
+                   "station": platform.node(),
+                   "call": self.call}
+            self.multicast.send_as_json(cmd)

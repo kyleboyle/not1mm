@@ -25,8 +25,8 @@ import notctyparser
 import sounddevice as sd
 import soundfile as sf
 from PyQt6 import QtCore, QtGui, QtWidgets, uic
-from PyQt6.QtCore import QDir, Qt
-from PyQt6.QtGui import QFontDatabase
+from PyQt6.QtCore import QDir, Qt, QByteArray
+from PyQt6.QtGui import QFontDatabase, QKeyEvent
 from PyQt6.QtWidgets import QFileDialog, QDockWidget, QWidget, QLineEdit
 
 import not1mm.fsutils as fsutils
@@ -104,10 +104,6 @@ class MainWindow(QtWidgets.QMainWindow):
         "cw_macros": True,
         "bands_modes": True,
         "bands": ["160", "80", "40", "20", "15", "10"],
-        "window_height": 200,
-        "window_width": 600,
-        "window_x": 120,
-        "window_y": 120,
         "current_database": "ham.db",
         "contest": "",
         "multicast_group": "239.1.1.1",
@@ -169,10 +165,10 @@ class MainWindow(QtWidgets.QMainWindow):
 
     callsign: QLineEdit = None
     check_callsign_external_last_call: str = None
-    log_window = None
-    check_window = None
-    bandmap_window = None
-    vfo_window = None
+    log_window:QDockWidget = None
+    check_window:QDockWidget = None
+    bandmap_window:QDockWidget = None
+    vfo_window:QDockWidget = None
 
     rig_poll_timer = QtCore.QTimer()
 
@@ -572,22 +568,6 @@ class MainWindow(QtWidgets.QMainWindow):
             self.change_mode(mode)
 
     def quit_app(self) -> None:
-        """
-        Send multicast quit message, then quit the program.
-
-        Parameters
-        ----------
-        None
-
-        Returns
-        -------
-        None
-        """
-
-        cmd = {}
-        cmd["cmd"] = "HALT"
-        cmd["station"] = platform.node()
-        self.multicast_interface.send_as_json(cmd)
         app.quit()
 
     def show_message_box(self, message: str) -> None:
@@ -1196,9 +1176,8 @@ class MainWindow(QtWidgets.QMainWindow):
         str: filename
         """
 
-        options = QFileDialog.Options()
-        options |= QFileDialog.DontUseNativeDialog
-        options |= QFileDialog.DontConfirmOverwrite
+        options = QFileDialog.Option.DontUseNativeDialog | QFileDialog.Option.DontConfirmOverwrite
+
         if action == "new":
             file, _ = QFileDialog.getSaveFileName(
                 self,
@@ -1225,9 +1204,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def launch_log_window(self) -> None:
         """Launch the log window"""
         if not self.log_window:
-            log_widget = LogWindow()
-            self.log_window = QDockWidget(log_widget.property("windowTitle"), self)
-            self.log_window.setWidget(log_widget)
+            self.log_window = LogWindow()
             self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, self.log_window)
         self.log_window.show()
 
@@ -1242,20 +1219,15 @@ class MainWindow(QtWidgets.QMainWindow):
     def launch_check_window(self) -> None:
         """Launch the check window"""
         if not self.check_window:
-            check_widget = CheckWindow()
-            self.check_window = QDockWidget(check_widget.property("windowTitle"), self)
-            self.check_window.setWidget(check_widget)
+            self.check_window = CheckWindow()
             self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.check_window)
         self.check_window.show()
 
     def launch_vfo(self) -> None:
         """Launch the VFO window"""
         if not self.vfo_window:
-            vfo_widget = VfoWindow()
-            self.vfo_window = QDockWidget(vfo_widget.property("windowTitle"), self)
-            self.vfo_window.setWidget(vfo_widget)
-            #self.addDockWidget(Qt.DockWidgetArea.NoDockWidgetArea, self.vfo_window)
-            self.vfo_window.setFloating(True)
+            self.vfo_window = VfoWindow()
+            self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.vfo_window)
         self.vfo_window.show()
 
     def clear_band_indicators(self) -> None:
@@ -1298,26 +1270,14 @@ class MainWindow(QtWidgets.QMainWindow):
                 indicator.setStyleSheet("QLabel { color : green; }")
 
     def closeEvent(self, event) -> None:
-        """
-        Write window size and position to config file.
 
-        Parameters:
-        ----------
-        _event: QCloseEvent
+        self.pref["window_state"] = bytes(self.saveState(1).toHex()).decode('ascii')
+        self.pref["window_geo"] = bytes(self.saveGeometry().toHex()).decode('ascii')
+        self.pref["window_bandmap_enable"] = self.bandmap_window and self.bandmap_window.isVisible()
+        self.pref["window_check_enable"] = self.check_window and self.check_window.isVisible()
+        self.pref["window_log_enable"] = self.log_window and self.log_window.isVisible()
+        self.pref["window_vfo_enable"] = self.vfo_window and self.vfo_window.isVisible()
 
-        Returns:
-        -------
-        None
-        """
-
-        cmd = {}
-        cmd["cmd"] = "HALT"
-        cmd["station"] = platform.node()
-        self.multicast_interface.send_as_json(cmd)
-        self.pref["window_width"] = self.size().width()
-        self.pref["window_height"] = self.size().height()
-        self.pref["window_x"] = self.pos().x()
-        self.pref["window_y"] = self.pos().y()
         self.write_preference()
         self.rig_poll_timer.stop()
         event.accept()
@@ -1367,19 +1327,7 @@ class MainWindow(QtWidgets.QMainWindow):
         if self.cw.servertype == 2:
             self.cw.set_winkeyer_speed(self.cw_speed.value())
 
-    def keyPressEvent(self, event) -> None:  # pylint: disable=invalid-name
-        """
-        This overrides Qt key event.
-
-        Parameters:
-        ----------
-        event: QKeyEvent
-        Qt key event
-
-        Returns:
-        -------
-        None
-        """
+    def keyPressEvent(self, event: QKeyEvent) -> None:  # pylint: disable=invalid-name
 
         modifier = event.modifiers()
         if event.key() == Qt.Key.Key_K:
@@ -1481,6 +1429,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.process_function_key(self.F11)
         if event.key() == Qt.Key.Key_F12:
             self.process_function_key(self.F12)
+
 
     def set_window_title(self) -> None:
         """
@@ -1685,7 +1634,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 logger.debug("%s", f"{self.n1mm.contact_info}")
                 self.n1mm.send_contact_info()
 
-        self.database.log_contact(self.contact)
+        inserted = self.database.log_contact(self.contact)
         self.worked_list = self.database.get_calls_and_bands()
         self.send_worked_list()
         self.clearinputs()
@@ -1693,6 +1642,12 @@ class MainWindow(QtWidgets.QMainWindow):
         cmd = {}
         cmd["cmd"] = "UPDATELOG"
         cmd["station"] = platform.node()
+        self.multicast_interface.send_as_json(cmd)
+
+        cmd = {}
+        cmd["cmd"] = "NEWCONTACT"
+        cmd["station"] = platform.node()
+        cmd["contact"] = inserted
         self.multicast_interface.send_as_json(cmd)
 
     def new_contest_dialog(self) -> None:
@@ -2267,7 +2222,7 @@ class MainWindow(QtWidgets.QMainWindow):
                         cmd["station"] = platform.node()
                         cmd["COLUMNS"] = self.contest.columns
                         self.multicast_interface.send_as_json(cmd)
-                if (
+                elif (
                         json_data.get("cmd", "") == "TUNE"
                         and json_data.get("station", "") == platform.node()
                 ):
@@ -2281,10 +2236,8 @@ class MainWindow(QtWidgets.QMainWindow):
                     self.callsign.setText(spot)
                     self.callsign_changed()
                     self.callsign.setFocus()
-                    self.callsign.activateWindow()
-                    window.raise_()
 
-                if (
+                elif (
                         json_data.get("cmd", "") == "GETWORKEDLIST"
                         and json_data.get("station", "") == platform.node()
                 ):
@@ -2295,7 +2248,7 @@ class MainWindow(QtWidgets.QMainWindow):
                     cmd["worked"] = result
                     self.multicast_interface.send_as_json(cmd)
 
-                if (
+                elif (
                     json_data.get("cmd", "") == "GETCONTESTSTATUS"
                     and json_data.get("station", "") == platform.node()
                 ):
@@ -2306,6 +2259,13 @@ class MainWindow(QtWidgets.QMainWindow):
                         "operator": self.current_op,
                     }
                     self.multicast_interface.send_as_json(cmd)
+                elif (
+                    json_data.get("cmd", "") == "CHANGECALL"
+                    and json_data.get("station", "") == platform.node()
+                ):
+                    self.callsign.setText(json_data.get("call", ""))
+                    self.callsign_changed()
+                    self.callsign.setFocus()
 
     def dark_mode_state_changed(self) -> None:
         self.pref["darkmode"] = self.actionDark_Mode.isChecked()
@@ -3107,15 +3067,28 @@ def run() -> None:
     """
     logger.debug(
         f"Resolved OS file system paths: MODULE_PATH {fsutils.MODULE_PATH}, USER_DATA_PATH {fsutils.USER_DATA_PATH}, CONFIG_PATH {fsutils.CONFIG_PATH}")
-    install_icons()
+
     window = MainWindow()
-    height = window.pref.get("window_height", 300)
-    width = window.pref.get("window_width", 700)
-    x = window.pref.get("window_x", -1)
-    y = window.pref.get("window_y", -1)
-    window.setGeometry(x, y, width, height)
-    window.callsign.setFocus()
+
+
+    if window.pref.get("window_bandmap_enable", None):
+        window.launch_bandmap_window()
+    if window.pref.get("window_check_enable", None):
+        window.launch_check_window()
+    if window.pref.get("window_log_enable", None):
+        window.launch_log_window()
+    if window.pref.get("window_vfo_enable", None):
+        window.launch_vfo()
+
+    if 'window_state' in window.pref:
+        window.restoreState(QByteArray.fromHex(bytes(window.pref["window_state"], 'ascii')), 1)
+    if 'window_geo' in window.pref:
+        window.restoreGeometry(QByteArray.fromHex(bytes(window.pref["window_geo"], 'ascii')))
+
+
     window.show()
+    window.callsign.setFocus()
+
     sys.exit(app.exec())
 
 
@@ -3138,7 +3111,7 @@ logging.getLogger('PyQt6.uic.uiparser').setLevel('INFO')
 logging.getLogger('PyQt6.uic.properties').setLevel('INFO')
 os.environ["QT_QPA_PLATFORMTHEME"] = "gnome"
 app = QtWidgets.QApplication(sys.argv)
-
+install_icons()
 families = load_fonts_from_dir(os.fspath(fsutils.APP_DATA_PATH))
 logger.info(f"font families {families}")
 

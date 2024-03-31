@@ -9,8 +9,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>878</width>
-    <height>475</height>
+    <width>1167</width>
+    <height>443</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -46,6 +46,9 @@
      <layout class="QVBoxLayout" name="verticalLayout" stretch="1,0,0">
       <item>
        <layout class="QHBoxLayout" name="mainsection">
+        <property name="spacing">
+         <number>0</number>
+        </property>
         <item>
          <widget class="QFrame" name="Band_Mode_Frame_CW">
           <property name="minimumSize">
@@ -585,8 +588,17 @@
         </item>
         <item>
          <layout class="QVBoxLayout" name="main_dialog" stretch="0,0,0,0,0,0">
+          <property name="spacing">
+           <number>10</number>
+          </property>
+          <property name="leftMargin">
+           <number>5</number>
+          </property>
           <item>
            <layout class="QHBoxLayout" name="qso_row1" stretch="2,1,1,2,2">
+            <property name="spacing">
+             <number>-1</number>
+            </property>
             <item>
              <widget class="QFrame" name="callsignfield">
               <layout class="QVBoxLayout" name="input_call">
@@ -690,9 +702,6 @@
                    <pointsize>20</pointsize>
                   </font>
                  </property>
-                 <!--property name="focusPolicy">
-                  <enum>Qt::TabFocus</enum>
-                 </property-->
                  <property name="accessibleName">
                   <string>RST Received</string>
                  </property>
@@ -730,9 +739,6 @@
                    <pointsize>20</pointsize>
                   </font>
                  </property>
-                 <!--property name="focusPolicy">
-                  <enum>Qt::TabFocus</enum>
-                 </property-->
                  <property name="accessibleName">
                   <string>edit field3</string>
                  </property>
@@ -779,9 +785,6 @@
                    <pointsize>20</pointsize>
                   </font>
                  </property>
-                 <!--property name="focusPolicy">
-                  <enum>Qt::TabFocus</enum>
-                 </property-->
                  <property name="accessibleName">
                   <string>edit field4</string>
                  </property>
@@ -1317,7 +1320,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>878</width>
+     <width>1167</width>
      <height>24</height>
     </rect>
    </property>

@@ -22,56 +22,57 @@ class DataBase:
     """Database class for our database."""
 
     current_contest = 1
-
+    empty_contact = {
+        "TS": "",
+        "Call": "",
+        "Freq": "",
+        "QSXFreq": "",
+        "Mode": "",
+        "ContestName": "",
+        "SNT": "",
+        "RCV": "",
+        "CountryPrefix": "",
+        "StationPrefix": "",
+        "QTH": "",
+        "Name": "",
+        "Comment": "",
+        "NR": 0,
+        "Sect": "",
+        "Prec": "",
+        "CK": 0,
+        "ZN": 0,
+        "SentNr": 0,
+        "Points": 0,
+        "IsMultiplier1": 0,
+        "IsMultiplier2": 0,
+        "Power": 0,
+        "Band": 0.0,
+        "WPXPrefix": "",
+        "Exchange1": "",
+        "RadioNR": "",
+        "ContestNR": "",
+        "isMultiplier3": 0,
+        "MiscText": "",
+        "IsRunQSO": "",
+        "ContactType": "",
+        "Run1Run2": "",
+        "GridSquare": "",
+        "Operator": "",
+        "Continent": "",
+        "RoverLocation": "",
+        "RadioInterfaced": "",
+        "NetworkedCompNr": 1,
+        "NetBiosName": "",
+        "IsOriginal": 1,
+        "ID": "",
+        "CLAIMEDQSO": 1,
+    }
     def __init__(self, database: str, app_data_dir: str):
-        """initializes DataBase instance"""
+        self.reload_db(database, app_data_dir)
+
+    def reload_db(self, database: str, app_data_dir: str):
         logger.debug("Database: %s", database)
         self.app_data_dir = app_data_dir
-        self.empty_contact = {
-            "TS": "",
-            "Call": "",
-            "Freq": "",
-            "QSXFreq": "",
-            "Mode": "",
-            "ContestName": "",
-            "SNT": "",
-            "RCV": "",
-            "CountryPrefix": "",
-            "StationPrefix": "",
-            "QTH": "",
-            "Name": "",
-            "Comment": "",
-            "NR": 0,
-            "Sect": "",
-            "Prec": "",
-            "CK": 0,
-            "ZN": 0,
-            "SentNr": 0,
-            "Points": 0,
-            "IsMultiplier1": 0,
-            "IsMultiplier2": 0,
-            "Power": 0,
-            "Band": 0.0,
-            "WPXPrefix": "",
-            "Exchange1": "",
-            "RadioNR": "",
-            "ContestNR": "",
-            "isMultiplier3": 0,
-            "MiscText": "",
-            "IsRunQSO": "",
-            "ContactType": "",
-            "Run1Run2": "",
-            "GridSquare": "",
-            "Operator": "",
-            "Continent": "",
-            "RoverLocation": "",
-            "RadioInterfaced": "",
-            "NetworkedCompNr": 1,
-            "NetBiosName": "",
-            "IsOriginal": 1,
-            "ID": "",
-            "CLAIMEDQSO": 1,
-        }
         self.database = database
         self.create_dxlog_table()
         self.update_dxlog_table()
@@ -144,7 +145,6 @@ class DataBase:
                     "IsOriginal Boolean, "
                     "ID TEXT(32) NOT NULL DEFAULT '00000000000000000000000000000000', "
                     "CLAIMEDQSO INTEGER DEFAULT 1,"
-                    "Dirty INTEGER DEFAULT 1,"
                     "PRIMARY KEY (`TS`, `Call`) );"
                 )
                 cursor.execute(sql_command)
@@ -408,7 +408,7 @@ class DataBase:
             logger.debug("%s", exception)
             return ()
 
-    def log_contact(self, contact: dict) -> None:
+    def log_contact(self, contact: dict) -> dict:
         """
         Inserts a contact into the db.
         pass in a dict object, see get_empty() for keys
@@ -428,15 +428,19 @@ class DataBase:
         sql = f"{pre}{columns[:-1]}{post}"
 
         try:
+            insert_id = None
             with sqlite3.connect(self.database) as conn:
                 logger.info("%s", sql)
                 cur = conn.cursor()
                 cur.execute(sql, tuple(values))
                 conn.commit()
+                insert_id = cur.lastrowid
+            if insert_id:
+                return self.fetch_contact_by_uuid(insert_id)
         except sqlite3.Error as exception:
             logger.info("DataBase log_contact: %s", exception)
 
-    def change_contact(self, qso: dict) -> None:
+    def change_contact(self, qso: dict) -> bool:
         """Update an existing contact."""
 
         pre = "UPDATE dxlog set "
@@ -450,10 +454,12 @@ class DataBase:
                 cur = conn.cursor()
                 cur.execute(sql)
                 conn.commit()
+            return True
         except sqlite3.Error as exception:
             logger.critical("DataBase change_contact: %s", exception)
+            return False
 
-    def delete_contact(self, unique_id: str) -> None:
+    def delete_contact(self, unique_id: str) -> bool:
         """Deletes a contact from the db."""
         if unique_id:
             try:
@@ -462,8 +468,10 @@ class DataBase:
                     cur = conn.cursor()
                     cur.execute(sql)
                     conn.commit()
+                return True
             except sqlite3.Error as exception:
                 logger.info("DataBase delete_contact: %s", exception)
+                return False
 
     def fetch_all_contacts_asc(self) -> list:
         """returns a list of dicts with contacts in the database."""
@@ -904,7 +912,7 @@ class DataBase:
                 conn.row_factory = self.row_factory
                 cursor = conn.cursor()
                 cursor.execute(
-                    f"select * from dxlog where call like '%{call}%' and ContestNR = {self.current_contest} order by TS ASC;"
+                    f"select * from dxlog where call like '%{call}%' and ContestNR = {self.current_contest} order by TS DESC;"
                 )
                 return cursor.fetchall()
         except sqlite3.OperationalError as exception:

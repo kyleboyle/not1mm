@@ -68,7 +68,7 @@ class Multicast:
         """pass in function to watch traffic"""
         self.server_udp.readyRead.connect(watcher)
 
-    def send_as_json(self, dict_object: dict) -> None:
+    def ssend_as_json(self, dict_object: dict) -> None:
         """Send dict as json encoded packet"""
         packet = bytes(dumps(dict_object), encoding="ascii")
         logger.debug("%s", f"{dict_object}")

@@ -1,18 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
  <class>VfoWindow</class>
- <widget class="QWidget" name="VfoWindow">
-  <property name="geometry">
-   <rect>
-    <x>0</x>
-    <y>0</y>
-    <width>570</width>
-    <height>130</height>
-   </rect>
-  </property>
+ <widget class="QDockWidget" name="VfoWindow">
   <property name="windowTitle">
    <string>VFO</string>
   </property>
+  <widget class="QWidget">
   <layout class="QGridLayout" name="gridLayout_3">
    <item row="0" column="0">
     <widget class="QMenuBar" name="menubar"/>
@@ -73,11 +66,7 @@
     </layout>
    </item>
   </layout>
-  <action name="actionQuit">
-   <property name="text">
-    <string>Quit</string>
-   </property>
-  </action>
+ </widget>
  </widget>
  <resources/>
  <connections/>

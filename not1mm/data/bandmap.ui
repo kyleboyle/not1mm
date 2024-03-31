@@ -2,14 +2,6 @@
 <ui version="4.0">
  <class>BandMapWindow</class>
  <widget class="QDockWidget" name="BandMapWindow">
-  <property name="geometry">
-   <rect>
-    <x>0</x>
-    <y>0</y>
-    <width>383</width>
-    <height>700</height>
-   </rect>
-  </property>
   <property name="windowTitle">
    <string>BandMap</string>
   </property>
