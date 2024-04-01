@@ -68,47 +68,47 @@ def gridtolatlon(maiden):
         return 0, 0
 
 
-def getband(freq: str) -> str:
+def getband(freq) -> str:
     """
     Convert a (string) frequency into a (string) band.
     Returns a (string) band.
     Returns a "0" if frequency is out of band.
     """
     # logger.info("getband: %s %s", type(freq), freq)
-    if freq.isnumeric():
-        frequency = int(float(freq))
-        if 2000000 > frequency > 1800000:
-            return "160"
-        if 4000000 > frequency > 3500000:
-            return "80"
-        if 5406000 > frequency > 5330000:
-            return "60"
-        if 7300000 > frequency > 7000000:
-            return "40"
-        if 10150000 > frequency > 10100000:
-            return "30"
-        if 14350000 > frequency > 14000000:
-            return "20"
-        if 18168000 > frequency > 18068000:
-            return "17"
-        if 21450000 > frequency > 21000000:
-            return "15"
-        if 24990000 > frequency > 24890000:
-            return "12"
-        if 29700000 > frequency > 28000000:
-            return "10"
-        if 54000000 > frequency > 50000000:
-            return "6"
-        if 148000000 > frequency > 144000000:
-            return "2"
-        if 225000000 > frequency > 222000000:
-            return "1.25"
-        if 450000000 > frequency > 420000000:
-            return "70cm"
-        if 928000000 > frequency > 902000000:
-            return "33cm"
-        if 1300000000 > frequency > 1240000000:
-            return "23cm"
+    frequency = int(float(freq))
+
+    if 2000000 > frequency > 1800000:
+        return "160"
+    if 4000000 > frequency > 3500000:
+        return "80"
+    if 5406000 > frequency > 5330000:
+        return "60"
+    if 7300000 > frequency > 7000000:
+        return "40"
+    if 10150000 > frequency > 10100000:
+        return "30"
+    if 14350000 > frequency > 14000000:
+        return "20"
+    if 18168000 > frequency > 18068000:
+        return "17"
+    if 21450000 > frequency > 21000000:
+        return "15"
+    if 24990000 > frequency > 24890000:
+        return "12"
+    if 29700000 > frequency > 28000000:
+        return "10"
+    if 54000000 > frequency > 50000000:
+        return "6"
+    if 148000000 > frequency > 144000000:
+        return "2"
+    if 225000000 > frequency > 222000000:
+        return "1.25"
+    if 450000000 > frequency > 420000000:
+        return "70cm"
+    if 928000000 > frequency > 902000000:
+        return "33cm"
+    if 1300000000 > frequency > 1240000000:
+        return "23cm"
     return "0"
 
 

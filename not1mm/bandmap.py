@@ -17,12 +17,11 @@ from decimal import Decimal
 from json import loads
 
 from PyQt6 import QtCore, QtGui, QtWidgets, uic, QtNetwork
-from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QGraphicsView
 
 import not1mm.fsutils as fsutils
-from not1mm.lib import timeutils
-from not1mm.lib.multicast import Multicast
+from not1mm.lib import timeutils, ham_utility
+import not1mm.lib.event as appevent
 
 logger = logging.getLogger(__name__)
 
@@ -78,9 +77,9 @@ class Database:
     """
 
     def __init__(self) -> None:
-        self.db = sqlite3.connect(":memory:")
+        self.db = sqlite3.connect(":memory:", check_same_thread=False)
         self.db.row_factory = self.row_factory
-        self.cursor = self.db.cursor()
+        cursor = self.db.cursor()
         sql_command = (
             "create table spots ("
             "callsign VARCHAR(15) NOT NULL, "
@@ -90,11 +89,11 @@ class Database:
             "spotter VARCHAR(15) NOT NULL, "
             "comment VARCHAR(45));"
         )
-        self.cursor.execute(sql_command)
+        cursor.execute(sql_command)
 
-        self.cursor.execute("CREATE INDEX spot_call_index ON spots (callsign);")
-        self.cursor.execute("CREATE INDEX spot_freq_index ON spots (freq);")
-        self.cursor.execute("CREATE INDEX spot_ts_index ON spots (ts);")
+        cursor.execute("CREATE INDEX spot_call_index ON spots (callsign);")
+        cursor.execute("CREATE INDEX spot_freq_index ON spots (freq);")
+        cursor.execute("CREATE INDEX spot_ts_index ON spots (ts);")
 
         self.db.commit()
 
@@ -129,11 +128,12 @@ class Database:
         {'K5TUX': [14.0, 21.0], 'N2CQR': [14.0], 'NE4RD': [14.0]}
         """
         try:
-            self.cursor.execute(
+            cursor = self.db.cursor()
+            cursor.execute(
                 f"select distinct callsign from spots where callsign like ?;",
                 (f"%{call.replace('?', '_')}%",)
             )
-            result = self.cursor.fetchall()
+            result = cursor.fetchall()
             return result
         except sqlite3.OperationalError as exception:
             logger.debug("%s", exception)
@@ -159,12 +159,13 @@ class Database:
         Nothing.
         """
         try:
+            cursor = self.db.cursor()
             if erase:
                 delete_call = "delete from spots where callsign = ?;"
-                self.cursor.execute(delete_call, (spot.get("callsign"),))
+                cursor.execute(delete_call, (spot.get("callsign"),))
                 self.db.commit()
 
-            self.cursor.execute(
+            cursor.execute(
                 "INSERT INTO spots(callsign, ts, freq, mode, spotter, comment) VALUES(?, ?, ?, ?, ?, ?)",
                 (
                     spot["callsign"],
@@ -192,8 +193,9 @@ class Database:
         a list of dicts.
         """
         try:
-            self.cursor.execute("select * from spots order by freq ASC;")
-            return self.cursor.fetchall()
+            cursor = self.db.cursor()
+            cursor.execute("select * from spots order by freq ASC;")
+            return cursor.fetchall()
         except sqlite3.OperationalError:
             return ()
 
@@ -213,11 +215,10 @@ class Database:
         -------
         A list of dicts.
         """
-        self.cursor.execute(
+        return self.db.cursor().execute(
             "select * from spots where freq >= ? and freq <= ? order by freq ASC;",
             (start, end),
-        )
-        return self.cursor.fetchall()
+        ).fetchall()
 
     def get_next_spot(self, current: float, limit: float) -> dict:
         """
@@ -235,11 +236,10 @@ class Database:
         -------
         A dict of the spot.
         """
-        self.cursor.execute(
+        return self.db.cursor().execute(
             "select * from spots where freq > ? and freq <= ? order by freq ASC;",
             (current, limit),
-        )
-        return self.cursor.fetchone()
+        ).fetchone()
 
     def get_matching_spot(self, dx: str, start: float, end: float) -> dict:
         """
@@ -259,11 +259,10 @@ class Database:
         A dict of the spot.
         """
 
-        self.cursor.execute(
+        return self.db.cursor().execute(
             "select * from spots where freq >= ? and freq <= ? and callsign like ?;",
             (start, end, f"%{dx}%"),
-        )
-        return self.cursor.fetchone()
+        ).fetchone()
 
     def get_prev_spot(self, current: float, limit: float) -> dict:
         """
@@ -280,13 +279,12 @@ class Database:
         -------
         A list of dicts.
         """
-        self.cursor.execute(
+        return self.db.cursor().execute(
             "select * from spots where freq < ? and freq >= ? order by freq DESC;",
             (current, limit),
-        )
-        return self.cursor.fetchone()
+        ).fetchone()
 
-    def delete_spots(self, minutes: int) -> None:
+    def delete_spots(self, minutes: int) -> int:
         """
         Delete spots older than the specified number of minutes.
 
@@ -299,10 +297,10 @@ class Database:
         -------
         None
         """
-        self.cursor.execute(
+        return self.db.cursor().execute(
             "delete from spots where ts < datetime('now', ?);",
             (f"-{minutes} minutes",),
-        )
+        ).rowcount
 
 
 class BandMapWindow(QtWidgets.QDockWidget):
@@ -320,13 +318,21 @@ class BandMapWindow(QtWidgets.QDockWidget):
     bandwidth = 0
     bandwidth_mark = []
     worked_list = {}
-    multicast_interface = None
     text_color = QtGui.QColor(45, 45, 45)
     graphicsView: QGraphicsView = None
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._udpwatch = None
+
+        appevent.register(appevent.CallChanged, self.event_call_changed)
+        appevent.register(appevent.ActiveContest, self.event_contest_status)
+        appevent.register(appevent.FindDx, self.event_find_dx)
+        appevent.register(appevent.MarkDx, self.event_mark_dx)
+        appevent.register(appevent.SpotDx, self.event_spot_dx)
+        appevent.register(appevent.RadioState, self.event_radio_state)
+        appevent.register(appevent.BandmapSpotNext, self.event_tune_next_spot)
+        appevent.register(appevent.BandmapSpotPrev, self.event_tune_prev_spot)
+        appevent.register(appevent.WorkedList, self.event_worked)
 
         uic.loadUi(fsutils.APP_DATA_PATH / "bandmap.ui", self)
         self.settings = self.get_settings()
@@ -352,14 +358,10 @@ class BandMapWindow(QtWidgets.QDockWidget):
         self.update_timer.timeout.connect(self.update_station_timer)
         self.update_timer.start(UPDATE_INTERVAL)
         self.update()
-        self.multicast_interface = Multicast(
-            self.settings.get("multicast_group", "239.1.1.1"),
-            self.settings.get("multicast_port", 2239),
-            self.settings.get("interface_ip", "0.0.0.0"),
-        )
-        self.multicast_interface.ready_read_connect(self.watch_udp)
-        self.request_workedlist()
-        self.request_contest()
+
+        appevent.emit(appevent.GetWorkedList())
+        appevent.emit(appevent.GetActiveContest())
+
 
     def get_settings(self) -> dict:
         """Get the settings."""
@@ -390,143 +392,80 @@ class BandMapWindow(QtWidgets.QDockWidget):
         self.connectButton.setText("Connecting")
         self.connected = True
 
-    def watch_udp(self):
-        """doc"""
-        while self.multicast_interface.server_udp.hasPendingDatagrams():
-            packet = self.multicast_interface.read_datagram_as_json()
+    def event_radio_state(self, event: appevent.RadioState):
+        # TODO if multiple band maps, check to make sure this bandmap window is the one tracking the vfo
 
-            if packet.get("station", "") != platform.node():
-                continue
-            if packet.get("cmd", "") == "RADIO_STATE":
-                self.set_band(packet.get("band") + "m", False)
-                try:
-                    if self.rx_freq != float(packet.get("vfoa")) / 1000000:
-                        self.rx_freq = float(packet.get("vfoa")) / 1000000
-                        self.tx_freq = self.rx_freq
-                        self.center_on_rxfreq()
-                except ValueError:
-                    logger.debug(f"vfo value error {packet.get('vfoa')}")
-                    continue
-                bw_returned = packet.get("bw", "0")
-                if not bw_returned.isdigit():
-                    bw_returned = "0"
-                self.bandwidth = int(bw_returned)
-                step, _ = self.determine_step_digits()
-                self.drawTXRXMarks(step)
-                continue
+        self.set_band(ham_utility.getband(str(event.vfoa_hz)) + "m", False)
+        try:
+            if self.rx_freq != float(event.vfoa_hz) / 1000000:
+                self.rx_freq = float(event.vfoa_hz) / 1000000
+                self.tx_freq = self.rx_freq
+                self.center_on_rxfreq()
+        except ValueError:
+            logger.debug(f"vfo value error {event.vfoa_hz}")
 
-            if packet.get("cmd", "") == "NEXTSPOT" and self.rx_freq:
-                spot = self.spots.get_next_spot(
-                    self.rx_freq + 0.000001, self.currentBand.end
-                )
-                if spot:
-                    cmd = {}
-                    cmd["cmd"] = "TUNE"
-                    cmd["station"] = platform.node()
-                    cmd["freq"] = spot.get("freq", self.rx_freq)
-                    cmd["spot"] = spot.get("callsign", "")
-                    self.multicast_interface.send_as_json(cmd)
-                continue
 
-            if packet.get("cmd", "") == "PREVSPOT" and self.rx_freq:
-                spot = self.spots.get_prev_spot(
-                    self.rx_freq - 0.000001, self.currentBand.start
-                )
-                if spot:
-                    cmd = {}
-                    cmd["cmd"] = "TUNE"
-                    cmd["station"] = platform.node()
-                    cmd["freq"] = spot.get("freq", self.rx_freq)
-                    cmd["spot"] = spot.get("callsign", "")
-                    self.multicast_interface.send_as_json(cmd)
-                continue
-            if packet.get("cmd", "") == "SPOTDX":
-                dx = packet.get("dx", "")
-                freq = packet.get("freq", 0.0)
-                spotdx = f"dx {dx} {freq}"
-                self.send_command(spotdx)
-                continue
-            if packet.get("cmd", "") == "MARKDX":
-                dx = packet.get("dx", "")
-                freq = packet.get("freq", 0.0)
-                spot = {
-                    "ts": "2099-01-01 01:00:00",
-                    "callsign": dx,
-                    "freq": freq / 1000,
-                    "band": self.currentBand.name,
-                    "mode": "DX",
-                    "spotter": platform.node(),
-                    "comment": "MARKED",
-                }
-                self.spots.addspot(spot, erase=False)
-                self.update_stations()
-                continue
-            if packet.get("cmd", "") == "FINDDX":
-                dx = packet.get("dx", "")
-                spot = self.spots.get_matching_spot(
-                    dx, self.currentBand.start, self.currentBand.end
-                )
-                if spot:
-                    cmd = {}
-                    cmd["cmd"] = "TUNE"
-                    cmd["station"] = platform.node()
-                    cmd["freq"] = spot.get("freq", self.rx_freq)
-                    cmd["spot"] = spot.get("callsign", "")
-                    self.multicast_interface.send_as_json(cmd)
-                continue
-            if packet.get("cmd", "") == "WORKED":
-                self.worked_list = packet.get("worked", {})
-                logger.debug(f"{self.worked_list}")
-                continue
-            if packet.get("cmd", "") == "CALLCHANGED":
-                call = packet.get("call", "")
-                if call:
-                    result = self.spots.get_like_calls(call)
-                    if result:
-                        cmd = {}
-                        cmd["cmd"] = "CHECKSPOTS"
-                        cmd["station"] = platform.node()
-                        cmd["spots"] = result
-                        self.multicast_interface.send_as_json(cmd)
-                        continue
-                cmd = {}
-                cmd["cmd"] = "CHECKSPOTS"
-                cmd["station"] = platform.node()
-                cmd["spots"] = []
-                self.multicast_interface.send_as_json(cmd)
-                continue
-            if packet.get("cmd", "") == "CONTESTSTATUS":
-                if not self.callsignField.text():
-                    self.callsignField.setText(packet.get("operator", "").upper())
-                    # self.callsignField.selectAll()
-                continue
+        self.bandwidth = event.bandwith_hz if event.bandwith_hz is not None else 0
+        step, _ = self.determine_step_digits()
+        self.drawTXRXMarks(step)
+
+
+    def event_tune_next_spot(self, event: appevent.BandmapSpotNext):
+        if self.rx_freq:
+            spot = self.spots.get_next_spot(self.rx_freq + 0.000001, self.currentBand.end)
+            if spot:
+                appevent.emit(appevent.Tune( spot.get("freq", self.rx_freq) * 1_000_000, spot.get("callsign", "")))
+
+    def event_tune_prev_spot(self, event: appevent.BandmapSpotPrev):
+        if self.rx_freq:
+            spot = self.spots.get_prev_spot(self.rx_freq - 0.000001, self.currentBand.start)
+            if spot:
+                appevent.emit(appevent.Tune(spot.get("freq", self.rx_freq) * 1_000_000, spot.get("callsign", "")))
+
+    def event_spot_dx(self, event: appevent.SpotDx):
+        # cluster expects Mhz
+        spotdx = f"dx {event.dx} {event.freq_hz / 1_000_000}"
+        self.send_command(spotdx)
+
+    def event_mark_dx(self, event: appevent.MarkDx):
+        spot = {
+            "ts": "2099-01-01 01:00:00",
+            "callsign": event.dx,
+            "freq": event.freq_hz / 1_000_000,
+            "band": self.currentBand.name,
+            "mode": "DX",
+            "spotter": event.de,
+            "comment": "MARKED",
+        }
+        self.spots.addspot(spot, erase=True)
+        self.update_stations()
+
+    def event_find_dx(self, event: appevent.FindDx):
+        spot = self.spots.get_matching_spot(event.dx, self.currentBand.start, self.currentBand.end)
+        if spot:
+            logger.debug(f"translating spot mhz to hz {spot['freq']} = {spot['freq'] * 1_000_000}")
+            appevent.emit(appevent.Tune(spot['freq'] * 1_000_000,  spot.get("callsign", "")))
+
+    def event_worked(self, event: appevent.WorkedList):
+        self.worked_list = event.worked
+
+    def event_call_changed(self, event: appevent.CallChanged):
+        result = None
+        if event.call:
+            # can be empty
+            result = self.spots.get_like_calls(event.call)
+        appevent.emit(appevent.CheckSpots(result))
+
+    def event_contest_status(self, event: appevent.ActiveContest):
+        # pre-fill the cluster login station name for convenience
+        if not self.callsignField.text():
+            self.callsignField.setText(event.operator.upper())
 
 
     def spot_clicked(self):
-        """dunno"""
         items = self.bandmap_scene.selectedItems()
-        for item in items:
-            if item:
-                cmd = {}
-                cmd["cmd"] = "TUNE"
-                cmd["station"] = platform.node()
-                cmd["freq"] = items[0].property("freq")
-                cmd["spot"] = items[0].toPlainText().split()[0]
-                self.multicast_interface.send_as_json(cmd)
-
-    def request_workedlist(self):
-        """Request worked call list from logger"""
-        cmd = {}
-        cmd["cmd"] = "GETWORKEDLIST"
-        cmd["station"] = platform.node()
-        self.multicast_interface.send_as_json(cmd)
-
-    def request_contest(self):
-        """Request active contest from logger"""
-        cmd = {}
-        cmd["cmd"] = "GETCONTESTSTATUS"
-        cmd["station"] = platform.node()
-        self.multicast_interface.send_as_json(cmd)
+        if len(items) == 1 and items[0].property("freq"):
+            appevent.emit(appevent.Tune(items[0].property("freq") * 1_000_000, items[0].toPlainText().split()[0]))
 
     def update_station_timer(self):
         """doc"""
@@ -731,7 +670,7 @@ class BandMapWindow(QtWidgets.QDockWidget):
                 )
                 text.setProperty("freq", items.get("freq"))
                 text.setToolTip(items.get("callsign")
-                                + " - " + str(items.get("freq"))
+                                + f" - " + '{0:.5f}'.format(items.get("freq"))
                                 + " - " + items.get("ts")
                                 + " - " + items.get("comment"))
                 text.setDefaultTextColor(pen_color)

@@ -2,33 +2,47 @@
 <ui version="4.0">
  <class>LogWindow</class>
  <widget class="QDockWidget" name="LogWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>260</width>
+    <height>410</height>
+   </rect>
+  </property>
   <property name="windowTitle">
    <string>QSO Logs</string>
   </property>
-  <widget class="QWidget">
-  <layout class="QVBoxLayout" name="verticalLayout">
-   <property name="margin" stdset="0">
-    <number>2</number>
-   </property>
-   <item>
-    <widget class="QSplitter" name="splitter">
-     <property name="orientation">
-      <enum>Qt::Vertical</enum>
-     </property>
-     <widget class="QTableView" name="qsoTable">
-      <property name="focusPolicy">
-       <enum>Qt::ClickFocus</enum>
+  <widget class="QWidget" name="widget">
+   <layout class="QVBoxLayout" name="verticalLayout">
+    <property name="margin" stdset="0">
+     <number>2</number>
+    </property>
+    <item>
+     <widget class="QSplitter" name="splitter">
+      <property name="orientation">
+       <enum>Qt::Vertical</enum>
       </property>
+      <widget class="QTableView" name="qsoTable">
+       <property name="focusPolicy">
+        <enum>Qt::ClickFocus</enum>
+       </property>
+       <property name="alternatingRowColors">
+        <bool>true</bool>
+       </property>
+      </widget>
+      <widget class="QTableView" name="stationHistoryTable">
+       <property name="focusPolicy">
+        <enum>Qt::ClickFocus</enum>
+       </property>
+       <property name="alternatingRowColors">
+        <bool>true</bool>
+       </property>
+      </widget>
      </widget>
-     <widget class="QTableView" name="stationHistoryTable">
-      <property name="focusPolicy">
-       <enum>Qt::ClickFocus</enum>
-      </property>
-     </widget>
-    </widget>
-   </item>
-  </layout>
- </widget>
+    </item>
+   </layout>
+  </widget>
  </widget>
  <resources/>
  <connections/>

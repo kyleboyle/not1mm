@@ -26,7 +26,7 @@ columns = [
 ]
 
 # 1 once per contest, 2 work each band, 3 each band/mode, 4 no dupe checking
-dupe_type = 4
+dupe_type = 3
 
 
 def init_contest(self):

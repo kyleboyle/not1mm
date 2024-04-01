@@ -10,17 +10,16 @@ VFO Window
 
 import logging
 import os
-import platform
-from json import loads, JSONDecodeError
+from json import loads
 
 import serial
-from PyQt6 import QtCore, QtGui, QtWidgets, uic
-from PyQt6.QtCore import Qt, QTimer
-from PyQt6.QtWidgets import QWidget, QDockWidget
+from PyQt6 import QtCore, QtWidgets, uic
+from PyQt6.QtCore import QTimer
+from PyQt6.QtWidgets import QDockWidget
 
 import not1mm.fsutils as fsutils
+from not1mm.lib import event
 from not1mm.lib.cat_interface import CAT
-from not1mm.lib.multicast import Multicast
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +30,6 @@ class VfoWindow(QDockWidget):
     old_vfo = ""
     old_pico = ""
     message_shown = False
-    multicast_interface = None
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -42,20 +40,26 @@ class VfoWindow(QDockWidget):
         self.load_pref()
         self.lcdNumber.display(0)
         self.pico = None
-        self._udpwatch = None
-
-        self.multicast_interface = Multicast(
-            self.pref.get("multicast_group", "239.1.1.1"),
-            self.pref.get("multicast_port", 2239),
-            self.pref.get("interface_ip", "0.0.0.0"),
-        )
-        self.multicast_interface.ready_read_connect(self.watch_udp)
 
         self.setup_serial()
         # app.processEvents()
         self.poll_rig_timer = QtCore.QTimer()
         self.poll_rig_timer.timeout.connect(self.poll_radio)
         self.poll_rig_timer.start(500)
+
+        event.register(event.Tune, self.tune)
+
+    def tune(self, e: event.Tune):
+
+        changefreq = f"F {int(e.freq_hz)}\r"
+        try:
+            if self.pico:
+                self.pico.write(changefreq.encode())
+        except OSError:
+            logger.critical("Unable to write to serial device.")
+        except AttributeError:
+            logger.critical("Unable to write to serial device.")
+
 
     def load_pref(self) -> None:
         """
@@ -151,40 +155,7 @@ class VfoWindow(QDockWidget):
                     "Unable to locate or open the VFO knob serial device."
                 )
             self.lcdNumber.setStyleSheet("QLCDNumber { color: red; }")
-        # app.processEvents()
 
-    def watch_udp(self) -> None:
-        while self.multicast_interface.server_udp.hasPendingDatagrams():
-            datagram = self.multicast_interface.getpacket()
-            try:
-                debug_info = f"{datagram}"
-                logger.debug(debug_info)
-                json_data = loads(datagram)
-            except UnicodeDecodeError as err:
-                the_error = f"Not Unicode: {err}\n{datagram}"
-                logger.debug(the_error)
-                continue
-            except JSONDecodeError as err:
-                the_error = f"Not JSON: {err}\n{datagram}"
-                logger.debug(the_error)
-                continue
-            if json_data.get("station", "") != platform.node():
-                continue
-            logger.debug(f"{json_data=}")
-
-            if json_data.get("cmd", "") == "TUNE":
-                # b'{"cmd": "TUNE", "freq": 7.0235, "spot": "MM0DGI"}'
-                vfo = json_data.get("freq")
-                vfo = float(vfo) * 1000000
-                changefreq = f"F {int(vfo)}\r"
-                try:
-                    if self.pico:
-                        self.pico.write(changefreq.encode())
-                except OSError:
-                    logger.critical("Unable to write to serial device.")
-                except AttributeError:
-                    logger.critical("Unable to write to serial device.")
-                continue
 
     def showNumber(self, the_number) -> None:
         """Display vfo value with dots"""

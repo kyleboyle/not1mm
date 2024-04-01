@@ -13,22 +13,19 @@ from json import loads
 
 import Levenshtein
 from PyQt6 import uic
-from PyQt6.QtCore import QEvent
 from PyQt6.QtGui import QMouseEvent
 from PyQt6.QtWidgets import QLabel, QVBoxLayout, QDockWidget, QWidget
 
 import not1mm.fsutils as fsutils
 from not1mm.lib.database import DataBase
-from not1mm.lib.multicast import Multicast
 from not1mm.lib.super_check_partial import SCP
+import not1mm.lib.event as appevent
 
 logger = logging.getLogger(__name__)
 
 
 class CheckWindow(QDockWidget):
     """The check window. Shows list or probable stations."""
-
-    multicast_interface = None
     dbname = None
     pref = {}
 
@@ -43,6 +40,13 @@ class CheckWindow(QDockWidget):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
+        appevent.register(appevent.CallChanged, self.event_call_change)
+        appevent.register(appevent.CheckSpots, self.event_check_spots)
+        appevent.register(appevent.UpdateLog, self.event_update_log)
+
+
+
         self.load_pref()
         self.dbname = fsutils.USER_DATA_PATH / self.pref.get(
             "current_database", "ham.db"
@@ -53,15 +57,6 @@ class CheckWindow(QDockWidget):
         uic.loadUi(fsutils.APP_DATA_PATH / "checkwindow.ui", self)
 
         self.mscp = SCP(fsutils.APP_DATA_PATH)
-        self._udpwatch = None
-        self.udp_fifo = queue.Queue()
-        self.multicast_interface = Multicast(
-            self.pref.get("multicast_group", "239.1.1.1"),
-            self.pref.get("multicast_port", 2239),
-            self.pref.get("interface_ip", "127.0.0.1"),
-        )
-        self.multicast_interface.ready_read_connect(self.watch_udp)
-
 
     def load_pref(self) -> None:
         """
@@ -98,35 +93,20 @@ class CheckWindow(QDockWidget):
         except IOError as exception:
             logger.critical("Error: %s", exception)
 
-    def watch_udp(self):
-        """
-        Puts UDP datagrams in a FIFO queue.
+    def event_update_log(self, event: appevent.UpdateLog):
+        self.clear_lists()
 
-        Parameters
-        ----------
-        None
+    def event_call_change(self, event: appevent.CallChanged):
+        self.call = event.call
+        if event == "":
+            self.clear_lists()
+        else:
+            self.master_list(self.call)
+            self.qsolog_list(self.call)
 
-        Returns
-        -------
-        None
-        """
-        while self.multicast_interface.server_udp.hasPendingDatagrams():
-            logger.error("Got multicast ")
-            json_data = self.multicast_interface.read_datagram_as_json()
+    def event_check_spots(self, event: appevent.CheckSpots):
+        self.dxc_list(event.spots)
 
-            if json_data.get("station", "") != platform.node():
-                continue
-            if json_data.get("cmd", "") == "UPDATELOG":
-                self.clear_lists()
-            if json_data.get("cmd", "") == "CALLCHANGED":
-                self.call = json_data.get("call", "")
-                self.master_list(self.call)
-                self.qsolog_list(self.call)
-                continue
-            if json_data.get("cmd", "") == "CHECKSPOTS":
-                spots = json_data.get("spots", [])
-                self.dxc_list(spots)
-                continue
 
     def clear_lists(self) -> None:
         self.populate_layout(self.masterLayout, [])
@@ -204,7 +184,7 @@ class CheckWindow(QDockWidget):
                             label_text += f"<span style='background-color: {self.character_remove_color};'>{call[i1:i2]}</span>"
                         elif tag == 'insert' or tag == 'delete':
                             label_text += f"<span style='background-color: {self.character_add_color};'>{call[i1:i2]}</span>"
-                    labels.append((Levenshtein.hamming(call, self.call), CallLabel(label_text, call=call, multicast=self.multicast_interface)))
+                    labels.append((Levenshtein.hamming(call, self.call), CallLabel(label_text, call=call)))
 
         for _, label in sorted(labels, key=lambda x: x[0]):
             label.setStyleSheet("QLabel {letter-spacing: 0.15em; font-family: 'JetBrains Mono';}")
@@ -215,16 +195,10 @@ class CheckWindow(QDockWidget):
 
 class CallLabel(QLabel):
     call: str = None
-    multicast = None
-    def __init__(self, *args, call=None, multicast=None):
+    def __init__(self, *args, call=None, ):
         super().__init__(*args)
         self.call = call
-        self.multicast = multicast
 
     def mouseDoubleClickEvent(self, e: QMouseEvent) -> None:
-        if self.call and self.multicast:
-            logger.debug(f"callsign label click, sending call change to {self.call}")
-            cmd = {"cmd": "CHANGECALL",
-                   "station": platform.node(),
-                   "call": self.call}
-            self.multicast.send_as_json(cmd)
+        if self.call:
+            appevent.emit(appevent.CallChanged(self.call))

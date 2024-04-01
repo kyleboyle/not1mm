@@ -4,13 +4,9 @@ Display current log
 """
 # pylint: disable=no-name-in-module, unused-import, no-member, c-extension-no-member
 # pylint: disable=logging-fstring-interpolation, too-many-lines
-# QTableWidget
-# stationHistoryTable, qsoTable
 
 import logging
 import os
-import platform
-import queue
 from json import loads
 
 from PyQt6 import QtGui, QtWidgets, uic
@@ -21,8 +17,8 @@ from PyQt6.QtWidgets import QTableView, QHeaderView, QAbstractItemView
 import not1mm.fsutils as fsutils
 from not1mm.lib import ham_utility
 from not1mm.lib.database import DataBase
-from not1mm.lib.multicast import Multicast
 from not1mm.lib.n1mm import N1MM
+import not1mm.lib.event as appevent
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +36,7 @@ _column_names = {
 #    "QTH" : "",
 #    "Name" : "",
 #    "Comment" : "",
-#    "NR" : "",
+    "NR" : "RecvNr",
 #    "Sect" : "",
 #    "Prec" : "",
 #    "CK" : "",
@@ -246,7 +242,6 @@ class LogWindow(QtWidgets.QDockWidget):
     The main window
     """
 
-    multicast_interface = None
     dbname = None
     edit_contact_dialog = None
     pref = {}
@@ -260,7 +255,6 @@ class LogWindow(QtWidgets.QDockWidget):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.udp_fifo = queue.Queue()
         self.n1mm = None
         self.load_pref()
 
@@ -287,16 +281,9 @@ class LogWindow(QtWidgets.QDockWidget):
         self.stationHistoryTable.verticalHeader().setVisible(False)
         self.qsoTable.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
 
+
         self.qsoTable.setSortingEnabled(True)
         self.qsoTable.sortByColumn(0, Qt.SortOrder.DescendingOrder)
-        self.multicast_interface = Multicast(
-            self.pref.get("multicast_group", "239.1.1.1"),
-            self.pref.get("multicast_port", 2239),
-            self.pref.get("interface_ip", "0.0.0.0"),
-        )
-        self.multicast_interface.ready_read_connect(self.watch_udp)
-
-        self.multicast_interface.send_as_json({"cmd": "GETCOLUMNS", "station": platform.node()})
 
         self.qsoTable.setContextMenuPolicy(Qt.ContextMenuPolicy.ActionsContextMenu)
         delete_action = QAction("Delete QSO(s)", self.qsoTable)
@@ -313,6 +300,13 @@ class LogWindow(QtWidgets.QDockWidget):
         self.stationHistoryModel.edited.connect(self.table_model_edit)
         self.stationHistoryModel.deleted.connect(self.table_model_delete)
         self.qsoTable.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+
+        appevent.register(appevent.CallChanged, self.event_call_changed)
+        appevent.register(appevent.ContestColumns, self.event_contest_columns)
+        appevent.register(appevent.LoadDb, self.event_new_db)
+        appevent.register(appevent.UpdateLog, self.event_update_log)
+
+        appevent.emit(appevent.GetContestColumns())
 
     def load_pref(self) -> None:
         """
@@ -401,32 +395,23 @@ class LogWindow(QtWidgets.QDockWidget):
             self.qsoTable.setModel(sort_model)
         self.qsoTable.resizeColumnsToContents()
 
+    def event_update_log(self, event: appevent.UpdateLog):
+        self.populate_qso_log()
 
-    def watch_udp(self) -> None:
-        """
-        Watch for UDP datagrams.
-        Parse commands from our platform.node().
-        """
-        while self.multicast_interface.server_udp.hasPendingDatagrams():
-            json_data = self.multicast_interface.read_datagram_as_json()
+    def event_call_changed(self, event: appevent.CallChanged):
+        self.active_call = event.call
+        self.populate_matching_qsos(self.active_call)
 
-            if json_data.get("station", "") != platform.node():
-                continue
-            if json_data.get("cmd", "") == "UPDATELOG":
-                logger.debug("External refresh command.")
-                self.populate_qso_log()
-            if json_data.get("cmd", "") == "CALLCHANGED":
-                self.active_call = json_data.get("call", "")
-                self.populate_matching_qsos( self.active_call)
-            if json_data.get("cmd", "") == "NEWDB":
-                self.load_new_db()
-            if json_data.get("cmd", "") == "SHOWCOLUMNS":
-                columns_to_show = json_data.get("COLUMNS", [])
-                self.qsoModel.setColumnOrder(columns_to_show)
-                self.stationHistoryModel.setColumnOrder(columns_to_show)
+    def event_new_db(self, event: appevent.LoadDb):
+        self.load_new_db()
 
-                self.qsoModel.replaceDataset(self.qsoModel.getDataset())
-                self.stationHistoryModel.replaceDataset(self.stationHistoryModel.getDataset())
+    def event_contest_columns(self, event: appevent.ContestColumns):
+        self.qsoModel.setColumnOrder(event.columns)
+        self.stationHistoryModel.setColumnOrder(event.columns)
+
+        # re-render the tables
+        self.qsoModel.replaceDataset(self.qsoModel.getDataset())
+        self.stationHistoryModel.replaceDataset(self.stationHistoryModel.getDataset())
 
     def populate_matching_qsos(self, call: str) -> None:
         if not self.stationHistoryTable.model():

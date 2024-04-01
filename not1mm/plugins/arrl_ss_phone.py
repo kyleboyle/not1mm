@@ -18,18 +18,18 @@ name = "ARRL Sweepstakes Phone"
 cabrillo_name = "ARRL-SS-SSB"
 mode = "SSB"  # CW SSB BOTH RTTY
 columns = [
-    "YYYY-MM-DD HH:MM:SS",
+    "TS",
     "Call",
     "Freq",
-    "Snt",
-    "Rcv",
+    "SNT",
+    "RCV",
     "SentNr",
-    "RcvNr",
+    "NR",
     "CK",
     "Prec",
     "Sect",
-    "M1",
-    "PTS",
+    "IsMultiplier1",
+    "Points",
 ]
 
 # 1 once per contest, 2 work each band, 3 each band/mode, 4 no dupe checking

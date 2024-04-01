@@ -867,6 +867,9 @@
               <property name="focusPolicy">
                <enum>Qt::NoFocus</enum>
               </property>
+              <property name="toolTip">
+               <string>CW Speed</string>
+              </property>
               <property name="wrapping">
                <bool>false</bool>
               </property>

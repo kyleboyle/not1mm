@@ -25,13 +25,14 @@ import notctyparser
 import sounddevice as sd
 import soundfile as sf
 from PyQt6 import QtCore, QtGui, QtWidgets, uic
-from PyQt6.QtCore import QDir, Qt, QByteArray
+from PyQt6.QtCore import QDir, Qt, QByteArray, QEvent, pyqtSignal
 from PyQt6.QtGui import QFontDatabase, QKeyEvent
 from PyQt6.QtWidgets import QFileDialog, QDockWidget, QWidget, QLineEdit
 
 import not1mm.fsutils as fsutils
 from not1mm.bandmap import BandMapWindow
 from not1mm.checkwindow import CheckWindow
+from not1mm.lib import event as appevent
 from not1mm.lib.about import About
 from not1mm.lib.cat_interface import CAT
 from not1mm.lib.cwinterface import CW
@@ -51,7 +52,6 @@ from not1mm.lib.ham_utility import (
     fakefreq,
 )
 from not1mm.lib.lookup import HamQTH, QRZlookup
-from not1mm.lib.multicast import Multicast
 from not1mm.lib.n1mm import N1MM
 from not1mm.lib.new_contest import NewContest
 from not1mm.lib.select_contest import SelectContest
@@ -60,6 +60,7 @@ from not1mm.lib.super_check_partial import SCP
 from not1mm.lib.version import __version__
 from not1mm.lib.versiontest import VersionTest
 from not1mm.logwindow import LogWindow
+from not1mm.qtplugins.ContestFieldEventFilter import ContestFieldEventFilter
 from not1mm.vfo import VfoWindow
 
 import qdarktheme
@@ -106,9 +107,6 @@ class MainWindow(QtWidgets.QMainWindow):
         "bands": ["160", "80", "40", "20", "15", "10"],
         "current_database": "ham.db",
         "contest": "",
-        "multicast_group": "239.1.1.1",
-        "multicast_port": 2239,
-        "interface_ip": "0.0.0.0",
         "send_n1mm_packets": False,
         "n1mm_station_name": "20M CW Tent",
         "n1mm_operator": "Bernie",
@@ -165,16 +163,24 @@ class MainWindow(QtWidgets.QMainWindow):
 
     callsign: QLineEdit = None
     check_callsign_external_last_call: str = None
-    log_window:QDockWidget = None
-    check_window:QDockWidget = None
-    bandmap_window:QDockWidget = None
-    vfo_window:QDockWidget = None
+    log_window: QDockWidget = None
+    check_window: QDockWidget = None
+    bandmap_window: QDockWidget = None
+    vfo_window: QDockWidget = None
+
 
     rig_poll_timer = QtCore.QTimer()
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         logger.info("MainWindow: __init__")
+
+        appevent.register(appevent.CallChanged, self.event_change_call)
+        appevent.register(appevent.GetContestColumns, self.event_get_columns)
+        appevent.register(appevent.GetActiveContest, self.event_get_contest_status)
+        appevent.register(appevent.GetWorkedList, self.event_get_worked_list)
+        appevent.register(appevent.Tune, self.event_tune)
+
         self.setCorner(Qt.Corner.TopRightCorner, Qt.DockWidgetArea.RightDockWidgetArea)
         self.setCorner(Qt.Corner.BottomRightCorner, Qt.DockWidgetArea.RightDockWidgetArea)
         data_path = fsutils.APP_DATA_PATH / "main.ui"
@@ -481,6 +487,18 @@ class MainWindow(QtWidgets.QMainWindow):
         self.rig_poll_timer.timeout.connect(self.poll_radio)
         self.rig_poll_timer.start(250)
 
+        field_filter = ContestFieldEventFilter(self.handle_input_focus, parent=self)
+        self.callsign.installEventFilter(field_filter)
+        self.sent.installEventFilter(field_filter)
+        self.receive.installEventFilter(field_filter)
+        self.other_1.installEventFilter(field_filter)
+        self.other_2.installEventFilter(field_filter)
+
+    def handle_input_focus(self, source: QLineEdit, event: QEvent) -> None:
+        source.deselect()
+        source.end(False)
+
+
     def set_radio_icon(self, state: int) -> None:
         """
         Change CAT icon state
@@ -716,10 +734,9 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.station = {}
             self.current_op = self.station.get("Call", "")
             self.make_op_dir()
-            cmd = {}
-            cmd["cmd"] = "NEWDB"
-            cmd["station"] = platform.node()
-            self.multicast_interface.send_as_json(cmd)
+
+            appevent.emit(appevent.LoadDb())
+
             self.clearinputs()
             self.edit_station_settings()
 
@@ -752,10 +769,9 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.edit_station_settings()
             self.current_op = self.station.get("Call", "")
             self.make_op_dir()
-            cmd = {}
-            cmd["cmd"] = "NEWDB"
-            cmd["station"] = platform.node()
-            self.multicast_interface.send_as_json(cmd)
+
+            appevent.emit(appevent.LoadDb())
+
             self.clearinputs()
 
     def new_contest(self) -> None:
@@ -1034,16 +1050,10 @@ class MainWindow(QtWidgets.QMainWindow):
                     if count > len(self.tab_next) + 1:
                         break
 
-                cmd = {}
-                cmd["cmd"] = "NEWDB"
-                cmd["station"] = platform.node()
-                self.multicast_interface.send_as_json(cmd)
+                appevent.emit(appevent.LoadDb())
+
                 if hasattr(self.contest, "columns"):
-                    cmd = {}
-                    cmd["cmd"] = "SHOWCOLUMNS"
-                    cmd["station"] = platform.node()
-                    cmd["COLUMNS"] = self.contest.columns
-                    self.multicast_interface.send_as_json(cmd)
+                    appevent.emit(appevent.ContestColumns(self.contest.columns))
 
     def check_for_new_cty(self) -> None:
         """
@@ -1338,32 +1348,18 @@ class MainWindow(QtWidgets.QMainWindow):
             freq = self.radio_state.get("vfoa")
             dx = self.callsign.text()
             if len(dx) > 3 and freq and dx:
-                cmd = {}
-                cmd["cmd"] = "SPOTDX"
-                cmd["station"] = platform.node()
-                cmd["dx"] = dx
-                cmd["freq"] = float(int(freq) / 1000)
-                self.multicast_interface.send_as_json(cmd)
+                appevent.emit(appevent.SpotDx(self.station.get("Call", ""), dx, freq))
             return
         if event.key() == Qt.Key.Key_M and modifier == Qt.KeyboardModifier.ControlModifier:
             freq = self.radio_state.get("vfoa")
             dx = self.callsign.text()
             if len(dx) > 2 and freq and dx:
-                cmd = {}
-                cmd["cmd"] = "MARKDX"
-                cmd["station"] = platform.node()
-                cmd["dx"] = dx
-                cmd["freq"] = float(int(freq) / 1000)
-                self.multicast_interface.send_as_json(cmd)
+                appevent.emit(appevent.MarkDx(self.station.get("Call", ""), dx, freq))
             return
         if event.key() == Qt.Key.Key_G and modifier == Qt.KeyboardModifier.ControlModifier:
             dx = self.callsign.text()
             if dx:
-                cmd = {}
-                cmd["cmd"] = "FINDDX"
-                cmd["station"] = platform.node()
-                cmd["dx"] = dx
-                self.multicast_interface.send_as_json(cmd)
+                appevent.emit(appevent.FindDx(dx))
             return
         if (
                 event.key() == Qt.Key.Key_Escape and modifier != Qt.KeyboardModifier.ControlModifier
@@ -1376,16 +1372,10 @@ class MainWindow(QtWidgets.QMainWindow):
                     self.cw.sendcw("\x1b4")
                     return
         if event.key() == Qt.Key.Key_Up:
-            cmd = {}
-            cmd["cmd"] = "PREVSPOT"
-            cmd["station"] = platform.node()
-            self.multicast_interface.send_as_json(cmd)
+            appevent.emit(appevent.BandmapSpotPrev())
             return
         if event.key() == Qt.Key.Key_Down:
-            cmd = {}
-            cmd["cmd"] = "NEXTSPOT"
-            cmd["station"] = platform.node()
-            self.multicast_interface.send_as_json(cmd)
+            appevent.emit(appevent.BandmapSpotNext())
             return
         if event.key() == Qt.Key.Key_PageUp and modifier != Qt.KeyboardModifier.ControlModifier:
             if self.cw is not None:
@@ -1456,24 +1446,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.setWindowTitle(line)
 
     def send_worked_list(self) -> None:
-        """
-        Send message containing worked contacts and bands
-
-        Parameters
-        ----------
-        None
-
-        Returns
-        -------
-        None
-        """
-
-        cmd = {}
-        cmd["cmd"] = "WORKED"
-        cmd["station"] = platform.node()
-        cmd["worked"] = self.worked_list
-        logger.debug("%s", f"{cmd}")
-        self.multicast_interface.send_as_json(cmd)
+        appevent.emit(appevent.WorkedList(self.worked_list))
 
     def clearinputs(self) -> None:
         """
@@ -1510,11 +1483,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.other_1.clear()
         self.other_2.clear()
         self.callsign.setFocus()
-        cmd = {}
-        cmd["cmd"] = "CALLCHANGED"
-        cmd["station"] = platform.node()
-        cmd["call"] = ""
-        self.multicast_interface.send_as_json(cmd)
+
+        appevent.emit(appevent.CallChanged(''))
 
     def callsign_editing_finished(self) -> None:
         """This signal is invoked after the enter button is pressed so it doesn't conflict with saving a qso.
@@ -1639,16 +1609,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.send_worked_list()
         self.clearinputs()
 
-        cmd = {}
-        cmd["cmd"] = "UPDATELOG"
-        cmd["station"] = platform.node()
-        self.multicast_interface.send_as_json(cmd)
+        appevent.emit(appevent.UpdateLog())
 
-        cmd = {}
-        cmd["cmd"] = "NEWCONTACT"
-        cmd["station"] = platform.node()
-        cmd["contact"] = inserted
-        self.multicast_interface.send_as_json(cmd)
+        appevent.emit(appevent.QsoAdded(inserted))
 
     def new_contest_dialog(self) -> None:
         """
@@ -2109,13 +2072,6 @@ class MainWindow(QtWidgets.QMainWindow):
         else:
             self.actionMode_and_Bands.setChecked(False)
 
-        self.multicast_interface = Multicast(
-            self.pref.get("multicast_group", "239.1.1.1"),
-            self.pref.get("multicast_port", 2239),
-            self.pref.get("interface_ip", "0.0.0.0"),
-        )
-        self.multicast_interface.ready_read_connect(self.watch_udp)
-
         if self.pref.get("darkmode"):
             self.actionDark_Mode.setChecked(True)
             self.set_dark_mode(True)
@@ -2194,78 +2150,34 @@ class MainWindow(QtWidgets.QMainWindow):
             for band_to_show in self.pref.get("bands", []):
                 if band_to_show in _indicator:
                     _indicator[band_to_show].show()
-        # self.show_band_mode()
 
-    def watch_udp(self) -> None:
-        """
-        Watch the UDP socket for incoming data.
 
-        Parameters
-        ----------
-        None
+    def event_get_columns(self, event: appevent.GetContestColumns):
+        if hasattr(self.contest, "columns"):
+            appevent.emit(appevent.ContestColumns(self.contest.columns))
 
-        Returns
-        -------
-        None
-        """
+    def event_tune(self, event: appevent.Tune):
+        self.radio_state["vfoa"] = event.freq_hz
+        if self.rig_control:
+            self.rig_control.set_vfo(event.freq_hz)
+        self.callsign.setText(event.dx)
+        self.callsign_changed()
+        self.callsign.setFocus()
 
-        while self.multicast_interface.has_pending_datagrams():
-            json_data = self.multicast_interface.read_datagram_as_json()
-            if json_data:
-                if (
-                        json_data.get("cmd", "") == "GETCOLUMNS"
-                        and json_data.get("station", "") == platform.node()
-                ):
-                    if hasattr(self.contest, "columns"):
-                        cmd = {}
-                        cmd["cmd"] = "SHOWCOLUMNS"
-                        cmd["station"] = platform.node()
-                        cmd["COLUMNS"] = self.contest.columns
-                        self.multicast_interface.send_as_json(cmd)
-                elif (
-                        json_data.get("cmd", "") == "TUNE"
-                        and json_data.get("station", "") == platform.node()
-                ):
-                    # b'{"cmd": "TUNE", "freq": 7.0235, "spot": "MM0DGI"}'
-                    vfo = json_data.get("freq")
-                    vfo = float(vfo) * 1000000
-                    self.radio_state["vfoa"] = int(vfo)
-                    if self.rig_control:
-                        self.rig_control.set_vfo(int(vfo))
-                    spot = json_data.get("spot", "")
-                    self.callsign.setText(spot)
-                    self.callsign_changed()
-                    self.callsign.setFocus()
+    def event_get_worked_list(self, event: appevent.GetWorkedList):
+        result = self.database.get_calls_and_bands()
+        appevent.emit(appevent.WorkedList(result))
 
-                elif (
-                        json_data.get("cmd", "") == "GETWORKEDLIST"
-                        and json_data.get("station", "") == platform.node()
-                ):
-                    result = self.database.get_calls_and_bands()
-                    cmd = {}
-                    cmd["cmd"] = "WORKED"
-                    cmd["station"] = platform.node()
-                    cmd["worked"] = result
-                    self.multicast_interface.send_as_json(cmd)
+    def event_get_contest_status(self, event: appevent.GetActiveContest):
+        appevent.emit(appevent.ActiveContest(self.contest_settings, self.current_op))
 
-                elif (
-                    json_data.get("cmd", "") == "GETCONTESTSTATUS"
-                    and json_data.get("station", "") == platform.node()
-                ):
-                    cmd = {
-                        "cmd": "CONTESTSTATUS",
-                        "station": platform.node(),
-                        "contest": self.contest_settings,
-                        "operator": self.current_op,
-                    }
-                    self.multicast_interface.send_as_json(cmd)
-                elif (
-                    json_data.get("cmd", "") == "CHANGECALL"
-                    and json_data.get("station", "") == platform.node()
-                ):
-                    self.callsign.setText(json_data.get("call", ""))
-                    self.callsign_changed()
-                    self.callsign.setFocus()
+    def event_change_call(self, event: appevent.CallChanged):
+        current_call = self.callsign.text().strip()
+        if event.call != current_call:
+            self.callsign.setText(event.call)
+            self.callsign_changed()
+            self.callsign.setFocus()
+
 
     def dark_mode_state_changed(self) -> None:
         self.pref["darkmode"] = self.actionDark_Mode.isChecked()
@@ -2471,15 +2383,15 @@ class MainWindow(QtWidgets.QMainWindow):
                 return
             if stripped_text == "TEST":
                 result = self.database.get_calls_and_bands()
-                cmd = {}
-                cmd["cmd"] = "WORKED"
-                cmd["station"] = platform.node()
-                cmd["worked"] = result
-                self.multicast_interface.send_as_json(cmd)
+                appevent.emit(appevent.WorkedList(result))
                 self.clearinputs()
                 return
+
             if self.is_floatable(stripped_text):
-                self.change_freq(stripped_text)
+                if float(stripped_text) < 1000:
+                    self.change_freq(float(stripped_text) * 1000)
+                else:
+                    self.change_freq(stripped_text)
                 return
 
             self.check_callsign(stripped_text)
@@ -2495,11 +2407,8 @@ class MainWindow(QtWidgets.QMainWindow):
             _thethread.start()
             self.next_field.setFocus()
             return
-        cmd = {}
-        cmd["cmd"] = "CALLCHANGED"
-        cmd["station"] = platform.node()
-        cmd["call"] = stripped_text
-        self.multicast_interface.send_as_json(cmd)
+
+        appevent.emit(appevent.CallChanged(stripped_text))
         self.check_callsign(stripped_text)
 
     def change_freq(self, stripped_text: str) -> None:
@@ -2529,12 +2438,8 @@ class MainWindow(QtWidgets.QMainWindow):
         if self.rig_control:
             self.rig_control.set_vfo(vfo)
             return
-        cmd = {}
-        cmd["cmd"] = "RADIO_STATE"
-        cmd["station"] = platform.node()
-        cmd["band"] = band
-        cmd["vfoa"] = vfo
-        self.multicast_interface.send_as_json(cmd)
+
+        appevent.emit(appevent.RadioState(vfo, None, None, None))
 
     def change_mode(self, mode: str) -> None:
         """
@@ -2707,7 +2612,10 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def setmode(self, mode: str) -> None:
         """Call when the mode changes."""
+
+        self.cw_speed.setVisible(False)
         if mode == "CW":
+            self.cw_speed.setVisible(True)
             if self.current_mode != "CW":
                 self.current_mode = "CW"
                 # self.mode.setText("CW")
@@ -2800,7 +2708,6 @@ class MainWindow(QtWidgets.QMainWindow):
     def poll_radio(self) -> None:
         """
         Poll radio for VFO, mode, bandwidth.
-        Send state via multicast.
 
         Parameters
         ----------
@@ -2850,14 +2757,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 if datetime.datetime.now() > self.radio_state_broadcast_time or info_dirty:
                     logger.debug("VFO: %s  MODE: %s BW: %s", vfo, mode, bw)
                     self.set_window_title()
-                    cmd = {}
-                    cmd["cmd"] = "RADIO_STATE"
-                    cmd["station"] = platform.node()
-                    cmd["band"] = band
-                    cmd["vfoa"] = vfo
-                    cmd["mode"] = mode
-                    cmd["bw"] = bw
-                    self.multicast_interface.send_as_json(cmd)
+                    appevent.emit(appevent.RadioState(vfo, None, mode, int(bw)))
                     if self.n1mm:
                         if self.n1mm.send_radio_packets:
                             self.n1mm.radio_info["Freq"] = vfo[:-1]
