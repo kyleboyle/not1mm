@@ -50,8 +50,8 @@ class ScaledLabel(QLabel):
         self.setPixmap(QPixmap(str(fsutils.APP_DATA_PATH / 'profile_placeholder.png')), self.size())
 
     def resizeEvent(self, event: typing.Optional[QtGui.QResizeEvent]) -> None:
-        logger.debug(f"resizeEvent {event.size()}")
         self.setPixmap(self.pixmap, event.size())
+        super().resizeEvent(event)
 
     def set_external_url(self, url: str):
         self.external_url = url
@@ -79,6 +79,9 @@ class ExternalCallProfileWindow(DockWidget):
 
     def event_external_lookup(self, e: event.ExternalLookupResult):
         """Upon successful external callsign db lookup, populate the station profile information"""
+        if e.result.call != self.call:
+            # make sure the station in the external data is still the active qso callsign
+            return
         image_url = e.result.source_result.get('image', None)
         if image_url:
             logger.debug(f"fetching {e.result.call} image url {image_url}")
@@ -90,10 +93,10 @@ class ExternalCallProfileWindow(DockWidget):
                 self.imageLabel.set_external_url(f'https://www.qrz.com/db/{e.result.call}')
 
     def event_call_changed(self, e: event.CallChanged):
+        self.call = e.call
         self.imageLabel.clear()
         self.imageLabel.setToolTip(None)
         self.setWindowTitle(f"Station Profile")
-
 
 
     def handle_image(self, reply: QNetworkReply):
@@ -106,9 +109,7 @@ class ExternalCallProfileWindow(DockWidget):
             raw_image = reply.readAll()
             image = QImage()
             image.loadFromData(raw_image)
-            logger.debug(f"size before set pixmap {self.size()}, imagelabel {self.imageLabel.size()}")
             self.imageLabel.setPixmap(QPixmap(image), self.size())
-            logger.debug(f"size after set pixmap {self.size()}, imagelabel {self.imageLabel.size()}")
             self.imageLabel.setToolTip(
                 f"<img src='data:{reply.header(QNetworkRequest.KnownHeaders.ContentTypeHeader)};base64,{bytes(raw_image.toBase64()).decode()}'"
                 f"{' width=1000' if image.width() > 1000 else ''}/>")

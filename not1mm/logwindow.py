@@ -93,8 +93,6 @@ _default_column_order = [
     "Points",
     "IsMultiplier1",
     "IsMultiplier2",
-    "Power",
-    "Band",
     "ContestName",
     "WPXPrefix",
     "Exchange1",
@@ -464,18 +462,8 @@ class LogWindow(QtWidgets.QDockWidget):
 
         logger.debug(f"deleting {rows}")
 
-        # use the table meta data to identify the id column index
-        id_column_index = None
-        for i in range(table.model().columnCount()):
-            if table.model().headerData(i, Qt.Orientation.Horizontal) == 'ID':
-                id_column_index = i
-                break
-        if id_column_index is None:
-            logger.critical("Could not identify table column index for column 'ID'")
-            return
-
-        for i in selection:
-            table.model().removeRow(i.row())
+        for i in sorted(rows, reverse=True):
+            table.model().removeRow(i)
 
 
     def table_model_edit(self, qso_record_before: dict, qso_record_after: dict):
