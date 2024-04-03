@@ -6,16 +6,16 @@ HamQTH
 """
 import dataclasses
 import logging
-from functools import partial, partialmethod
 from typing import Optional
-import not1mm.lib.event as appevent
+
 import xmltodict
-import requests
 from PyQt6 import QtNetwork
 from PyQt6.QtCore import QObject, QUrl, QUrlQuery
 from PyQt6.QtNetwork import QNetworkRequest, QNetworkReply
 
-logger = logging.getLogger("lookup")
+import not1mm.lib.event as appevent
+
+logger = logging.getLogger(__name__)
 
 
 class ExternalCallLookupService(QObject):
@@ -137,7 +137,7 @@ class QRZlookup(ExternalCallLookupService):
 
     def __init__(self, username: str, password: str, parent=None) -> None:
         super().__init__(parent=parent)
-        self.call_reply = None
+        self.call_reply: QNetworkReply = None
         self.session = False
         self.expiration = False
         self.username = username
@@ -273,7 +273,9 @@ class QRZlookup(ExternalCallLookupService):
                     result.name = result.source_result['fname'] + ' ' + result.name
                 else:
                     result.name = result.source_result['fname']
-
+            if result.source_result.get('xref', None):
+                # if the searched call is an alias to another profile, the searched for callsign will appear in xref
+                result.call = result.source_result['xref']
             result.grid = result.source_result.get('grid', None)
             result.nickname = result.source_result.get('nickname', None)
             appevent.emit(appevent.ExternalLookupResult(result))

@@ -2950,18 +2950,18 @@ def install_icons() -> None:
     if sys.platform == "linux":
         os.system(
             "xdg-icon-resource install --size 32 --context apps --mode user "
-            f"{fsutils.MODULE_PATH}/data/k6gte.not1mm-32.png k6gte-not1mm"
+            f"{fsutils.APP_DATA_PATH}/k6gte.not1mm-32.png k6gte-not1mm"
         )
         os.system(
             "xdg-icon-resource install --size 64 --context apps --mode user "
-            f"{fsutils.MODULE_PATH}/data/k6gte.not1mm-64.png k6gte-not1mm"
+            f"{fsutils.APP_DATA_PATH}/k6gte.not1mm-64.png k6gte-not1mm"
         )
         os.system(
             "xdg-icon-resource install --size 128 --context apps --mode user "
-            f"{fsutils.MODULE_PATH}/data/k6gte.not1mm-128.png k6gte-not1mm"
+            f"{fsutils.APP_DATA_PATH}/k6gte.not1mm-128.png k6gte-not1mm"
         )
         os.system(
-            f"xdg-desktop-menu install {fsutils.MODULE_PATH}/data/k6gte-not1mm.desktop"
+            f"xdg-desktop-menu install {fsutils.APP_DATA_PATH}/k6gte-not1mm.desktop"
         )
 
 
@@ -2993,7 +2993,6 @@ def run() -> None:
 
     window = MainWindow()
 
-
     if window.pref.get("window_bandmap_enable", None):
         window.launch_bandmap_window()
     if window.pref.get("window_check_enable", None):
@@ -3009,7 +3008,6 @@ def run() -> None:
         window.restoreState(QByteArray.fromHex(bytes(window.pref["window_state"], 'ascii')), 1)
     if 'window_geo' in window.pref:
         window.restoreGeometry(QByteArray.fromHex(bytes(window.pref["window_geo"], 'ascii')))
-
 
     window.show()
     window.callsign.setFocus()
