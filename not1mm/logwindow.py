@@ -450,12 +450,12 @@ class LogWindow(QtWidgets.QDockWidget):
         table = self.qsoTable if self.qsoTable.hasFocus() else self.stationHistoryTable
 
         selection = table.selectedIndexes()
-        rows = list([x.row() for x in selection])
+        rows = set([x.row() for x in selection])
 
         message_box = QtWidgets.QMessageBox()
         message_box.setIcon(QtWidgets.QMessageBox.Icon.Critical)
-        message_box.setText(f"{len(rows)} QSO record(s) are selected for deletion.")
-        message_box.setInformativeText("Are you sure you would like to delete these QSO logs?")
+        message_box.setText(f"{len(rows)} QSO record(s) selected for deletion.")
+        message_box.setInformativeText(f"Are you sure you would like to delete all of these {len(rows)} QSO logs?")
         message_box.setWindowTitle("Confirm Delete")
         message_box.setStandardButtons(QtWidgets.QMessageBox.StandardButton.Ok | QtWidgets.QMessageBox.StandardButton.Cancel)
         result = message_box.exec()

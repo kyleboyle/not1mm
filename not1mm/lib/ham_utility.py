@@ -62,7 +62,6 @@ def gridtolatlon(maiden):
             lon += (ord(maiden[6])) * 5.0 / 600
             lat += (ord(maiden[7])) * 2.5 / 600
 
-        logger.debug("lat:%d lon:%d", lat, lon)
         return round(lat, 4), round(lon, 4)
     except IndexError:
         return 0, 0

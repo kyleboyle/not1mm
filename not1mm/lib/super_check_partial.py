@@ -12,17 +12,12 @@ from rapidfuzz import process
 
 MASTER_SCP_URL = "https://www.supercheckpartial.com/MASTER.SCP"
 
-if __name__ == "__main__":
-    print("I'm not the program you are looking for.")
-
 logger = logging.getLogger("super_check_partial")
 
 
 def prefer_prefix_score(query: str, candidate: str, **kwargs) -> int:
     """Return a score based on the quality of the match."""
-    score = 0.5 * fuzz.ratio(query, candidate) + 0.5 * fuzz.partial_ratio(
-        query, candidate
-    )
+    score = 0.5 * fuzz.ratio(query, candidate) + 0.5 * fuzz.partial_ratio(query, candidate)
     if not candidate.startswith(query):
         score = 0.8 * score
     return int(round(score))

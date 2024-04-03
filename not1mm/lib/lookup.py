@@ -4,24 +4,66 @@ QRZ
 HamDB
 HamQTH
 """
-
+import dataclasses
 import logging
+from functools import partial, partialmethod
+from typing import Optional
+import not1mm.lib.event as appevent
 import xmltodict
 import requests
+from PyQt6 import QtNetwork
+from PyQt6.QtCore import QObject, QUrl, QUrlQuery
+from PyQt6.QtNetwork import QNetworkRequest, QNetworkReply
 
 logger = logging.getLogger("lookup")
 
 
-class HamDBlookup:
+class ExternalCallLookupService(QObject):
+
+    @dataclasses.dataclass
+    class Result:
+        call: str
+        grid: str
+        name: str
+        nickname: str
+        source_result: dict
+
+        def __init__(self, call):
+            self.call = call
+            pass
+
+    init_flag = False
+    network_access_manager = QtNetwork.QNetworkAccessManager()
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def did_init(self) -> bool:
+        return self.init_flag
+
+    def lookup(self, call: str) -> Optional[Result]:
+        pass
+
+
+
+class HamDBlookup(ExternalCallLookupService):
     """
     Class manages HamDB lookups.
     """
-
-    def __init__(self) -> None:
+    call = ''
+    def __init__(self, parent=None) -> None:
+        super().__init__(parent=parent)
+        self.init_flag = True
         self.url = "https://api.hamdb.org/"
-        self.error = False
+        self.reply = None
 
-    def lookup(self, call: str) -> tuple:
+    def lookup(self, call: str) -> ExternalCallLookupService.Result:
+        self.call = call
+        if not self.reply:
+            self.reply = self.network_access_manager.get(QNetworkRequest(QUrl(self.url + call + "/xml/wfd_logger")))
+            self.reply.finished.connect(self.handle_lookup)
+
+    def handle_lookup(self):
         """
         Lookup a call on QRZ
 
@@ -50,24 +92,15 @@ class HamDBlookup:
         </messages>
         </hamdb>
         """
-
-        logger.info("%s", call)
-        grid = False
-        name = False
-        error_text = False
-        nickname = False
-
-        try:
-            self.error = False
-            query_result = requests.get(
-                self.url + call + "/xml/wfd_logger", timeout=10.0
-            )
-        except requests.exceptions.Timeout as exception:
-            self.error = True
-            return grid, name, nickname, exception
-        if query_result.status_code == 200:
-            self.error = False
-            rootdict = xmltodict.parse(query_result.text)
+        er = self.reply.error()
+        self.reply.deleteLater()
+        if er != QtNetwork.QNetworkReply.NetworkError.NoError:
+            logger.error(self.reply.errorString())
+            self.reply = None
+        else:
+            result = ExternalCallLookupService.Result(self.call)
+            rootdict = xmltodict.parse(str(self.reply.readAll(), 'utf-8'))
+            self.reply = None
             root = rootdict.get("hamdb")
             if root:
                 messages = root.get("messages")
@@ -75,45 +108,46 @@ class HamDBlookup:
             if messages:
                 error_text = messages.get("status")
                 logger.debug("HamDB: %s", error_text)
-                if error_text != "OK":
-                    self.error = False
             if callsign:
-                logger.debug("HamDB: found callsign field")
+                result.source_result = callsign
+                logger.debug(f"HamDB: found callsign field, response call = {callsign.get('call', None)}")
+                if self.call != callsign.get("call", None):
+                    logger.warning(f"response callsign {callsign.get('call', None)} doesn't match requested callsign {self.call}. aborting external lookup")
+                    return
                 if callsign.get("grid"):
-                    grid = callsign.get("grid")
+                    result.grid = callsign.get("grid")
                 if callsign.get("fname"):
-                    name = callsign.get("fname")
+                    result.name = callsign.get("fname")
                 if callsign.get("name"):
-                    if not name:
-                        name = callsign.get("name")
+                    if not result.name:
+                        result.name = callsign.get("name")
                     else:
-                        name = f"{name} {callsign.get('name')}"
+                        result.name = f"{result.name} {callsign.get('name')}"
                 if callsign.get("nickname"):
-                    nickname = callsign.get("nickname")
-        else:
-            self.error = True
-            error_text = str(query_result.status_code)
-        logger.info("HamDB-lookup: %s %s %s %s", grid, name, nickname, error_text)
-        return grid, name, nickname, error_text
+                    result.nickname = callsign.get("nickname")
+
+            appevent.emit(appevent.ExternalLookupResult(result))
 
 
-class QRZlookup:
+class QRZlookup(ExternalCallLookupService):
     """
     Class manages QRZ lookups. Pass in a username and password at instantiation.
     """
+    init_flag = False
 
-    def __init__(self, username: str, password: str) -> None:
+    def __init__(self, username: str, password: str, parent=None) -> None:
+        super().__init__(parent=parent)
+        self.call_reply = None
         self.session = False
         self.expiration = False
-        self.error = (
-            False  # "password incorrect", "session timeout", and "callsign not found".
-        )
         self.username = username
         self.password = password
         self.qrzurl = "https://xmldata.qrz.com/xml/134/"
         self.message = False
         self.lastresult = False
         self.getsession()
+        if self.session:
+            self.init_flag = True
 
     def getsession(self) -> None:
         """
@@ -141,160 +175,111 @@ class QRZlookup:
         Message	An informational message for the user
         Error	XML system error message
         """
-        logger.info("QRZlookup-getsession:")
-        self.error = False
-        self.message = False
         self.session = False
-        try:
-            payload = {"username": self.username, "password": self.password}
-            query_result = requests.get(self.qrzurl, params=payload, timeout=10.0)
-            baseroot = xmltodict.parse(query_result.text)
+
+        url = QUrl(self.qrzurl)
+        query = QUrlQuery()
+        query.addQueryItem("username", self.username)
+        query.addQueryItem("password", self.password)
+        url.setQuery(query.query())
+
+        self.session_reply = self.network_access_manager.get(QNetworkRequest(url))
+        self.session_reply.finished.connect(self.handle_session)
+        logger.info("attempting to connect to qrz auth")
+
+        #payload = {"username": self.username, "password": self.password}
+        #query_result = requests.get(self.qrzurl, params=payload, timeout=10.0)
+
+    def handle_session(self):
+        er = self.session_reply.error()
+        self.session_reply.deleteLater()
+        if er != QtNetwork.QNetworkReply.NetworkError.NoError:
+            logger.error(self.session_reply.errorString())
+        else:
+            baseroot = xmltodict.parse(str(self.session_reply.readAll(), 'utf-8'))
             root = baseroot.get("QRZDatabase")
             if root:
                 session = root.get("Session")
-            logger.info("\n\n%s\n\n", root)
-            if session.get("Key"):
-                self.session = session.get("Key")
-            if session.get("SubExp"):
-                self.expiration = session.get("SubExp")
-            if session.get("Error"):
-                self.error = session.get("Error")
-            if session.get("Message"):
-                self.message = session.get("Message")
-            logger.info(
-                "key:%s error:%s message:%s",
-                self.session,
-                self.error,
-                self.message,
-            )
-        except requests.exceptions.RequestException as exception:
-            logger.info("%s", exception)
-            self.session = False
-            self.error = f"{exception}"
+                logger.info(f"get session result: {root}")
+                if session.get("Key"):
+                    self.session = session.get("Key")
+                    self.init_flag = True
+                if session.get("SubExp"):
+                    self.expiration = session.get("SubExp")
+                if session.get("Error"):
+                    self.error = session.get("Error")
+                if session.get("Message"):
+                    self.message = session.get("Message")
+                if not self.session:
+                    logger.error(
+                        "key:%s error:%s message:%s",
+                        self.session,
+                        self.error,
+                        self.message)
 
-    def lookup(self, call: str) -> tuple:
+    def lookup(self, call: str, is_retry=False) -> None:
         """
-        Lookup a call on QRZ
+        Lookup a call on QRZ. async result sent in app event
         """
-        logger.info("%s", call)
-        _response = None
-        if self.session:
-            payload = {"s": self.session, "callsign": call}
+        if self.session and not self.call_reply:
+            self.call = call
+            url = QUrl(self.qrzurl)
+            query = QUrlQuery()
+            query.addQueryItem("s", self.session)
+            query.addQueryItem("callsign", call)
+            url.setQuery(query.query())
+            logger.debug(f"query {url}")
+            self.call_reply = self.network_access_manager.get(QNetworkRequest(url))
+            self.call_reply.finished.connect(self.handle_lookup)
+
+    def handle_lookup(self):
+        er = self.call_reply.error()
+        self.call_reply.deleteLater()
+        if er != QtNetwork.QNetworkReply.NetworkError.NoError:
+            logger.error(self.call_reply.errorString())
+            self.call_reply = None
+        else:
             try:
-                query_result = requests.get(self.qrzurl, params=payload, timeout=10.0)
-            except requests.exceptions.Timeout as exception:
-                self.error = True
-                return {"error": exception}
-            baseroot = xmltodict.parse(query_result.text)
+                baseroot = xmltodict.parse(str(self.call_reply.readAll(), 'utf-8'))
+                self.call_reply = None
+            except:
+                logger.exception("Error parsing qrz call search response")
+                return
             logger.debug(f"xml lookup {baseroot}\n")
             root = baseroot.get("QRZDatabase")
-            logger.info("\n\n%s\n\n", root)
             session = root.get("Session")
-            if not session.get("Key"):  # key expired get a new one
-                logger.info("no key, getting new one.")
+
+            if session.get('Error', None):
+                logger.info(f"Lookup error: {session.get('Error')}")
+
+            if not session.get("Key"):
+                # key expired get a new one
+                logger.info("qrz session key expired or missing, getting new one.")
                 self.getsession()
-                if self.session:
-                    payload = {"s": self.session, "callsign": call}
-                    query_result = requests.get(
-                        self.qrzurl, params=payload, timeout=3.0
-                    )
-                    baseroot = xmltodict.parse(query_result.text)
-                    root = baseroot.get("QRZDatabase")
-        return root.get("Callsign")
 
-    def parse_lookup(self, query_result):
-        """
-        Returns gridsquare and name for a callsign looked up by qrz or hamdb.
-        Or False for both if none found or error.
+            result = ExternalCallLookupService.Result(self.call)
+            result.source_result = root.get("Callsign")
+            if not result.source_result:
+                # probably callsign not found
+                return
+            if self.call != result.source_result.get("call", None):
+                logger.warning(
+                    f"response callsign {result.source_result.get('call', None)} doesn't match requested callsign {self.call}. aborting external lookup")
+                return
 
-        <?xml version="1.0" encoding="utf-8"?>
-        <QRZDatabase version="1.34" xmlns="http://xmldata.qrz.com">
-        <Callsign>
-        <call>K6GTE</call>
-        <aliases>KM6HQI</aliases>
-        <dxcc>291</dxcc>
-        <nickname>Mike</nickname>
-        <fname>Michael C</fname>
-        <name>Bridak</name>
-        <addr1>2854 W Bridgeport Ave</addr1>
-        <addr2>Anaheim</addr2>
-        <state>CA</state>
-        <zip>92804</zip>
-        <country>United States</country>
-        <lat>33.825460</lat>
-        <lon>-117.987510</lon>
-        <grid>DM13at</grid>
-        <county>Orange</county>
-        <ccode>271</ccode>
-        <fips>06059</fips>
-        <land>United States</land>
-        <efdate>2021-01-13</efdate>
-        <expdate>2027-11-07</expdate>
-        <class>G</class>
-        <codes>HVIE</codes>
-        <email>michael.bridak@gmail.com</email>
-        <u_views>1569</u_views>
-        <bio>6399</bio>
-        <biodate>2022-02-26 00:51:44</biodate>
-        <image>https://cdn-xml.qrz.com/e/k6gte/qsl.png</image>
-        <imageinfo>285:545:99376</imageinfo>
-        <moddate>2021-04-08 21:41:07</moddate>
-        <MSA>5945</MSA>
-        <AreaCode>714</AreaCode>
-        <TimeZone>Pacific</TimeZone>
-        <GMTOffset>-8</GMTOffset>
-        <DST>Y</DST>
-        <eqsl>0</eqsl>
-        <mqsl>1</mqsl>
-        <cqzone>3</cqzone>
-        <ituzone>6</ituzone>
-        <born>1967</born>
-        <lotw>1</lotw>
-        <user>K6GTE</user>
-        <geoloc>geocode</geoloc>
-        <name_fmt>Michael C "Mike" Bridak</name_fmt>
-        </Callsign>
-        <Session>
-        <Key>42d5c9736525b485e8edb782b101c74b</Key>
-        <Count>4140</Count>
-        <SubExp>Tue Feb 21 07:01:49 2023</SubExp>
-        <GMTime>Sun May  1 20:00:36 2022</GMTime>
-        <Remark>cpu: 0.022s</Remark>
-        </Session>
-        </QRZDatabase>
+            result.name = result.source_result.get('name', None)
+            if 'fname' in result.source_result:
+                if result.name:
+                    result.name = result.source_result['fname'] + ' ' + result.name
+                else:
+                    result.name = result.source_result['fname']
 
-        """
-        logger.info("QRZlookup-parse_lookup:")
-        grid = False
-        name = False
-        error_text = False
-        nickname = False
-        if query_result.status_code == 200:
-            baseroot = xmltodict.parse(query_result.text)
-            root = baseroot.get("QRZDatabase")
-            session = root.get("Session")
-            callsign = root.get("Callsign")
-            logger.info("\n\n%s\n\n", root)
-            if session.get("Error"):
-                error_text = session.get("Error")
-                self.error = error_text
-            if callsign:
-                if callsign.get("grid"):
-                    grid = callsign.get("grid")
-                if callsign.get("fname"):
-                    name = callsign.get("fname")
-                if callsign.get("name"):
-                    if not name:
-                        name = callsign.get("name")
-                    else:
-                        name = f"{name} {callsign.get('name')}"
-                if callsign.get("nickname"):
-                    nickname = callsign.get("nickname")
-        logger.info("%s %s %s %s", grid, name, nickname, error_text)
-        return grid, name, nickname, error_text
+            result.grid = result.source_result.get('grid', None)
+            result.nickname = result.source_result.get('nickname', None)
+            appevent.emit(appevent.ExternalLookupResult(result))
 
 
-class HamQTH:
+class HamQTH(ExternalCallLookupService):
     """HamQTH lookup"""
 
     def __init__(self, username: str, password: str) -> None:
@@ -305,95 +290,90 @@ class HamQTH:
         self.session = False
         self.error = False
         self.getsession()
+        if self.session:
+            self.init_flag = True
+
 
     def getsession(self) -> None:
         """get a session key"""
-        logger.info("Getting session")
-        self.error = False
         self.session = False
-        payload = {"u": self.username, "p": self.password}
-        try:
-            query_result = requests.get(self.url, params=payload, timeout=10.0)
-        except requests.exceptions.Timeout:
-            self.error = True
-            return
-        logger.info("resultcode: %s", query_result.status_code)
-        baseroot = xmltodict.parse(query_result.text)
-        root = baseroot.get("HamQTH")
-        session = root.get("session")
-        if session:
-            if session.get("session_id"):
-                self.session = session.get("session_id")
-            if session.get("error"):
-                self.error = session.get("error")
-        logger.info("session: %s", self.session)
 
-    def lookup(self, call: str) -> tuple:
+        url = QUrl(self.url)
+        query = QUrlQuery()
+        query.addQueryItem("u", self.username)
+        query.addQueryItem("p", self.password)
+        url.setQuery(query.query())
+
+        self.session_reply = self.network_access_manager.get(QNetworkRequest(url))
+        self.session_reply.finished.connect(self.handle_session)
+        logger.info("attempting to connect to auth session")
+
+
+    def handle_session(self):
+        er = self.session_reply.error()
+        self.session_reply.deleteLater()
+        if er != QtNetwork.QNetworkReply.NetworkError.NoError:
+            logger.error(self.session_reply.errorString())
+        else:
+            baseroot = xmltodict.parse(str(self.session_reply.readAll(), 'utf-8'))
+            self.session_reply.deleteLater()
+            self.session_reply = None
+            root = baseroot.get("HamQTH")
+            session = root.get("session")
+            if session:
+                if session.get("session_id"):
+                    self.session = session.get("session_id")
+                    self.init_flag = True
+                if session.get("error"):
+                    logger.error(session.get("error"))
+            logger.info("session: %s", self.session)
+
+    def lookup(self, call: str, is_retry=False) -> Optional[ExternalCallLookupService.Result]:
         """
         Lookup a call on HamQTH
         """
-        the_result = {
-            "grid": False,
-            "name": False,
-            "nickname": False,
-            "error_text": False,
-        }
-        if self.session:
-            payload = {"id": self.session, "callsign": call, "prg": "wfdlogger"}
+        if self.session and not self.call_reply:
+            self.call = call
+            url = QUrl(self.self.url)
+            query = QUrlQuery()
+            query.addQueryItem("id", self.session)
+            query.addQueryItem("callsign", call)
+            query.addQueryItem("prg", "wfdlogger")
+            url.setQuery(query.query())
+            logger.debug(f"query {url}")
+            self.call_reply = self.network_access_manager.get(QNetworkRequest(url))
+            self.call_reply.finished.connect(self.handle_lookup)
+
+    def handle_lookup(self):
+        er = self.call_reply.error()
+        self.call_reply.deleteLater()
+        if er != QtNetwork.QNetworkReply.NetworkError.NoError:
+            logger.error(self.call_reply.errorString())
+            self.call_reply = None
+        else:
             try:
-                query_result = requests.get(self.url, params=payload, timeout=10.0)
-            except requests.exceptions.Timeout:
-                self.error = True
-                return the_result
-            logger.info("resultcode: %s", query_result.status_code)
-            baseroot = xmltodict.parse(query_result.text)
+                baseroot = xmltodict.parse(str(self.call_reply.readAll(), 'utf-8'))
+                self.call_reply = None
+            except:
+                logger.exception("Error parsing qrz call search response")
+                return
+            logger.debug(baseroot)
             root = baseroot.get("HamQTH")
             search = root.get("search")
             session = root.get("session")
             if not search:
                 if session:
                     if session.get("error"):
-                        if session.get("error") == "Callsign not found":
-                            the_result["error_text"] = session.get("error")
-                            return the_result
                         if session.get("error") == "Session does not exist or expired":
                             self.getsession()
-                            query_result = requests.get(
-                                self.url, params=payload, timeout=10.0
-                            )
-            the_result = self.parse_lookup(root)
-        return the_result
-
-    def parse_lookup(self, root) -> dict:
-        """
-        Returns gridsquare and name for a callsign
-        Or False for both if none found or error.
-        """
-        the_result = {
-            "grid": False,
-            "name": False,
-            "nickname": False,
-            "error_text": False,
-        }
-        session = root.get("session")
-        search = root.get("search")
-        if session:
-            if session.get("error"):
-                the_result["error_text"] = session.get("error")
-        if search:
+                        logger.error(f"lookup {self.call}: {session.get('error')}")
+                return
+            result = ExternalCallLookupService.Result(self.call)
+            result.source_result = search
             if search.get("grid"):
-                the_result["grid"] = search.get("grid")
+                result.grid = search.get("grid")
             if search.get("nick"):
-                the_result["nickname"] = search.get("nick")
+                result.nickname = search.get("nick")
             if search.get("adr_name"):
-                the_result["name"] = search.get("adr_name")
-        return the_result
-
-
-def main():
-    """Just in case..."""
-    print("I'm not a program.")
-
-
-if __name__ == "__main__":
-    main()
+                result.name = search.get("adr_name")
+            appevent.emit(appevent.ExternalLookupResult(result))

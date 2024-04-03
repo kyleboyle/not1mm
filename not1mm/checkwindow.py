@@ -7,12 +7,12 @@ Check Window
 
 import logging
 import os
-import platform
-import queue
+import threading
 from json import loads
 
 import Levenshtein
 from PyQt6 import uic
+from PyQt6.QtCore import pyqtSignal, QThreadPool, Qt, QTimer, QThread
 from PyQt6.QtGui import QMouseEvent
 from PyQt6.QtWidgets import QLabel, QVBoxLayout, QDockWidget, QWidget
 
@@ -20,11 +20,25 @@ import not1mm.fsutils as fsutils
 from not1mm.lib.database import DataBase
 from not1mm.lib.super_check_partial import SCP
 import not1mm.lib.event as appevent
+from not1mm.qtplugins.DockWidget import DockWidget
 
 logger = logging.getLogger(__name__)
 
 
-class CheckWindow(QDockWidget):
+class ScpWorker(QThread):
+
+    def __init__(self, call, scp):
+        super().__init__()
+        self.call = call
+        self.result = None
+        self.scp = scp
+
+    def run(self):
+        self.result = self.scp.super_check(self.call)
+        self.result = filter(lambda x: '#' not in x, self.result)
+
+
+class CheckWindow(DockWidget):
     """The check window. Shows list or probable stations."""
     dbname = None
     pref = {}
@@ -36,7 +50,11 @@ class CheckWindow(QDockWidget):
     character_remove_color = '#cc3333'
     character_add_color = '#3333cc'
 
-    masterScrollWidget:QWidget = None
+    masterScrollWidget: QWidget = None
+
+    master_debounce_timer = False
+
+    call: str = None
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -44,8 +62,6 @@ class CheckWindow(QDockWidget):
         appevent.register(appevent.CallChanged, self.event_call_change)
         appevent.register(appevent.CheckSpots, self.event_check_spots)
         appevent.register(appevent.UpdateLog, self.event_update_log)
-
-
 
         self.load_pref()
         self.dbname = fsutils.USER_DATA_PATH / self.pref.get(
@@ -56,7 +72,7 @@ class CheckWindow(QDockWidget):
         logger.debug(uic.widgetPluginPath)
         uic.loadUi(fsutils.APP_DATA_PATH / "checkwindow.ui", self)
 
-        self.mscp = SCP(fsutils.APP_DATA_PATH)
+        self.scp = SCP(fsutils.APP_DATA_PATH)
 
     def load_pref(self) -> None:
         """
@@ -98,15 +114,15 @@ class CheckWindow(QDockWidget):
 
     def event_call_change(self, event: appevent.CallChanged):
         self.call = event.call
-        if event == "":
+        if event.call == "":
             self.clear_lists()
         else:
-            self.master_list(self.call)
+            if len(self.call) <= 12:
+                self.master_list(self.call)
             self.qsolog_list(self.call)
 
     def event_check_spots(self, event: appevent.CheckSpots):
         self.dxc_list(event.spots)
-
 
     def clear_lists(self) -> None:
         self.populate_layout(self.masterLayout, [])
@@ -126,8 +142,16 @@ class CheckWindow(QDockWidget):
         -------
         None
         """
-        results: list = self.mscp.super_check(call)
-        self.populate_layout(self.masterLayout, filter(lambda x: '#' not in x, results))
+
+        # The super check call is what takes up most of the runtime
+        self.master_list_thread = ScpWorker(call, self.scp)
+        self.master_list_thread.finished.connect(self.master_list_scp_finished)
+        self.master_list_thread.start()
+
+    def master_list_scp_finished(self) -> None:
+        if self.call != self.master_list_thread.call:
+            return
+        self.populate_layout(self.masterLayout, filter(lambda x: '#' not in x, self.master_list_thread.result))
 
     def qsolog_list(self, call: str) -> None:
         """
@@ -164,12 +188,8 @@ class CheckWindow(QDockWidget):
             self.populate_layout(self.dxcLayout, filter(lambda x: x, [x.get('callsign', None) for x in spots]))
 
     def populate_layout(self, layout, call_list):
-        for i in reversed(range(layout.count())):
-            if layout.itemAt(i).widget():
-                layout.itemAt(i).widget().setParent(None)
-            else:
-                layout.removeItem(layout.itemAt(i))
-        labels = []
+        call_items = []
+
         for call in call_list:
             if call:
                 if self.call:
@@ -184,14 +204,20 @@ class CheckWindow(QDockWidget):
                             label_text += f"<span style='background-color: {self.character_remove_color};'>{call[i1:i2]}</span>"
                         elif tag == 'insert' or tag == 'delete':
                             label_text += f"<span style='background-color: {self.character_add_color};'>{call[i1:i2]}</span>"
-                    labels.append((Levenshtein.hamming(call, self.call), CallLabel(label_text, call=call)))
+                    call_items.append((Levenshtein.hamming(call, self.call), label_text, call))
+        sorted(call_items, key=lambda x: x[0])
+        for i in reversed(range(layout.count())):
+            if layout.itemAt(i).widget():
+                layout.itemAt(i).widget().setParent(None)
+            else:
+                layout.removeItem(layout.itemAt(i))
 
-        for _, label in sorted(labels, key=lambda x: x[0]):
+        for _, label_text, call in call_items:
+            label = CallLabel(label_text, call=call)
             label.setStyleSheet("QLabel {letter-spacing: 0.15em; font-family: 'JetBrains Mono';}")
             layout.addWidget(label)
         # top aligns
         layout.addStretch(0)
-
 
 class CallLabel(QLabel):
     call: str = None
@@ -201,4 +227,4 @@ class CallLabel(QLabel):
 
     def mouseDoubleClickEvent(self, e: QMouseEvent) -> None:
         if self.call:
-            appevent.emit(appevent.CallChanged(self.call))
+            appevent.emit(appevent.Tune(None, self.call))

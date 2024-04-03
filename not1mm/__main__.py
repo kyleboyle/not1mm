@@ -20,17 +20,20 @@ from json import dumps, loads
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from shutil import copyfile
+from typing import Optional
 
 import notctyparser
 import sounddevice as sd
 import soundfile as sf
+import typing
 from PyQt6 import QtCore, QtGui, QtWidgets, uic
-from PyQt6.QtCore import QDir, Qt, QByteArray, QEvent, pyqtSignal
+from PyQt6.QtCore import QDir, Qt, QByteArray, QEvent, pyqtSignal, QTimer
 from PyQt6.QtGui import QFontDatabase, QKeyEvent
 from PyQt6.QtWidgets import QFileDialog, QDockWidget, QWidget, QLineEdit
 
 import not1mm.fsutils as fsutils
 from not1mm.bandmap import BandMapWindow
+from not1mm.callprofile import ExternalCallProfileWindow
 from not1mm.checkwindow import CheckWindow
 from not1mm.lib import event as appevent
 from not1mm.lib.about import About
@@ -51,7 +54,7 @@ from not1mm.lib.ham_utility import (
     reciprocol,
     fakefreq,
 )
-from not1mm.lib.lookup import HamQTH, QRZlookup
+from not1mm.lib.lookup import HamQTH, QRZlookup, ExternalCallLookupService
 from not1mm.lib.n1mm import N1MM
 from not1mm.lib.new_contest import NewContest
 from not1mm.lib.select_contest import SelectContest
@@ -61,6 +64,8 @@ from not1mm.lib.version import __version__
 from not1mm.lib.versiontest import VersionTest
 from not1mm.logwindow import LogWindow
 from not1mm.qtplugins.ContestFieldEventFilter import ContestFieldEventFilter
+from not1mm.qtplugins.DockWidget import DockWidget
+from not1mm.qtplugins.EmacsCursorEventFilter import EmacsCursorEventFilter
 from not1mm.vfo import VfoWindow
 
 import qdarktheme
@@ -129,7 +134,7 @@ class MainWindow(QtWidgets.QMainWindow):
         "CAT_port": 4532,
         "cluster_server": "dxc.nc7j.com",
         "cluster_port": 7373,
-        "cluster_filter": "Set DX Filter SpotterCont=NA",
+        "cluster_filter": "Set DX Filter Not Skimmer AND SpotterCont = NA",
         "cluster_mode": "OPEN",
     }
     appstarted = False
@@ -143,7 +148,7 @@ class MainWindow(QtWidgets.QMainWindow):
     current_band = ""
     default_rst = "59"
     cw = None
-    look_up = None
+    look_up: Optional[ExternalCallLookupService] = None
     run_state = False
     fkeys = {}
     about_dialog = None
@@ -167,7 +172,9 @@ class MainWindow(QtWidgets.QMainWindow):
     check_window: QDockWidget = None
     bandmap_window: QDockWidget = None
     vfo_window: QDockWidget = None
+    profile_window: DockWidget = None
 
+    call_change_debounce_timer = False
 
     rig_poll_timer = QtCore.QTimer()
 
@@ -175,11 +182,11 @@ class MainWindow(QtWidgets.QMainWindow):
         super().__init__(*args, **kwargs)
         logger.info("MainWindow: __init__")
 
-        appevent.register(appevent.CallChanged, self.event_change_call)
         appevent.register(appevent.GetContestColumns, self.event_get_columns)
         appevent.register(appevent.GetActiveContest, self.event_get_contest_status)
         appevent.register(appevent.GetWorkedList, self.event_get_worked_list)
         appevent.register(appevent.Tune, self.event_tune)
+        appevent.register(appevent.ExternalLookupResult, self.event_external_call_lookup)
 
         self.setCorner(Qt.Corner.TopRightCorner, Qt.DockWidgetArea.RightDockWidgetArea)
         self.setCorner(Qt.Corner.BottomRightCorner, Qt.DockWidgetArea.RightDockWidgetArea)
@@ -203,6 +210,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.actionLog_Window.triggered.connect(self.launch_log_window)
         self.actionBandmap.triggered.connect(self.launch_bandmap_window)
         self.actionCheck_Window.triggered.connect(self.launch_check_window)
+        self.actionExternalProfile_Window.triggered.connect(self.launch_profile_image_window)
         self.actionVFO.triggered.connect(self.launch_vfo)
         self.actionRecalculate_Mults.triggered.connect(self.recalculate_mults)
 
@@ -488,11 +496,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.rig_poll_timer.start(250)
 
         field_filter = ContestFieldEventFilter(self.handle_input_focus, parent=self)
-        self.callsign.installEventFilter(field_filter)
-        self.sent.installEventFilter(field_filter)
-        self.receive.installEventFilter(field_filter)
-        self.other_1.installEventFilter(field_filter)
-        self.other_2.installEventFilter(field_filter)
+        for i in [self.callsign, self.sent, self.receive, self.other_1, self.other_2]:
+            i.installEventFilter(field_filter)
+            i.installEventFilter(EmacsCursorEventFilter(parent=i))
+
 
     def handle_input_focus(self, source: QLineEdit, event: QEvent) -> None:
         source.deselect()
@@ -1233,12 +1240,24 @@ class MainWindow(QtWidgets.QMainWindow):
             self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.check_window)
         self.check_window.show()
 
+    def launch_profile_image_window(self) -> None:
+        if not self.profile_window:
+            self.profile_window = ExternalCallProfileWindow()
+            self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.profile_window)
+            self.profile_window.closed.connect(self.handle_dock_closed)
+        self.profile_window.show()
+
     def launch_vfo(self) -> None:
         """Launch the VFO window"""
         if not self.vfo_window:
             self.vfo_window = VfoWindow()
             self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.vfo_window)
         self.vfo_window.show()
+
+    def handle_dock_closed(self, event: typing.Optional[QtGui.QCloseEvent]):
+        if event and event.source and event.source == self.profile_window:
+            self.removeDockWidget(self.profile_window)
+            self.profile_window = None
 
     def clear_band_indicators(self) -> None:
         """
@@ -1286,6 +1305,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.pref["window_bandmap_enable"] = self.bandmap_window and self.bandmap_window.isVisible()
         self.pref["window_check_enable"] = self.check_window and self.check_window.isVisible()
         self.pref["window_log_enable"] = self.log_window and self.log_window.isVisible()
+        self.pref["window_profile_enable"] = self.profile_window and self.profile_window.isVisible()
         self.pref["window_vfo_enable"] = self.vfo_window and self.vfo_window.isVisible()
 
         self.write_preference()
@@ -1484,6 +1504,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.other_2.clear()
         self.callsign.setFocus()
 
+        self.check_callsign_external_last_call = None
+
         appevent.emit(appevent.CallChanged(''))
 
     def callsign_editing_finished(self) -> None:
@@ -1501,13 +1523,13 @@ class MainWindow(QtWidgets.QMainWindow):
         else:
             self.dupe_indicator.hide()
 
-        _thethread = threading.Thread(
-            target=self.check_callsign_external,
-            args=(callsign_value,),
-            daemon=True,
-        )
-        _thethread.start()
-
+        self.check_callsign_external(callsign_value)
+        #_thethread = threading.Thread(
+        #    target=self.check_callsign_external,
+        #    args=(callsign_value,),
+        #    daemon=True,
+        #)
+        #_thethread.start()
 
 
     def save_contact(self) -> None:
@@ -2040,17 +2062,13 @@ class MainWindow(QtWidgets.QMainWindow):
             logger.critical("Error: %s", exception)
 
         self.look_up = None
-        if self.pref.get("useqrz"):
-            self.look_up = QRZlookup(
-                self.pref.get("lookupusername"),
-                self.pref.get("lookuppassword"),
-            )
-
-        if self.pref.get("usehamqth"):
-            self.look_up = HamQTH(
-                self.pref.get("lookupusername"),
-                self.pref.get("lookuppassword"),
-            )
+        try:
+            if self.pref.get("useqrz"):
+                self.look_up = QRZlookup(self.pref.get("lookupusername"), self.pref.get("lookuppassword"))
+            elif self.pref.get("usehamqth"):
+                self.look_up = HamQTH(self.pref.get("lookupusername"), self.pref.get("lookuppassword"))
+        except Exception:
+            logger.exception("Could not initialize external lookup service")
 
         if self.pref.get("run_state"):
             self.radioButton_run.setChecked(True)
@@ -2157,11 +2175,13 @@ class MainWindow(QtWidgets.QMainWindow):
             appevent.emit(appevent.ContestColumns(self.contest.columns))
 
     def event_tune(self, event: appevent.Tune):
-        self.radio_state["vfoa"] = event.freq_hz
-        if self.rig_control:
-            self.rig_control.set_vfo(event.freq_hz)
-        self.callsign.setText(event.dx)
-        self.callsign_changed()
+        if event.freq_hz:
+            self.radio_state["vfoa"] = event.freq_hz
+            if self.rig_control:
+                self.rig_control.set_vfo(event.freq_hz)
+        if event.dx and self.callsign.text().strip() != event.dx:
+           self.callsign.setText(event.dx)
+           self.callsign_changed()
         self.callsign.setFocus()
 
     def event_get_worked_list(self, event: appevent.GetWorkedList):
@@ -2171,13 +2191,24 @@ class MainWindow(QtWidgets.QMainWindow):
     def event_get_contest_status(self, event: appevent.GetActiveContest):
         appevent.emit(appevent.ActiveContest(self.contest_settings, self.current_op))
 
-    def event_change_call(self, event: appevent.CallChanged):
+    def event_external_call_lookup(self, event: appevent.ExternalLookupResult):
         current_call = self.callsign.text().strip()
-        if event.call != current_call:
-            self.callsign.setText(event.call)
-            self.callsign_changed()
-            self.callsign.setFocus()
+        if event.result.call == current_call:
+             # Get the grid square and calculate the distance and heading.
+            self.contact["GridSquare"] = event.result.grid
 
+            if self.station.get("GridSquare", ""):
+                heading = bearing(self.station.get("GridSquare", ""), event.result.grid)
+                kilometers = distance(self.station.get("GridSquare"), event.result.grid)
+                self.heading_distance.setText(
+                    f"{event.result.grid} Hdg {heading}° LP {reciprocol(heading)}° / "
+                    f"distance {int(kilometers * 0.621371)}mi {kilometers}km"
+                )
+            # TODO set name field generically
+            if self.pref.get('lookup_populate_name', None):
+                label = self.field3.findChild(QtWidgets.QLabel)
+                if label.text() == "Name":
+                    self.other_1.setText(event.result.name)
 
     def dark_mode_state_changed(self) -> None:
         self.pref["darkmode"] = self.actionDark_Mode.isChecked()
@@ -2399,17 +2430,27 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.dupe_indicator.show()
             else:
                 self.dupe_indicator.hide()
-            _thethread = threading.Thread(
-                target=self.check_callsign_external,
-                args=(text,),
-                daemon=True,
-            )
-            _thethread.start()
+
+            self.check_callsign_external(text)
+            #_thethread = threading.Thread(
+            #    target=self.check_callsign_external,
+            #    args=(text,),
+            #    daemon=True,
+            #)
+            #_thethread.start()
             self.next_field.setFocus()
             return
 
-        appevent.emit(appevent.CallChanged(stripped_text))
-        self.check_callsign(stripped_text)
+        #  debounce the potentially rapid callsign change activities
+        if not self.call_change_debounce_timer:
+            self.call_change_debounce_timer = True
+            QTimer.singleShot(50, self.handle_call_change_debounce)
+
+    def handle_call_change_debounce(self):
+        self.call_change_debounce_timer = False
+        appevent.emit(appevent.CallChanged(self.callsign.text()))
+        self.dupe_indicator.hide()
+        self.check_callsign(self.callsign.text())
 
     def change_freq(self, stripped_text: str) -> None:
         """
@@ -2564,28 +2605,10 @@ class MainWindow(QtWidgets.QMainWindow):
         """
 
         callsign = callsign.strip()
-        if self.check_callsign_external_last_call != callsign:
-            logger.debug("check_callsign_full duplicate lookup, aborting...")
-            return
+        if self.look_up and self.look_up.did_init():
+            self.look_up.lookup(callsign)
 
-        logger.debug(f"check_callsign_full {callsign}, {self.look_up}")
-        if hasattr(self.look_up, "session"):
-            if self.look_up.session:
-                    response = self.look_up.lookup(callsign)
-                    debug_response = f"{response}"
-                    logger.debug("The Response: %s\n", debug_response)
-                    if response:
-                        self.check_callsign_external_last_call = callsign
-                        theirgrid = response.get("grid")
-                        self.contact["GridSquare"] = theirgrid
-                        _theircountry = response.get("country")
-                        if self.station.get("GridSquare", ""):
-                            heading = bearing(self.station.get("GridSquare", ""), theirgrid)
-                            kilometers = distance(self.station.get("GridSquare"), theirgrid)
-                            self.heading_distance.setText(
-                                f"{theirgrid} Hdg {heading}° LP {reciprocol(heading)}° / "
-                                f"distance {int(kilometers * 0.621371)}mi {kilometers}km"
-                            )
+
 
     def check_dupe(self, call: str) -> bool:
         """Checks if a callsign is a dupe on current band/mode."""
@@ -2977,6 +3000,8 @@ def run() -> None:
         window.launch_check_window()
     if window.pref.get("window_log_enable", None):
         window.launch_log_window()
+    if window.pref.get("window_profile_enable", None):
+        window.launch_profile_image_window()
     if window.pref.get("window_vfo_enable", None):
         window.launch_vfo()
 

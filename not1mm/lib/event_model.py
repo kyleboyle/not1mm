@@ -1,5 +1,7 @@
 from dataclasses import dataclass
 
+from . import lookup
+
 class AppEvent():
     pass
 
@@ -88,11 +90,12 @@ class ContestColumns(AppEvent):
 
 @dataclass
 class Tune(AppEvent):
-    freq_hz: int
-    dx: str
+    freq_hz: int = None
+    dx: str = None
 
     def __init__(self, freq_hz, dx):
-        self.freq_hz = int(freq_hz)
+        if freq_hz:
+            self.freq_hz = int(freq_hz)
         self.dx = dx
 
 @dataclass
@@ -131,3 +134,7 @@ class CheckSpots(AppEvent):
 @dataclass
 class LoadDb(AppEvent):
     pass
+
+@dataclass
+class ExternalLookupResult(AppEvent):
+    result: lookup.ExternalCallLookupService.Result

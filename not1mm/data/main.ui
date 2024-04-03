@@ -634,6 +634,9 @@
                  <property name="styleSheet">
                   <string notr="true">QLineEdit {text-transform: uppercase; border-bottom-width: 2px; height:1.8em;}</string>
                  </property>
+                 <property name="maxLength">
+                  <number>20</number>
+                 </property>
                 </widget>
                </item>
               </layout>
@@ -1377,7 +1380,7 @@
     <addaction name="actionLog_Window"/>
     <addaction name="actionBandmap"/>
     <addaction name="actionCheck_Window"/>
-    <addaction name="actionVFO"/>
+    <addaction name="actionExternalProfile_Window"/>
    </widget>
    <widget class="QMenu" name="menuOther">
     <property name="title">
@@ -1685,6 +1688,11 @@
   <action name="actionCheck_Window">
    <property name="text">
     <string>Check Partial</string>
+   </property>
+  </action>
+  <action name="actionExternalProfile_Window">
+   <property name="text">
+    <string>Profile Image</string>
    </property>
   </action>
   <action name="actionVFO">

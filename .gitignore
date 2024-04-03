@@ -18,3 +18,4 @@ not1mm/testing/server_database.db
 .idea
 venv
 manual.md
+.DS_Store

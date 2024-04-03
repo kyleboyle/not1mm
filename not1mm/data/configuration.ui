@@ -11,9 +11,7 @@
    </rect>
   </property>
   <property name="font">
-   <font>
-    <family>JetBrains Mono</family>
-   </font>
+   <font/>
   </property>
   <property name="windowTitle">
    <string>Configuration Settings</string>
@@ -32,7 +30,6 @@
      </property>
      <property name="font">
       <font>
-       <family>JetBrains Mono</family>
        <pointsize>12</pointsize>
        <bold>false</bold>
       </font>
@@ -58,7 +55,6 @@
      </property>
      <property name="font">
       <font>
-       <family>JetBrains Mono</family>
        <pointsize>12</pointsize>
        <strikeout>false</strikeout>
       </font>
@@ -96,7 +92,6 @@
      <widget class="QWidget" name="lookup_tab">
       <property name="font">
        <font>
-        <family>JetBrains Mono</family>
         <pointsize>12</pointsize>
         <strikeout>false</strikeout>
        </font>
@@ -105,11 +100,153 @@
        <string>Lookup</string>
       </attribute>
       <layout class="QGridLayout" name="gridLayout_2">
-       <item row="2" column="4">
+       <item row="4" column="0">
+        <spacer name="horizontalSpacer">
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>40</width>
+           <height>20</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+       <item row="0" column="3" colspan="3">
+        <widget class="QLineEdit" name="lookup_user_name_field">
+         <property name="font">
+          <font>
+           <pointsize>12</pointsize>
+           <bold>false</bold>
+           <strikeout>false</strikeout>
+          </font>
+         </property>
+         <property name="accessibleName">
+          <string>user name</string>
+         </property>
+         <property name="accessibleDescription">
+          <string>user name for look up service.</string>
+         </property>
+         <property name="text">
+          <string/>
+         </property>
+         <property name="placeholderText">
+          <string>W1AW</string>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="3" colspan="3">
+        <widget class="QLineEdit" name="lookup_password_field">
+         <property name="font">
+          <font>
+           <pointsize>12</pointsize>
+           <bold>false</bold>
+           <strikeout>false</strikeout>
+          </font>
+         </property>
+         <property name="accessibleName">
+          <string>password</string>
+         </property>
+         <property name="accessibleDescription">
+          <string>lookup service password.</string>
+         </property>
+         <property name="text">
+          <string/>
+         </property>
+         <property name="echoMode">
+          <enum>QLineEdit::Password</enum>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="1">
+        <widget class="QLabel" name="label_2">
+         <property name="font">
+          <font>
+           <pointsize>12</pointsize>
+           <bold>false</bold>
+           <strikeout>false</strikeout>
+          </font>
+         </property>
+         <property name="text">
+          <string>Password:</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+         </property>
+        </widget>
+       </item>
+       <item row="4" column="3">
+        <widget class="QRadioButton" name="usehamdb_radioButton">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
+         <property name="font">
+          <font>
+           <pointsize>12</pointsize>
+           <strikeout>false</strikeout>
+          </font>
+         </property>
+         <property name="accessibleName">
+          <string>use ham d b</string>
+         </property>
+         <property name="accessibleDescription">
+          <string>use ham d b</string>
+         </property>
+         <property name="styleSheet">
+          <string notr="true"/>
+         </property>
+         <property name="text">
+          <string>Use HamDB</string>
+         </property>
+         <attribute name="buttonGroup">
+          <string notr="true">buttonGroup_2</string>
+         </attribute>
+        </widget>
+       </item>
+       <item row="4" column="5">
+        <widget class="QRadioButton" name="radioButton_3">
+         <property name="font">
+          <font>
+           <pointsize>12</pointsize>
+           <strikeout>false</strikeout>
+          </font>
+         </property>
+         <property name="accessibleName">
+          <string>none</string>
+         </property>
+         <property name="accessibleDescription">
+          <string>none</string>
+         </property>
+         <property name="text">
+          <string>None</string>
+         </property>
+         <attribute name="buttonGroup">
+          <string notr="true">buttonGroup_2</string>
+         </attribute>
+        </widget>
+       </item>
+       <item row="0" column="1">
+        <widget class="QLabel" name="label">
+         <property name="font">
+          <font>
+           <pointsize>12</pointsize>
+           <bold>false</bold>
+           <strikeout>false</strikeout>
+          </font>
+         </property>
+         <property name="text">
+          <string>User Name:</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+         </property>
+        </widget>
+       </item>
+       <item row="4" column="4">
         <widget class="QRadioButton" name="usehamqth_radioButton">
          <property name="font">
           <font>
-           <family>JetBrains Mono</family>
            <pointsize>12</pointsize>
            <strikeout>false</strikeout>
           </font>
@@ -131,11 +268,10 @@
          </attribute>
         </widget>
        </item>
-       <item row="2" column="1">
+       <item row="4" column="1">
         <widget class="QRadioButton" name="useqrz_radioButton">
          <property name="font">
           <font>
-           <family>JetBrains Mono</family>
            <pointsize>12</pointsize>
            <bold>false</bold>
            <strikeout>false</strikeout>
@@ -161,156 +297,14 @@
          </attribute>
         </widget>
        </item>
-       <item row="2" column="5">
-        <widget class="QRadioButton" name="radioButton_3">
-         <property name="font">
-          <font>
-           <family>JetBrains Mono</family>
-           <pointsize>12</pointsize>
-           <strikeout>false</strikeout>
-          </font>
-         </property>
-         <property name="accessibleName">
-          <string>none</string>
-         </property>
-         <property name="accessibleDescription">
-          <string>none</string>
-         </property>
-         <property name="text">
-          <string>None</string>
-         </property>
-         <attribute name="buttonGroup">
-          <string notr="true">buttonGroup_2</string>
-         </attribute>
-        </widget>
-       </item>
-       <item row="0" column="3" colspan="3">
-        <widget class="QLineEdit" name="lookup_user_name_field">
-         <property name="font">
-          <font>
-           <family>JetBrains Mono</family>
-           <pointsize>12</pointsize>
-           <bold>false</bold>
-           <strikeout>false</strikeout>
-          </font>
-         </property>
-         <property name="accessibleName">
-          <string>user name</string>
-         </property>
-         <property name="accessibleDescription">
-          <string>user name for look up service.</string>
-         </property>
-         <property name="text">
-          <string/>
-         </property>
-         <property name="placeholderText">
-          <string>W1AW</string>
-         </property>
-        </widget>
-       </item>
        <item row="2" column="3">
-        <widget class="QRadioButton" name="usehamdb_radioButton">
-         <property name="enabled">
-          <bool>false</bool>
-         </property>
-         <property name="font">
-          <font>
-           <family>JetBrains Mono</family>
-           <pointsize>12</pointsize>
-           <strikeout>false</strikeout>
-          </font>
-         </property>
-         <property name="accessibleName">
-          <string>use ham d b</string>
-         </property>
-         <property name="accessibleDescription">
-          <string>use ham d b</string>
-         </property>
-         <property name="styleSheet">
-          <string notr="true"/>
-         </property>
+        <widget class="QCheckBox" name="lookup_populate_name">
          <property name="text">
-          <string>Use HamDB</string>
-         </property>
-         <attribute name="buttonGroup">
-          <string notr="true">buttonGroup_2</string>
-         </attribute>
-        </widget>
-       </item>
-       <item row="1" column="1">
-        <widget class="QLabel" name="label_2">
-         <property name="font">
-          <font>
-           <family>JetBrains Mono</family>
-           <pointsize>12</pointsize>
-           <bold>false</bold>
-           <strikeout>false</strikeout>
-          </font>
-         </property>
-         <property name="text">
-          <string>Password:</string>
-         </property>
-         <property name="alignment">
-          <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+          <string>Auto-populate QSO name from Lookup Result</string>
          </property>
         </widget>
        </item>
-       <item row="0" column="1">
-        <widget class="QLabel" name="label">
-         <property name="font">
-          <font>
-           <family>JetBrains Mono</family>
-           <pointsize>12</pointsize>
-           <bold>false</bold>
-           <strikeout>false</strikeout>
-          </font>
-         </property>
-         <property name="text">
-          <string>User Name:</string>
-         </property>
-         <property name="alignment">
-          <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-         </property>
-        </widget>
-       </item>
-       <item row="1" column="3" colspan="3">
-        <widget class="QLineEdit" name="lookup_password_field">
-         <property name="font">
-          <font>
-           <family>JetBrains Mono</family>
-           <pointsize>12</pointsize>
-           <bold>false</bold>
-           <strikeout>false</strikeout>
-          </font>
-         </property>
-         <property name="accessibleName">
-          <string>password</string>
-         </property>
-         <property name="accessibleDescription">
-          <string>lookup service password.</string>
-         </property>
-         <property name="text">
-          <string/>
-         </property>
-         <property name="echoMode">
-          <enum>QLineEdit::Password</enum>
-         </property>
-        </widget>
-       </item>
-       <item row="2" column="0">
-        <spacer name="horizontalSpacer">
-         <property name="orientation">
-          <enum>Qt::Horizontal</enum>
-         </property>
-         <property name="sizeHint" stdset="0">
-          <size>
-           <width>40</width>
-           <height>20</height>
-          </size>
-         </property>
-        </spacer>
-       </item>
-       <item row="2" column="6">
+       <item row="4" column="6">
         <spacer name="horizontalSpacer_2">
          <property name="orientation">
           <enum>Qt::Horizontal</enum>
@@ -323,6 +317,13 @@
          </property>
         </spacer>
        </item>
+       <item row="3" column="3">
+        <widget class="QCheckBox" name="lookup_name_prefer_qso_history_name">
+         <property name="text">
+          <string>Auto-populate (and prefer) QSO name from QSO history </string>
+         </property>
+        </widget>
+       </item>
       </layout>
      </widget>
      <widget class="QWidget" name="sound_tab">
@@ -331,7 +332,6 @@
       </property>
       <property name="font">
        <font>
-        <family>JetBrains Mono</family>
         <pointsize>12</pointsize>
         <strikeout>false</strikeout>
        </font>
@@ -394,7 +394,6 @@
      <widget class="QWidget" name="cat_tab">
       <property name="font">
        <font>
-        <family>JetBrains Mono</family>
         <pointsize>12</pointsize>
         <strikeout>false</strikeout>
        </font>
@@ -407,7 +406,6 @@
         <widget class="QLineEdit" name="rigcontrolip_field">
          <property name="font">
           <font>
-           <family>JetBrains Mono</family>
            <pointsize>12</pointsize>
            <bold>false</bold>
            <strikeout>false</strikeout>
@@ -452,7 +450,6 @@
            </property>
            <property name="font">
             <font>
-             <family>JetBrains Mono</family>
              <pointsize>12</pointsize>
              <bold>false</bold>
              <strikeout>false</strikeout>
@@ -479,7 +476,6 @@
           <widget class="QRadioButton" name="useflrig_radioButton">
            <property name="font">
             <font>
-             <family>JetBrains Mono</family>
              <pointsize>12</pointsize>
              <strikeout>false</strikeout>
             </font>
@@ -505,7 +501,6 @@
           <widget class="QRadioButton" name="radioButton">
            <property name="font">
             <font>
-             <family>JetBrains Mono</family>
              <pointsize>12</pointsize>
              <strikeout>false</strikeout>
             </font>
@@ -556,7 +551,6 @@
         <widget class="QLabel" name="label_6">
          <property name="font">
           <font>
-           <family>JetBrains Mono</family>
            <pointsize>12</pointsize>
            <bold>false</bold>
            <strikeout>false</strikeout>
@@ -587,7 +581,6 @@
         <widget class="QLabel" name="label_7">
          <property name="font">
           <font>
-           <family>JetBrains Mono</family>
            <pointsize>12</pointsize>
            <bold>false</bold>
            <strikeout>false</strikeout>
@@ -618,7 +611,6 @@
         <widget class="QLineEdit" name="rigcontrolport_field">
          <property name="font">
           <font>
-           <family>JetBrains Mono</family>
            <pointsize>12</pointsize>
            <bold>false</bold>
            <strikeout>false</strikeout>
@@ -643,7 +635,6 @@
      <widget class="QWidget" name="cw_tab">
       <property name="font">
        <font>
-        <family>JetBrains Mono</family>
         <pointsize>12</pointsize>
         <strikeout>false</strikeout>
        </font>
@@ -656,7 +647,6 @@
         <widget class="QLineEdit" name="cwport_field">
          <property name="font">
           <font>
-           <family>JetBrains Mono</family>
            <pointsize>12</pointsize>
            <strikeout>false</strikeout>
           </font>
@@ -679,7 +669,6 @@
         <widget class="QLabel" name="label_11">
          <property name="font">
           <font>
-           <family>JetBrains Mono</family>
            <pointsize>12</pointsize>
            <strikeout>false</strikeout>
           </font>
@@ -709,7 +698,6 @@
         <widget class="QRadioButton" name="usepywinkeyer_radioButton">
          <property name="font">
           <font>
-           <family>JetBrains Mono</family>
            <pointsize>12</pointsize>
            <strikeout>false</strikeout>
           </font>
@@ -729,7 +717,6 @@
         <widget class="QRadioButton" name="radioButton_5">
          <property name="font">
           <font>
-           <family>JetBrains Mono</family>
            <pointsize>12</pointsize>
            <strikeout>false</strikeout>
           </font>
@@ -749,7 +736,6 @@
         <widget class="QLineEdit" name="cwip_field">
          <property name="font">
           <font>
-           <family>JetBrains Mono</family>
            <pointsize>12</pointsize>
            <strikeout>false</strikeout>
           </font>
@@ -769,7 +755,6 @@
         <widget class="QRadioButton" name="usecwdaemon_radioButton">
          <property name="font">
           <font>
-           <family>JetBrains Mono</family>
            <pointsize>12</pointsize>
            <strikeout>false</strikeout>
           </font>
@@ -789,7 +774,6 @@
         <widget class="QLabel" name="label_10">
          <property name="font">
           <font>
-           <family>JetBrains Mono</family>
            <pointsize>12</pointsize>
            <strikeout>false</strikeout>
           </font>
@@ -1005,140 +989,12 @@
        </item>
       </layout>
      </widget>
-     <widget class="QWidget" name="group_tab">
-      <property name="enabled">
-       <bool>false</bool>
-      </property>
-      <property name="font">
-       <font>
-        <family>JetBrains Mono</family>
-        <pointsize>12</pointsize>
-        <strikeout>false</strikeout>
-       </font>
-      </property>
-      <attribute name="title">
-       <string>Group</string>
-      </attribute>
-      <layout class="QGridLayout" name="gridLayout_7">
-       <item row="0" column="0" colspan="2" alignment="Qt::AlignHCenter">
-        <widget class="QCheckBox" name="connect_to_server">
-         <property name="font">
-          <font>
-           <family>JetBrains Mono</family>
-           <pointsize>12</pointsize>
-           <strikeout>false</strikeout>
-          </font>
-         </property>
-         <property name="text">
-          <string>Connect to server</string>
-         </property>
-        </widget>
-       </item>
-       <item row="1" column="0">
-        <widget class="QLabel" name="label_3">
-         <property name="font">
-          <font>
-           <family>JetBrains Mono</family>
-           <pointsize>12</pointsize>
-           <strikeout>false</strikeout>
-          </font>
-         </property>
-         <property name="text">
-          <string>Multicast Group:</string>
-         </property>
-         <property name="alignment">
-          <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-         </property>
-        </widget>
-       </item>
-       <item row="1" column="1">
-        <widget class="QLineEdit" name="multicast_group">
-         <property name="font">
-          <font>
-           <family>JetBrains Mono</family>
-           <pointsize>12</pointsize>
-           <strikeout>false</strikeout>
-          </font>
-         </property>
-         <property name="text">
-          <string>224.1.1.1</string>
-         </property>
-        </widget>
-       </item>
-       <item row="2" column="0">
-        <widget class="QLabel" name="label_9">
-         <property name="font">
-          <font>
-           <family>JetBrains Mono</family>
-           <pointsize>12</pointsize>
-           <strikeout>false</strikeout>
-          </font>
-         </property>
-         <property name="text">
-          <string>Multicast Port:</string>
-         </property>
-         <property name="alignment">
-          <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-         </property>
-        </widget>
-       </item>
-       <item row="2" column="1">
-        <widget class="QLineEdit" name="multicast_port">
-         <property name="font">
-          <font>
-           <family>JetBrains Mono</family>
-           <pointsize>12</pointsize>
-           <strikeout>false</strikeout>
-          </font>
-         </property>
-         <property name="inputMethodHints">
-          <set>Qt::ImhDigitsOnly</set>
-         </property>
-         <property name="text">
-          <string>2239</string>
-         </property>
-        </widget>
-       </item>
-       <item row="3" column="0">
-        <widget class="QLabel" name="label_12">
-         <property name="font">
-          <font>
-           <family>JetBrains Mono</family>
-           <pointsize>12</pointsize>
-           <strikeout>false</strikeout>
-          </font>
-         </property>
-         <property name="text">
-          <string>Interface IP:</string>
-         </property>
-         <property name="alignment">
-          <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-         </property>
-        </widget>
-       </item>
-       <item row="3" column="1">
-        <widget class="QLineEdit" name="interface_ip">
-         <property name="font">
-          <font>
-           <family>JetBrains Mono</family>
-           <pointsize>12</pointsize>
-           <strikeout>false</strikeout>
-          </font>
-         </property>
-         <property name="text">
-          <string>0.0.0.0</string>
-         </property>
-        </widget>
-       </item>
-      </layout>
-     </widget>
      <widget class="QWidget" name="n1mm_tab">
       <property name="enabled">
        <bool>true</bool>
       </property>
       <property name="font">
        <font>
-        <family>JetBrains Mono</family>
         <pointsize>12</pointsize>
         <strikeout>false</strikeout>
        </font>
@@ -1151,7 +1007,6 @@
         <widget class="QLabel" name="label_14">
          <property name="font">
           <font>
-           <family>JetBrains Mono</family>
            <pointsize>12</pointsize>
            <strikeout>false</strikeout>
           </font>
@@ -1165,7 +1020,6 @@
         <widget class="QLineEdit" name="n1mm_operator">
          <property name="font">
           <font>
-           <family>JetBrains Mono</family>
            <pointsize>12</pointsize>
            <strikeout>false</strikeout>
           </font>
@@ -1185,7 +1039,6 @@
         <widget class="QCheckBox" name="send_n1mm_packets">
          <property name="font">
           <font>
-           <family>JetBrains Mono</family>
            <pointsize>12</pointsize>
            <strikeout>false</strikeout>
           </font>
@@ -1208,7 +1061,6 @@
         <widget class="QLabel" name="label_13">
          <property name="font">
           <font>
-           <family>JetBrains Mono</family>
            <pointsize>12</pointsize>
            <strikeout>false</strikeout>
           </font>
@@ -1222,7 +1074,6 @@
         <widget class="QLineEdit" name="n1mm_station_name">
          <property name="font">
           <font>
-           <family>JetBrains Mono</family>
            <pointsize>12</pointsize>
            <strikeout>false</strikeout>
           </font>
@@ -1242,7 +1093,6 @@
         <widget class="QLabel" name="label_16">
          <property name="font">
           <font>
-           <family>JetBrains Mono</family>
            <pointsize>12</pointsize>
            <strikeout>false</strikeout>
           </font>
@@ -1259,7 +1109,6 @@
         <widget class="QLabel" name="label_17">
          <property name="font">
           <font>
-           <family>JetBrains Mono</family>
            <pointsize>12</pointsize>
            <strikeout>false</strikeout>
           </font>
@@ -1276,7 +1125,6 @@
         <widget class="QLabel" name="label_18">
          <property name="font">
           <font>
-           <family>JetBrains Mono</family>
            <pointsize>12</pointsize>
            <strikeout>false</strikeout>
           </font>
@@ -1293,7 +1141,6 @@
         <widget class="QLabel" name="label_19">
          <property name="font">
           <font>
-           <family>JetBrains Mono</family>
            <pointsize>12</pointsize>
            <strikeout>false</strikeout>
           </font>
@@ -1392,7 +1239,6 @@
         <widget class="QLineEdit" name="n1mm_radioport">
          <property name="font">
           <font>
-           <family>JetBrains Mono</family>
            <pointsize>12</pointsize>
            <strikeout>false</strikeout>
           </font>
@@ -1418,7 +1264,6 @@
         <widget class="QLineEdit" name="n1mm_contactport">
          <property name="font">
           <font>
-           <family>JetBrains Mono</family>
            <pointsize>12</pointsize>
            <strikeout>false</strikeout>
           </font>
@@ -1444,7 +1289,6 @@
         <widget class="QLineEdit" name="n1mm_lookupport">
          <property name="font">
           <font>
-           <family>JetBrains Mono</family>
            <pointsize>12</pointsize>
            <strikeout>false</strikeout>
           </font>
@@ -1470,7 +1314,6 @@
         <widget class="QLineEdit" name="n1mm_scoreport">
          <property name="font">
           <font>
-           <family>JetBrains Mono</family>
            <pointsize>12</pointsize>
            <strikeout>false</strikeout>
           </font>
@@ -1607,10 +1450,6 @@
   <tabstop>radioButton_5</tabstop>
   <tabstop>cwip_field</tabstop>
   <tabstop>usecwdaemon_radioButton</tabstop>
-  <tabstop>connect_to_server</tabstop>
-  <tabstop>multicast_group</tabstop>
-  <tabstop>multicast_port</tabstop>
-  <tabstop>interface_ip</tabstop>
   <tabstop>n1mm_station_name</tabstop>
   <tabstop>n1mm_operator</tabstop>
   <tabstop>send_n1mm_packets</tabstop>
@@ -1672,7 +1511,7 @@
   </property>
  </designerdata>
  <buttongroups>
-  <buttongroup name="buttonGroup"/>
   <buttongroup name="buttonGroup_2"/>
+  <buttongroup name="buttonGroup"/>
  </buttongroups>
 </ui>

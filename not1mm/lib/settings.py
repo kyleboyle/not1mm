@@ -49,10 +49,6 @@ class Settings(QtWidgets.QDialog):
         self.usepywinkeyer_radioButton.setChecked(
             bool(self.preference.get("cwtype") == 2)
         )
-        self.connect_to_server.setChecked(bool(self.preference.get("useserver")))
-        self.multicast_group.setText(str(self.preference.get("multicast_group", "")))
-        self.multicast_port.setText(str(self.preference.get("multicast_port", "")))
-        self.interface_ip.setText(str(self.preference.get("interface_ip", "")))
 
         self.send_n1mm_packets.setChecked(
             bool(self.preference.get("send_n1mm_packets"))
@@ -107,6 +103,9 @@ class Settings(QtWidgets.QDialog):
         self.preference["usehamqth"] = self.usehamqth_radioButton.isChecked()
         self.preference["lookupusername"] = self.lookup_user_name_field.text()
         self.preference["lookuppassword"] = self.lookup_password_field.text()
+        self.preference["lookup_populate_name"] = self.lookup_populate_name.isChecked()
+        self.preference["lookup_name_prefer_qso_history_name"] = self.lookup_name_prefer_qso_history_name.isChecked()
+
         self.preference["CAT_ip"] = self.rigcontrolip_field.text()
         try:
             self.preference["CAT_port"] = int(self.rigcontrolport_field.text())
@@ -124,10 +123,6 @@ class Settings(QtWidgets.QDialog):
             self.preference["cwtype"] = 1
         if self.usepywinkeyer_radioButton.isChecked():
             self.preference["cwtype"] = 2
-        self.preference["useserver"] = self.connect_to_server.isChecked()
-        self.preference["multicast_group"] = self.multicast_group.text()
-        self.preference["multicast_port"] = self.multicast_port.text()
-        self.preference["interface_ip"] = self.interface_ip.text()
 
         self.preference["send_n1mm_packets"] = self.send_n1mm_packets.isChecked()
 
