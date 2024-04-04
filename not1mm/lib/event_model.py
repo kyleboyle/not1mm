@@ -74,6 +74,17 @@ class QsoAdded(AppEvent):
     def __init__(self, qso):
         self.qso = qso
 
+@dataclass
+class QsoDeleted(AppEvent):
+    qso: dict
+
+    def __init__(self, qso):
+        self.qso = qso
+
+@dataclass
+class QsoUpdated(AppEvent):
+    qso_before: dict
+    qso_after: dict
 
 @dataclass
 class GetContestColumns(AppEvent):

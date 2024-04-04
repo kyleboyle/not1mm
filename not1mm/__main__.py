@@ -56,6 +56,7 @@ from not1mm.lib.ham_utility import (
 )
 from not1mm.lib.lookup import HamQTH, QRZlookup, ExternalCallLookupService
 from not1mm.lib.n1mm import N1MM
+
 from not1mm.lib.new_contest import NewContest
 from not1mm.lib.select_contest import SelectContest
 from not1mm.lib.settings import Settings
@@ -137,6 +138,7 @@ class MainWindow(QtWidgets.QMainWindow):
         "cluster_filter": "Set DX Filter Not Skimmer AND SpotterCont = NA",
         "cluster_mode": "OPEN",
     }
+
     appstarted = False
     contact = {}
     contest = None
@@ -167,15 +169,15 @@ class MainWindow(QtWidgets.QMainWindow):
     oldtext = ""
 
     callsign: QLineEdit = None
-    check_callsign_external_last_call: str = None
     log_window: QDockWidget = None
     check_window: QDockWidget = None
     bandmap_window: QDockWidget = None
     vfo_window: QDockWidget = None
     profile_window: DockWidget = None
 
-    call_change_debounce_timer = False
+    n1mm: N1MM = None
 
+    call_change_debounce_timer = False
     rig_poll_timer = QtCore.QTimer()
 
     def __init__(self, *args, **kwargs):
@@ -195,7 +197,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.cw_entry.hide()
         self.leftdot.hide()
         self.rightdot.hide()
-        self.n1mm = N1MM()
         self.mscp = SCP(fsutils.APP_DATA_PATH)
         self.next_field = self.other_2
         self.dupe_indicator.hide()
@@ -1504,8 +1505,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.other_2.clear()
         self.callsign.setFocus()
 
-        self.check_callsign_external_last_call = None
-
         appevent.emit(appevent.CallChanged(''))
 
     def callsign_editing_finished(self) -> None:
@@ -1524,12 +1523,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.dupe_indicator.hide()
 
         self.check_callsign_external(callsign_value)
-        #_thethread = threading.Thread(
-        #    target=self.check_callsign_external,
-        #    args=(callsign_value,),
-        #    daemon=True,
-        #)
-        #_thethread.start()
+
 
 
     def save_contact(self) -> None:
@@ -1578,61 +1572,12 @@ class MainWindow(QtWidgets.QMainWindow):
         debug_output = f"{self.contact}"
         logger.debug(debug_output)
 
-        if self.n1mm:
-            logger.debug("packets %s", f"{self.n1mm.send_contact_packets}")
-            if self.n1mm.send_contact_packets:
-                self.n1mm.contact_info["timestamp"] = self.contact["TS"]
-                self.n1mm.contact_info["oldcall"] = self.n1mm.contact_info["call"] = (
-                    self.contact["Call"]
-                )
-                self.n1mm.contact_info["txfreq"] = self.n1mm.contact_info["rxfreq"] = (
-                    self.n1mm.radio_info["Freq"]
-                )
-                self.n1mm.contact_info["mode"] = self.contact["Mode"]
-                self.n1mm.contact_info["contestname"] = self.contact[
-                    "ContestName"
-                ].replace("-", "")
-                self.n1mm.contact_info["contestnr"] = self.contact["ContestNR"]
-                self.n1mm.contact_info["stationprefix"] = self.contact["StationPrefix"]
-                self.n1mm.contact_info["wpxprefix"] = self.contact["WPXPrefix"]
-                self.n1mm.contact_info["IsRunQSO"] = self.contact["IsRunQSO"]
-                self.n1mm.contact_info["operator"] = self.contact["Operator"]
-                self.n1mm.contact_info["mycall"] = self.contact["Operator"]
-                self.n1mm.contact_info["StationName"] = self.n1mm.contact_info[
-                    "NetBiosName"
-                ] = self.contact["NetBiosName"]
-                self.n1mm.contact_info["IsOriginal"] = self.contact["IsOriginal"]
-                self.n1mm.contact_info["ID"] = self.contact["ID"]
-                self.n1mm.contact_info["points"] = self.contact["Points"]
-                self.n1mm.contact_info["snt"] = self.contact["SNT"]
-                self.n1mm.contact_info["rcv"] = self.contact["RCV"]
-                self.n1mm.contact_info["sntnr"] = self.contact["SentNr"]
-                self.n1mm.contact_info["rcvnr"] = self.contact["NR"]
-                self.n1mm.contact_info["ismultiplier1"] = self.contact.get(
-                    "IsMultiplier1", 0
-                )
-                self.n1mm.contact_info["ismultiplier2"] = self.contact.get(
-                    "IsMultiplier2", 0
-                )
-                self.n1mm.contact_info["ismultiplier3"] = self.contact.get(
-                    "IsMultiplier3", 0
-                )
-                self.n1mm.contact_info["section"] = self.contact["Sect"]
-                self.n1mm.contact_info["prec"] = self.contact["Prec"]
-                self.n1mm.contact_info["ck"] = self.contact["CK"]
-                self.n1mm.contact_info["zn"] = self.contact["ZN"]
-                self.n1mm.contact_info["power"] = self.contact["Power"]
-                self.n1mm.contact_info["band"] = self.contact["Band"]
-                logger.debug("%s", f"{self.n1mm.contact_info}")
-                self.n1mm.send_contact_info()
-
         inserted = self.database.log_contact(self.contact)
         self.worked_list = self.database.get_calls_and_bands()
         self.send_worked_list()
         self.clearinputs()
 
         appevent.emit(appevent.UpdateLog())
-
         appevent.emit(appevent.QsoAdded(inserted))
 
     def new_contest_dialog(self) -> None:
@@ -2007,6 +1952,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.pref["run_state"] = self.radioButton_run.isChecked()
         self.write_preference()
         self.read_cw_macros()
+        self.n1mm.set_operator(self.current_op, self.pref.get("run_state", False))
 
     def write_preference(self) -> None:
         """
@@ -2148,7 +2094,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.n1mm.send_contact_packets = self.pref.get("send_n1mm_contact", False)
             self.n1mm.send_lookup_packets = self.pref.get("send_n1mm_lookup", False)
             self.n1mm.send_score_packets = self.pref.get("send_n1mm_score", False)
-            self.n1mm.radio_info["StationName"] = self.pref.get("n1mm_station_name", "")
+            self.n1mm.set_station_name(self.pref.get("station_name"))
 
         self.show_command_buttons()
         self.show_CW_macros()
@@ -2607,6 +2553,7 @@ class MainWindow(QtWidgets.QMainWindow):
         callsign = callsign.strip()
         if self.look_up and self.look_up.did_init():
             self.look_up.lookup(callsign)
+        n1mm.send_lookup()
 
 
 
@@ -2697,6 +2644,8 @@ class MainWindow(QtWidgets.QMainWindow):
             self.current_op = self.opon_dialog.NewOperator.text().upper()
         self.opon_dialog.close()
         logger.debug("New Op: %s", self.current_op)
+        if self.n1mm:
+            self.n1mm.set_operator(self.current_op, self.pref.get("run_state", False))
         self.make_op_dir()
 
     def make_op_dir(self) -> None:
@@ -2781,16 +2730,6 @@ class MainWindow(QtWidgets.QMainWindow):
                     logger.debug("VFO: %s  MODE: %s BW: %s", vfo, mode, bw)
                     self.set_window_title()
                     appevent.emit(appevent.RadioState(vfo, None, mode, int(bw)))
-                    if self.n1mm:
-                        if self.n1mm.send_radio_packets:
-                            self.n1mm.radio_info["Freq"] = vfo[:-1]
-                            self.n1mm.radio_info["TXFreq"] = vfo[:-1]
-                            self.n1mm.radio_info["Mode"] = mode
-                            self.n1mm.radio_info["OpCall"] = self.current_op
-                            self.n1mm.radio_info["IsRunning"] = str(
-                                self.pref.get("run_state", False)
-                            )
-                            self.n1mm.send_radio()
                     self.radio_state_broadcast_time = datetime.datetime.now() + datetime.timedelta(seconds=10)
 
 

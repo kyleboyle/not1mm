@@ -7,19 +7,18 @@ Check Window
 
 import logging
 import os
-import threading
 from json import loads
 
 import Levenshtein
 from PyQt6 import uic
-from PyQt6.QtCore import pyqtSignal, QThreadPool, Qt, QTimer, QThread
+from PyQt6.QtCore import QThread
 from PyQt6.QtGui import QMouseEvent
-from PyQt6.QtWidgets import QLabel, QVBoxLayout, QDockWidget, QWidget
+from PyQt6.QtWidgets import QLabel, QVBoxLayout, QWidget
 
 import not1mm.fsutils as fsutils
+import not1mm.lib.event as appevent
 from not1mm.lib.database import DataBase
 from not1mm.lib.super_check_partial import SCP
-import not1mm.lib.event as appevent
 from not1mm.qtplugins.DockWidget import DockWidget
 
 logger = logging.getLogger(__name__)
@@ -151,7 +150,7 @@ class CheckWindow(DockWidget):
     def master_list_scp_finished(self) -> None:
         if self.call != self.master_list_thread.call:
             return
-        self.populate_layout(self.masterLayout, filter(lambda x: '#' not in x, self.master_list_thread.result))
+        self.populate_layout(self.masterLayout, self.master_list_thread.result)
 
     def qsolog_list(self, call: str) -> None:
         """

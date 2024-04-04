@@ -1,17 +1,13 @@
-"""
-K6GTE, N1MM sending interface
-Email: michael.bridak@gmail.com
-GPL V3
-"""
-
 import logging
 import socket
 
-# pip3 install -U dicttoxml
 from dicttoxml import dicttoxml
 
-logger = logging.getLogger("n1mmlib")
+from . import event as appevent
 
+logger = logging.getLogger(__name__)
+
+#TODO make operator change and settings change an app event to completely decouple 
 class N1MM:
     """Send N1MM style packets"""
 
@@ -124,6 +120,11 @@ class N1MM:
         self.send_lookup_packets = False
         self.send_score_packets = False
         self.contact_info["NetBiosName"] = socket.gethostname()
+        appevent.register(appevent.QsoDeleted, self.send_contact_delete)
+        appevent.register(appevent.QsoUpdated, self.send_contactreplace)
+        appevent.register(appevent.QsoAdded, self.send_contact_info)
+        appevent.register(appevent.RadioState, self.send_radio)
+        appevent.register(appevent.ExternalLookupResult, self.send_lookup)
 
     def set_station_name(self, name):
         """Set the station name"""
@@ -131,29 +132,112 @@ class N1MM:
         self.contact_info["StationName"] = name
         self.contactdelete["StationName"] = name
 
-    def set_operator(self, name):
+    def set_operator(self, name, is_run: bool):
         """Set Operators Name"""
         self.contact_info["operator"] = name
+        self.radio_info["IsRunning"] = "True" if is_run else "False"
 
-    def send_radio(self):
-        """Send XML data"""
-        self._send(self.radio_port, self.radio_info, "RadioInfo")
+    def send_radio(self, event: appevent.RadioState):
 
-    def send_contact_info(self):
-        """Send XML data"""
-        self._send(self.contact_port, self.contact_info, "contactinfo")
+        if self.send_radio_packets:
+            payload = dict(self.radio_info)
+            payload["Freq"] = event.vfoa_hz
+            payload["TXFreq"] = event.vfoa_hz
+            payload["Mode"] = event.mode
+            payload["OpCall"] = self.contact_info["operator"]
+            self._send(self.radio_port, payload, "RadioInfo")
 
-    def send_contactreplace(self):
+    def send_contact_info(self, event: appevent.QsoAdded):
+        if self.send_contact_packets:
+            payload = dict(self.contact_info)
+            payload["timestamp"] = event.qso["TS"]
+            payload["oldcall"] = payload["call"] = event.qso["Call"]
+            payload["txfreq"] = payload["rxfreq"] = event.qso["Freq"]
+            payload["mode"] = event.qso["Mode"]
+            payload["contestname"] = event.qso["ContestName"].replace("-", "")
+            payload["contestnr"] = event.qso["ContestNR"]
+            payload["stationprefix"] = event.qso["StationPrefix"]
+            payload["wpxprefix"] = event.qso["WPXPrefix"]
+            payload["IsRunQSO"] = event.qso["IsRunQSO"]
+            payload["operator"] = event.qso["Operator"]
+            payload["mycall"] = event.qso["Operator"]
+            payload["StationName"] = payload["NetBiosName"] = event.qso["NetBiosName"]
+            payload["IsOriginal"] = event.qso["IsOriginal"]
+            payload["ID"] = event.qso["ID"]
+            payload["points"] = event.qso["Points"]
+            payload["snt"] = event.qso["SNT"]
+            payload["rcv"] = event.qso["RCV"]
+            payload["sntnr"] = event.qso["SentNr"]
+            payload["rcvnr"] = event.qso["NR"]
+            payload["ismultiplier1"] = event.qso.get("IsMultiplier1", 0)
+            payload["ismultiplier2"] = event.qso.get("IsMultiplier2", 0)
+            payload["ismultiplier3"] = event.qso.get("IsMultiplier3", 0)
+            payload["section"] = event.qso["Sect"]
+            payload["prec"] = event.qso["Prec"]
+            payload["ck"] = event.qso["CK"]
+            payload["zn"] = event.qso["ZN"]
+            payload["power"] = event.qso["Power"]
+            payload["band"] = event.qso["Band"]
+            self._send(self.contact_port, payload, "contactinfo")
+
+    def send_contactreplace(self, event: appevent.QsoUpdated):
         """Send replace"""
-        self._send(self.contact_port, self.contact_info, "contactreplace")
+        if self.send_contact_packets:
+            payload = dict(self.contact_info)
+            payload["timestamp"] = event.qso_after["TS"]
+            payload["contestname"] = event.qso_after["ContestName"].replace("-", "")
+            payload["contestnr"] = event.qso_after["ContestNR"]
+            payload["operator"] = event.qso_after["Operator"]
+            payload["mycall"] = event.qso_after["Operator"]
+            payload["band"] = event.qso_after["Band"]
+            payload["mode"] = event.qso_after["Mode"]
+            payload["stationprefix"] = event.qso_after["StationPrefix"]
+            payload["continent"] = event.qso_after["Continent"]
+            payload["gridsquare"] = event.qso_after["GridSquare"]
+            payload["ismultiplier1"] = event.qso_after["IsMultiplier1"]
+            payload["ismultiplier2"] = event.qso_after["IsMultiplier2"]
 
-    def send_contact_delete(self):
-        """Send Delete"""
-        self._send(self.contact_port, self.contactdelete, "contactdelete")
+            payload["call"] = event.qso_after["Call"]
+            payload["oldcall"] = event.qso_before["Call"]
 
-    def send_lookup(self):
-        """Send lookup request"""
-        self._send(self.lookup_port, self.contact_info, "lookupinfo")
+            payload["rxfreq"] = str(int(float(event.qso_after["Freq"]) * 100))
+            payload["txfreq"] = str(int(float(event.qso_after["QSXFreq"]) * 100))
+
+            payload["snt"] = event.qso_after["SNT"]
+            payload["rcv"] = event.qso_after["RCV"]
+            payload["sntnr"] = event.qso_after["SentNr"]
+            payload["rcvnr"] = event.qso_after["NR"]
+            payload["exchange1"] = event.qso_after.get("Exchange1", "")
+            payload["ck"] = event.qso_after["CK"]
+            payload["prec"] = event.qso_after["Prec"]
+            payload["section"] = event.qso_after["Sect"]
+            payload["wpxprefix"] = event.qso_after["WPXPrefix"]
+            payload["power"] = event.qso_after["Power"]
+
+            payload["zone"] = event.qso_after["ZN"]
+
+            payload["countryprefix"] = event.qso_after["CountryPrefix"]
+            payload["points"] = event.qso_after["Points"]
+            payload["name"] = event.qso_after["Name"]
+            payload["misctext"] = event.qso_after["Comment"]
+            payload["ID"] = event.qso_after["ID"]
+            self._send(self.contact_port, payload, "contactreplace")
+
+    def send_contact_delete(self, event: appevent.QsoDeleted):
+        if self.send_contact_packets:
+            payload = dict(self.contactdelete)
+            payload["timestamp"] = event.qso["TS"]
+            payload["call"] = event.qso["Call"]
+            payload["contestnr"] = event.qso["ContestNR"]
+            payload["ID"] = event.qso['ID']
+
+            self._send(self.contact_port, payload, "contactdelete")
+
+    def send_lookup(self, event: appevent.ExternalLookupResult):
+        if self.send_lookup_packets:
+            payload = dict(self.contact_info)
+            payload["call"] = event.result.call
+            self._send(self.lookup_port, payload, "lookupinfo")
 
     def _send(self, port_list, payload, package_name):
         """Send XML data"""

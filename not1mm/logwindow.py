@@ -17,7 +17,6 @@ from PyQt6.QtWidgets import QTableView, QHeaderView, QAbstractItemView
 import not1mm.fsutils as fsutils
 from not1mm.lib import ham_utility
 from not1mm.lib.database import DataBase
-from not1mm.lib.n1mm import N1MM
 import not1mm.lib.event as appevent
 
 logger = logging.getLogger(__name__)
@@ -239,7 +238,6 @@ class LogWindow(QtWidgets.QDockWidget):
     """
     The main window
     """
-
     dbname = None
     edit_contact_dialog = None
     pref = {}
@@ -253,7 +251,6 @@ class LogWindow(QtWidgets.QDockWidget):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.n1mm = None
         self.load_pref()
 
         self.dbname = fsutils.USER_DATA_PATH / self.pref.get(
@@ -330,21 +327,6 @@ class LogWindow(QtWidgets.QDockWidget):
 
         except IOError as exception:
             logger.critical("Error: %s", exception)
-
-        try:
-            self.n1mm = N1MM(
-                self.pref.get("n1mm_radioport", "127.0.0.1:12060"),
-                self.pref.get("n1mm_contactport", "127.0.0.1:12061"),
-                self.pref.get("n1mm_lookupport", "127.0.0.1:12060"),
-                self.pref.get("n1mm_scoreport", "127.0.0.1:12060"),
-            )
-        except ValueError:
-            logger.warning("%s", f"{ValueError}")
-        self.n1mm.send_radio_packets = self.pref.get("send_n1mm_radio", False)
-        self.n1mm.send_contact_packets = self.pref.get("send_n1mm_contact", False)
-        self.n1mm.send_lookup_packets = self.pref.get("send_n1mm_lookup", False)
-        self.n1mm.send_score_packets = self.pref.get("send_n1mm_score", False)
-        self.n1mm.radio_info["StationName"] = self.pref.get("n1mm_station_name", "")
 
     def load_new_db(self) -> None:
         """
@@ -465,52 +447,8 @@ class LogWindow(QtWidgets.QDockWidget):
         for i in sorted(rows, reverse=True):
             table.model().removeRow(i)
 
-
     def table_model_edit(self, qso_record_before: dict, qso_record_after: dict):
-
-        if self.n1mm.send_contact_packets:
-            self.n1mm.contact_info["timestamp"] = qso_record_after["TS"]
-            self.n1mm.contact_info["contestname"] = qso_record_after["ContestName"].replace(
-                "-", ""
-            )
-            self.n1mm.contact_info["contestnr"] = qso_record_after["ContestNR"]
-            self.n1mm.contact_info["operator"] = qso_record_after["Operator"]
-            self.n1mm.contact_info["mycall"] = qso_record_after["Operator"]
-            # self.n1mm.contact_info[""] = qso_record_after[""]
-            self.n1mm.contact_info["band"] = qso_record_after["Band"]
-            self.n1mm.contact_info["mode"] = qso_record_after["Mode"]
-            self.n1mm.contact_info["stationprefix"] = qso_record_after["StationPrefix"]
-            self.n1mm.contact_info["continent"] = qso_record_after["Continent"]
-            self.n1mm.contact_info["gridsquare"] = qso_record_after["GridSquare"]
-            self.n1mm.contact_info["ismultiplier1"] = qso_record_after["IsMultiplier1"]
-            self.n1mm.contact_info["ismultiplier2"] = qso_record_after["IsMultiplier2"]
-
-            self.n1mm.contact_info["call"] = qso_record_after["Call"]
-            self.n1mm.contact_info["oldcall"] = qso_record_before["Call"]
-
-            self.n1mm.contact_info["rxfreq"] = str(int(float(qso_record_after["Freq"]) * 100))
-            self.n1mm.contact_info["txfreq"] = str(int(float(qso_record_after["QSXFreq"]) * 100))
-
-            self.n1mm.contact_info["snt"] = qso_record_after["SNT"]
-            self.n1mm.contact_info["rcv"] = qso_record_after["RCV"]
-            self.n1mm.contact_info["sntnr"] = qso_record_after["SentNr"]
-            self.n1mm.contact_info["rcvnr"] = qso_record_after["NR"]
-            self.n1mm.contact_info["exchange1"] = qso_record_after.get("Exchange1", "")
-            self.n1mm.contact_info["ck"] = qso_record_after["CK"]
-            self.n1mm.contact_info["prec"] = qso_record_after["Prec"]
-            self.n1mm.contact_info["section"] = qso_record_after["Sect"]
-            self.n1mm.contact_info["wpxprefix"] = qso_record_after["WPXPrefix"]
-            self.n1mm.contact_info["power"] = qso_record_after["Power"]
-
-            self.n1mm.contact_info["zone"] = qso_record_after["ZN"]
-
-            self.n1mm.contact_info["countryprefix"] = qso_record_after["CountryPrefix"]
-            self.n1mm.contact_info["points"] = qso_record_after["Points"]
-            self.n1mm.contact_info["name"] = qso_record_after["Name"]
-            self.n1mm.contact_info["misctext"] = qso_record_after["Comment"]
-            self.n1mm.contact_info["ID"] = qso_record_after["ID"]
-            self.n1mm.send_contactreplace()
-
+        appevent.emit(appevent.QsoUpdated(qso_record_before, qso_record_after))
         # only need to potentially update the other table since the edits are reflected in memory on the edited table
         if self.sender() == self.qsoModel:
             self.populate_matching_qsos(self.active_call)
@@ -518,16 +456,8 @@ class LogWindow(QtWidgets.QDockWidget):
             self.populate_qso_log()
 
     def table_model_delete(self, qso_records: list):
-        if self.n1mm:
-            for qso_record in qso_records:
-                if self.n1mm.send_contact_packets:
-                    self.n1mm.contactdelete["timestamp"] = qso_record["TS"]
-                    self.n1mm.contactdelete["call"] = qso_record["Call"]
-                    self.n1mm.contactdelete["contestnr"] = qso_record["ContestNR"]
-                    self.n1mm.contactdelete["StationName"] = self.pref.get("n1mm_station_name")
-                    self.n1mm.contactdelete["ID"] = qso_record['ID']
-                    self.n1mm.send_contact_delete()
-
+        for qso_record in qso_records:
+            appevent.emit(appevent.QsoDeleted(qso_record))
         # only need to potentially update the other table since the row is removed reflected in memory
         if self.sender() == self.qsoModel:
             self.populate_matching_qsos(self.active_call)
