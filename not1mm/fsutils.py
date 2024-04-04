@@ -32,6 +32,8 @@ _CONFIG_PATH += "/not1mm"
 CONFIG_PATH = Path(_CONFIG_PATH)
 CONFIG_FILE = CONFIG_PATH / "not1mm.json"
 
+CONTEST_PLUGIN_PATH = MODULE_PATH / 'contest'
+
 if platform.system() not in ["Windows", "Darwin"]:
     try:
         os.mkdir(CONFIG_PATH)

@@ -138,8 +138,9 @@ class RadioState(AppEvent):
 # TODO in memory database should be shared between components
 @dataclass
 class CheckSpots(AppEvent):
-    spots: list
-    def __init__(self, spots):
+    spots: list[object]
+
+    def __init__(self, spots: list[object]):
         self.spots = spots
 
 @dataclass

@@ -19,7 +19,7 @@ import not1mm.fsutils as fsutils
 import not1mm.lib.event as appevent
 from not1mm.lib.database import DataBase
 from not1mm.lib.super_check_partial import SCP
-from not1mm.qtplugins.DockWidget import DockWidget
+from not1mm.qtcomponents.DockWidget import DockWidget
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +33,8 @@ class ScpWorker(QThread):
         self.scp = scp
 
     def run(self):
+        # TODO the sorting may be slightly wrong in some circumstances.
+        # eg: call ve9kz shows ve9bk before ve9kk
         self.result = self.scp.super_check(self.call)
         self.result = filter(lambda x: '#' not in x, self.result)
 
@@ -184,7 +186,7 @@ class CheckWindow(DockWidget):
         None
         """
         if spots:
-            self.populate_layout(self.dxcLayout, filter(lambda x: x, [x.get('callsign', None) for x in spots]))
+            self.populate_layout(self.dxcLayout, filter(lambda x: x, [x.callsign for x in spots]))
 
     def populate_layout(self, layout, call_list):
         call_items = []
@@ -204,7 +206,7 @@ class CheckWindow(DockWidget):
                         elif tag == 'insert' or tag == 'delete':
                             label_text += f"<span style='background-color: {self.character_add_color};'>{call[i1:i2]}</span>"
                     call_items.append((Levenshtein.hamming(call, self.call), label_text, call))
-        sorted(call_items, key=lambda x: x[0])
+        #sorted(call_items, key=lambda x: x[0])
         for i in reversed(range(layout.count())):
             if layout.itemAt(i).widget():
                 layout.itemAt(i).widget().setParent(None)

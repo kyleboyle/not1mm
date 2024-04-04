@@ -6,9 +6,9 @@ from PyQt6.QtCore import pyqtSignal, Qt, QObject
 from .event_model import *
 
 """
-use emit to send an event object to all listeners
+Use emit to send an event object to all listeners
 
-use register to listen for events
+Use register to listen for events for the specified event type
 """
 
 logger = logging.getLogger(__name__)
@@ -20,13 +20,12 @@ class SignalWrapper(QObject):
 _signals: dict[type(AppEvent), SignalWrapper] = {}
 
 
-def register(event_type: type(AppEvent), callback: Callable[[type(AppEvent)], None], isolated = False):
+def register(event_type: type(AppEvent), callback: Callable[[type(AppEvent)], None]):
+    """
+    Slots still process in the main qt loop. Batch work should be done in a qthread.
+    """
     if event_type not in _signals:
         _signals[event_type] = SignalWrapper()
-
-    # TODO how to isolate batch work from the qt event loop
-    #if isolated:
-    #    target = _isolated_callbacks.setdefault(event_type, weakref.WeakSet())
 
     _signals[event_type].signal.connect(callback, Qt.ConnectionType.QueuedConnection)
 

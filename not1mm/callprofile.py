@@ -13,7 +13,7 @@ from PyQt6.QtWidgets import QDockWidget, QLabel, QStyle
 
 import not1mm.fsutils as fsutils
 from not1mm.lib import event
-from not1mm.qtplugins.DockWidget import DockWidget
+from not1mm.qtcomponents.DockWidget import DockWidget
 
 logger = logging.getLogger(__name__)
 

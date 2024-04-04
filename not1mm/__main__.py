@@ -64,9 +64,9 @@ from not1mm.lib.super_check_partial import SCP
 from not1mm.lib.version import __version__
 from not1mm.lib.versiontest import VersionTest
 from not1mm.logwindow import LogWindow
-from not1mm.qtplugins.ContestFieldEventFilter import ContestFieldEventFilter
-from not1mm.qtplugins.DockWidget import DockWidget
-from not1mm.qtplugins.EmacsCursorEventFilter import EmacsCursorEventFilter
+from not1mm.qtcomponents.ContestFieldEventFilter import ContestFieldEventFilter
+from not1mm.qtcomponents.DockWidget import DockWidget
+from not1mm.qtcomponents.EmacsCursorEventFilter import EmacsCursorEventFilter
 from not1mm.vfo import VfoWindow
 
 import qdarktheme
@@ -1512,6 +1512,7 @@ class MainWindow(QtWidgets.QMainWindow):
         This signal is used to handle the "callsign loses focus" event. if the call sign is empty it means the
         qso has been persisted and we can do nothing
         """
+        # alt tabbing will trigger this also, not sure if that is correct or not nore how to prevent it
         callsign_value = self.callsign.text().strip().upper()
         if not callsign_value:
             return
@@ -1523,8 +1524,6 @@ class MainWindow(QtWidgets.QMainWindow):
             self.dupe_indicator.hide()
 
         self.check_callsign_external(callsign_value)
-
-
 
     def save_contact(self) -> None:
         """
@@ -2553,8 +2552,6 @@ class MainWindow(QtWidgets.QMainWindow):
         callsign = callsign.strip()
         if self.look_up and self.look_up.did_init():
             self.look_up.lookup(callsign)
-        n1mm.send_lookup()
-
 
 
     def check_dupe(self, call: str) -> bool:
@@ -2920,7 +2917,7 @@ def doimp(modname) -> object:
     """
 
     logger.debug("doimp: %s", modname)
-    return importlib.import_module(f"not1mm.plugins.{modname}")
+    return importlib.import_module(f"not1mm.contest.{modname}")
 
 
 def run() -> None:
@@ -2971,6 +2968,7 @@ logging.basicConfig(
 
 logging.getLogger('PyQt6.uic.uiparser').setLevel('INFO')
 logging.getLogger('PyQt6.uic.properties').setLevel('INFO')
+logging.getLogger('peewee').setLevel('INFO')
 os.environ["QT_QPA_PLATFORMTHEME"] = "gnome"
 app = QtWidgets.QApplication(sys.argv)
 install_icons()

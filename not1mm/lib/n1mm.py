@@ -7,7 +7,7 @@ from . import event as appevent
 
 logger = logging.getLogger(__name__)
 
-#TODO make operator change and settings change an app event to completely decouple 
+#TODO make operator change and settings change an app event to completely decouple
 class N1MM:
     """Send N1MM style packets"""
 

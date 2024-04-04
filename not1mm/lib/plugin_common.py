@@ -1,4 +1,4 @@
-"""Common function(s) for all contest plugins"""
+"""Common function(s) for all contest contest"""
 
 import datetime
 from decimal import Decimal
