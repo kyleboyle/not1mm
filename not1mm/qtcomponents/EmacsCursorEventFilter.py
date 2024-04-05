@@ -49,6 +49,9 @@ class EmacsCursorEventFilter(QObject):
                         box.end(True)
                         if box.cursorPosition() != current_pos:
                             box.backspace()
+                elif event.key() == Qt.Key.Key_G:
+                    box.deselect()
+                    self.mark_active = False
 
         elif event.type() == QEvent.Type.FocusIn:
             self.mark_active = False

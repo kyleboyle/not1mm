@@ -33,7 +33,6 @@ class Spot(BaseModel):
     @staticmethod
     def delete_before(minutes_ago: int):
         sql = Spot.delete().where(SQL("ts < datetime('now', ?)", (f"-{minutes_ago} minutes",)))
-        print(sql)
         return sql.execute()
 
 

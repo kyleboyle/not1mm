@@ -11,6 +11,7 @@ import locale
 import logging
 import os
 import platform
+import signal
 import socket
 
 import sys
@@ -503,8 +504,12 @@ class MainWindow(QtWidgets.QMainWindow):
 
 
     def handle_input_focus(self, source: QLineEdit, event: QEvent) -> None:
-        source.deselect()
-        source.end(False)
+        # TODO - should maybe have configuration that will auto select the field or cursor to end for all fields
+        if (source == self.receive or source == self.sent) and (source.text() == '59' or source.text() == '599'):
+            source.setSelection(1, 1)
+        else:
+            source.deselect()
+            source.end(False)
 
 
     def set_radio_icon(self, state: int) -> None:
@@ -2920,6 +2925,7 @@ def doimp(modname) -> object:
     return importlib.import_module(f"not1mm.contest.{modname}")
 
 
+_window = None
 def run() -> None:
     """
     Main Entry
@@ -2944,6 +2950,8 @@ def run() -> None:
         window.restoreState(QByteArray.fromHex(bytes(window.pref["window_state"], 'ascii')), 1)
     if 'window_geo' in window.pref:
         window.restoreGeometry(QByteArray.fromHex(bytes(window.pref["window_geo"], 'ascii')))
+
+    signal.signal(signal.SIGINT, lambda sig, frame: window.close())
 
     window.show()
     window.callsign.setFocus()
@@ -2974,6 +2982,7 @@ app = QtWidgets.QApplication(sys.argv)
 install_icons()
 families = load_fonts_from_dir(os.fspath(fsutils.APP_DATA_PATH))
 logger.info(f"font families {families}")
+
 
 if __name__ == "__main__":
     run()
