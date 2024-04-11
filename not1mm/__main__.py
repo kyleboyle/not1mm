@@ -1417,7 +1417,7 @@ class MainWindow(QtWidgets.QMainWindow):
             f"vfoa:{round(vfoa, 2)} "
             f"mode:{self.radio_state.get('mode', '')} "
             f"OP:{self.current_op} {contest_name} "
-            f"- Not1MM v{__version__}"
+            f"- QSOurce v{__version__}"
         )
         self.setWindowTitle(line)
 
@@ -1427,14 +1427,6 @@ class MainWindow(QtWidgets.QMainWindow):
     def clearinputs(self) -> None:
         """
         Clears the text input fields and sets focus to callsign field.
-
-        Parameters
-        ----------
-        None
-
-        Returns
-        -------
-        None
         """
 
         self.dupe_indicator.hide()
