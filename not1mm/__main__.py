@@ -85,6 +85,10 @@ QFrame#Button_Row1 QPushButton, QFrame#Button_Row2 QPushButton {
     border-bottom-width: 2px;
     padding: 0;
 }
+#MainWindow #centralwidget QFrame QLineEdit#callsign {
+    text-transform: uppercase;
+}
+
 """
 
 
@@ -1877,7 +1881,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.pref["run_state"] = self.radioButton_run.isChecked()
         self.write_preference()
         self.read_cw_macros()
-        self.n1mm.set_operator(self.current_op, self.pref.get("run_state", False))
+        if self.n1mm:
+            self.n1mm.set_operator(self.current_op, self.pref.get("run_state", False))
 
     def write_preference(self) -> None:
         """
@@ -2073,7 +2078,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 kilometers = distance(self.station.get("GridSquare"), event.result.grid)
                 self.heading_distance.setText(
                     f"{event.result.grid} Hdg {heading}° LP {reciprocol(heading)}° / "
-                    f"distance {int(kilometers * 0.621371)}mi {kilometers}km"
+                    f"{int(kilometers * 0.621371)}mi {kilometers}km"
                 )
             # TODO set name field generically
             if self.pref.get('lookup_populate_name', None):
@@ -2446,7 +2451,7 @@ class MainWindow(QtWidgets.QMainWindow):
             )
             self.heading_distance.setText(
                 f"Regional Hdg {heading}° LP {reciprocol(heading)}° / "
-                f"distance {int(kilometers * 0.621371)}mi {kilometers}km"
+                f" {int(kilometers * 0.621371)}mi {kilometers}km"
             )
             self.contact["CountryPrefix"] = primary_pfx
             self.contact["ZN"] = int(cq)
