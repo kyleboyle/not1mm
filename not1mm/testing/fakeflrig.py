@@ -38,6 +38,11 @@ def set_frequency(freq):
     radio_state["freq"] = freq
     return 0
 
+def set_ptt(flag):
+    """seturn frequency in hz"""
+    logging.warning(f"set ptt {flag}")
+    radio_state["ptt"] = flag
+    return 0
 
 def get_mode():
     """return mode"""
@@ -84,6 +89,7 @@ with SimpleXMLRPCServer(
     server.register_function(get_bw, name="rig.get_bw")
     server.register_function(set_bw, name="rig.set_bw")
     server.register_function(get_version, name="main.get_version")
+    server.register_function(set_ptt, name="rig.set_ptt")
 
     server.register_introspection_functions()
     server.serve_forever()

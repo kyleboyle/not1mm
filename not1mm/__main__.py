@@ -7,15 +7,12 @@
 
 import datetime
 import importlib
-import locale
 import logging
 import os
-import platform
 import signal
 import socket
-
 import sys
-import threading
+import typing
 import uuid
 from json import dumps, loads
 from logging.handlers import RotatingFileHandler
@@ -23,27 +20,27 @@ from pathlib import Path
 from shutil import copyfile
 from typing import Optional
 
-import notctyparser
+import qdarktheme
 import sounddevice as sd
 import soundfile as sf
-import typing
 from PyQt6 import QtCore, QtGui, QtWidgets, uic
-from PyQt6.QtCore import QDir, Qt, QByteArray, QEvent, pyqtSignal, QTimer
-from PyQt6.QtGui import QFontDatabase, QKeyEvent
-from PyQt6.QtWidgets import QFileDialog, QDockWidget, QWidget, QLineEdit
+from PyQt6.QtCore import QDir, Qt, QByteArray, QEvent, QTimer
+from PyQt6.QtGui import QFontDatabase, QKeyEvent, QPixmap
+from PyQt6.QtWidgets import QFileDialog, QDockWidget, QWidget, QLineEdit, QLabel
 
 import not1mm.fsutils as fsutils
+from not1mm import model
 from not1mm.bandmap import BandMapWindow
 from not1mm.callprofile import ExternalCallProfileWindow
 from not1mm.checkwindow import CheckWindow
-from not1mm.lib import event as appevent
+from not1mm.lib import event as appevent, flags
 from not1mm.lib.about import About
+from not1mm.lib.bigcty import BigCty
 from not1mm.lib.cat_interface import CAT
 from not1mm.lib.cwinterface import CW
 from not1mm.lib.database import DataBase
 from not1mm.lib.edit_macro import EditMacro
 from not1mm.lib.edit_opon import OpOn
-from not1mm.lib.edit_station import EditStation
 from not1mm.lib.ham_utility import (
     bearing,
     bearing_with_latlon,
@@ -57,7 +54,6 @@ from not1mm.lib.ham_utility import (
 )
 from not1mm.lib.lookup import HamQTH, QRZlookup, ExternalCallLookupService
 from not1mm.lib.n1mm import N1MM
-
 from not1mm.lib.new_contest import NewContest
 from not1mm.lib.select_contest import SelectContest
 from not1mm.lib.settings import Settings
@@ -65,37 +61,32 @@ from not1mm.lib.super_check_partial import SCP
 from not1mm.lib.version import __version__
 from not1mm.lib.versiontest import VersionTest
 from not1mm.logwindow import LogWindow
+from not1mm.qtcomponents.ContestEdit import ContestEdit
 from not1mm.qtcomponents.ContestFieldEventFilter import ContestFieldEventFilter
 from not1mm.qtcomponents.DockWidget import DockWidget
 from not1mm.qtcomponents.EmacsCursorEventFilter import EmacsCursorEventFilter
+from not1mm.qtcomponents.StationSettings import StationSettings
 from not1mm.vfo import VfoWindow
 
-import qdarktheme
+qss = """
+QFrame#Band_Mode_Frame_CW QLabel, QFrame#Band_Mode_Frame_RTTY QLabel, QFrame#Band_Mode_Frame_SSB QLabel {
+    font-size: 11pt;
+    font-family: 'Roboto Mono';
+}
 
-CTYFILE = {}
+QFrame#Button_Row1 QPushButton, QFrame#Button_Row2 QPushButton {
+    font-size: 11pt;
+    font-family: 'Roboto Mono';
+}
 
-with open(fsutils.APP_DATA_PATH / "cty.json", "rt", encoding="utf-8") as c_file:
-    CTYFILE = loads(c_file.read())
-
-qss = """QFrame#Band_Mode_Frame_CW QLabel, QFrame#Band_Mode_Frame_RTTY QLabel, QFrame#Band_Mode_Frame_SSB QLabel {
-            font-size: 11pt;
-            font-family: 'JetBrains Mono';
-        }
-        
-        QFrame#Button_Row1 QPushButton, QFrame#Button_Row2 QPushButton{
-            font-size: 11pt;
-            font-family: 'JetBrains Mono';
-        }
-        QFrame#Button_Row1 QPushButton, QFrame#Button_Row2 QPushButton{
-            font-size: 11pt;
-            font-family: 'JetBrains Mono';
-        }
-        
-        QLineEdit#callsign {
-        font-family: 'JetBrains Mono';
-        }
-
+#MainWindow #centralwidget QFrame QLineEdit {
+    font-family: 'Roboto Mono';
+    font-size: 26pt;
+    border-bottom-width: 2px;
+    padding: 0;
+}
 """
+
 
 class MainWindow(QtWidgets.QMainWindow):
     """
@@ -180,6 +171,10 @@ class MainWindow(QtWidgets.QMainWindow):
 
     call_change_debounce_timer = False
     rig_poll_timer = QtCore.QTimer()
+    dx_entity: QLabel
+    flag_label: QLabel
+
+    bigcty = BigCty(fsutils.APP_DATA_PATH / 'cty.json')
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -869,26 +864,13 @@ class MainWindow(QtWidgets.QMainWindow):
         self.worked_list = self.database.get_calls_and_bands()
         self.send_worked_list()
 
-    def refill_dropdown(self, target, source) -> None:
-        """
-        Refill QCombobox widget with value.
 
-        Parameters
-        ----------
-        target : QComboBox
-        The target widget to be refilled
-        source : str
-        The value to be used to fill the target widget
-
-        Returns
-        -------
-        None
-        """
-
-        index = target.findText(source)
-        target.setCurrentIndex(index)
 
     def edit_contest(self) -> None:
+
+        station_dialog = ContestEdit(fsutils.APP_DATA_PATH, parent=self)
+        station_dialog.open()
+        return
         """
         Edit the current contest settings.
 
@@ -911,7 +893,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.contest_dialog = NewContest(fsutils.APP_DATA_PATH)
 
         self.contest_dialog.setWindowTitle("Edit Contest")
-        self.contest_dialog.title.setText("")
         self.contest_dialog.accepted.connect(self.save_edited_contest)
         value = self.contest_settings.get("ContestName").upper().replace("_", " ")
         if value == "GENERAL LOGGING":
@@ -1086,19 +1067,8 @@ class MainWindow(QtWidgets.QMainWindow):
         """
 
         try:
-            cty = notctyparser.BigCty(fsutils.APP_DATA_PATH / "cty.json")
-            update_available = cty.check_update()
-        except (AttributeError, ValueError, locale.Error) as the_error:
-            logger.debug("cty parser returned an error: %s", the_error)
-            return
-        logger.debug("Newer cty file available %s", str(update_available))
-
-        if update_available:
-            try:
-                updated = cty.update()
-            except ResourceWarning as the_error:
-                logger.debug("cty parser returned an error: %s", the_error)
-                return
+            cty = BigCty(fsutils.APP_DATA_PATH / "cty.json")
+            updated = cty.update()
             if updated:
                 cty.dump(fsutils.APP_DATA_PATH / "cty.json")
                 self.show_message_box("cty file updated.")
@@ -1107,9 +1077,10 @@ class MainWindow(QtWidgets.QMainWindow):
                 ) as ctyfile:
                     globals()["CTYFILE"] = loads(ctyfile.read())
             else:
-                self.show_message_box("An Error occured updating file.")
-        else:
-            self.show_message_box("CTY file is up to date.")
+                self.show_message_box("CTY file is up to date.")
+        except:
+            logger.exception("cty file update")
+            self.show_message_box("An Error occured updating file.")
 
     def hide_band_mode(self, the_mode: str) -> None:
         """
@@ -1306,42 +1277,19 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def closeEvent(self, event) -> None:
 
-        self.pref["window_state"] = bytes(self.saveState(1).toHex()).decode('ascii')
-        self.pref["window_geo"] = bytes(self.saveGeometry().toHex()).decode('ascii')
-        self.pref["window_bandmap_enable"] = self.bandmap_window and self.bandmap_window.isVisible()
-        self.pref["window_check_enable"] = self.check_window and self.check_window.isVisible()
-        self.pref["window_log_enable"] = self.log_window and self.log_window.isVisible()
-        self.pref["window_profile_enable"] = self.profile_window and self.profile_window.isVisible()
-        self.pref["window_vfo_enable"] = self.vfo_window and self.vfo_window.isVisible()
+        window_state = {
+            "window_state": bytes(self.saveState(1).toHex()).decode('ascii'),
+            "window_geo": bytes(self.saveGeometry().toHex()).decode('ascii'),
+            "window_bandmap_enable": self.bandmap_window and self.bandmap_window.isVisible(),
+            "window_check_enable": self.check_window and self.check_window.isVisible(),
+            "window_log_enable": self.log_window and self.log_window.isVisible(),
+            "window_profile_enable": self.profile_window and self.profile_window.isVisible(),
+            "window_vfo_enable": self.vfo_window and self.vfo_window.isVisible()
+        }
 
-        self.write_preference()
+        fsutils.write_settings(window_state)
         self.rig_poll_timer.stop()
         event.accept()
-
-    def cty_lookup(self, callsign: str) -> list:
-        """Lookup callsign in cty.dat file.
-
-        Parameters
-        ----------
-        callsign : str
-        callsign to lookup
-
-        Returns
-        -------
-        return : list
-        list of dicts containing the callsign and the station.
-        """
-        callsign = callsign.upper()
-        for count in reversed(range(len(callsign))):
-            searchitem = callsign[: count + 1]
-            result = {key: val for key, val in CTYFILE.items() if key == searchitem}
-            if not result:
-                continue
-            if result.get(searchitem).get("exact_match"):
-                if searchitem == callsign:
-                    return result
-                continue
-            return result
 
     def cwspeed_spinbox_changed(self) -> None:
         """
@@ -1387,9 +1335,7 @@ class MainWindow(QtWidgets.QMainWindow):
             if dx:
                 appevent.emit(appevent.FindDx(dx))
             return
-        if (
-                event.key() == Qt.Key.Key_Escape and modifier != Qt.KeyboardModifier.ControlModifier
-        ):  # pylint: disable=no-member
+        if event.key() == Qt.Key.Key_Escape and modifier != Qt.KeyboardModifier.ControlModifier:  # pylint: disable=no-member
             self.clearinputs()
             return
         if event.key() == Qt.Key.Key_Escape and modifier == Qt.KeyboardModifier.ControlModifier:
@@ -1491,6 +1437,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.contact = self.database.empty_contact
         self.heading_distance.setText("")
         self.dx_entity.setText("")
+        self.flag_label.clear()
         if self.contest:
             mults = self.contest.show_mults(self)
             qsos = self.contest.show_qso(self)
@@ -1665,34 +1612,8 @@ class MainWindow(QtWidgets.QMainWindow):
         """
 
         logger.debug("Station Settings selected")
-
-        self.settings_dialog = EditStation(fsutils.APP_DATA_PATH)
-
-        self.settings_dialog.accepted.connect(self.save_settings)
-        self.settings_dialog.Call.setText(self.station.get("Call", ""))
-        self.settings_dialog.Name.setText(self.station.get("Name", ""))
-        self.settings_dialog.Address1.setText(self.station.get("Street1", ""))
-        self.settings_dialog.Address2.setText(self.station.get("Street2", ""))
-        self.settings_dialog.City.setText(self.station.get("City", ""))
-        self.settings_dialog.State.setText(self.station.get("State", ""))
-        self.settings_dialog.Zip.setText(self.station.get("Zip", ""))
-        self.settings_dialog.Country.setText(self.station.get("Country", ""))
-        self.settings_dialog.GridSquare.setText(self.station.get("GridSquare", ""))
-        self.settings_dialog.CQZone.setText(str(self.station.get("CQZone", "")))
-        self.settings_dialog.ITUZone.setText(str(self.station.get("IARUZone", "")))
-        self.settings_dialog.License.setText(self.station.get("LicenseClass", ""))
-        self.settings_dialog.Latitude.setText(str(self.station.get("Latitude", "")))
-        self.settings_dialog.Longitude.setText(str(self.station.get("Longitude", "")))
-        self.settings_dialog.StationTXRX.setText(self.station.get("stationtxrx", ""))
-        self.settings_dialog.Power.setText(self.station.get("SPowe", ""))
-        self.settings_dialog.Antenna.setText(self.station.get("SAnte", ""))
-        self.settings_dialog.AntHeight.setText(self.station.get("SAntH1", ""))
-        self.settings_dialog.ASL.setText(self.station.get("SAntH2", ""))
-        self.settings_dialog.ARRLSection.setText(self.station.get("ARRLSection", ""))
-        self.settings_dialog.RoverQTH.setText(self.station.get("RoverQTH", ""))
-        self.settings_dialog.Club.setText(self.station.get("Club", ""))
-        self.settings_dialog.Email.setText(self.station.get("Email", ""))
-        self.settings_dialog.open()
+        station_dialog = StationSettings(fsutils.APP_DATA_PATH, parent=self)
+        station_dialog.open()
 
     def save_settings(self) -> None:
         """
@@ -2046,7 +1967,7 @@ class MainWindow(QtWidgets.QMainWindow):
         else:
             self.set_dark_mode(False)
             self.actionDark_Mode.setChecked(False)
-
+        app.processEvents()
         self.rig_control = None
 
         if self.pref.get("useflrig", False):
@@ -2142,7 +2063,7 @@ class MainWindow(QtWidgets.QMainWindow):
         appevent.emit(appevent.ActiveContest(self.contest_settings, self.current_op))
 
     def event_external_call_lookup(self, event: appevent.ExternalLookupResult):
-        current_call = self.callsign.text().strip()
+        current_call = self.callsign.text().strip().upper()
         if event.result.call == current_call:
              # Get the grid square and calculate the distance and heading.
             self.contact["GridSquare"] = event.result.grid
@@ -2162,7 +2083,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def dark_mode_state_changed(self) -> None:
         self.pref["darkmode"] = self.actionDark_Mode.isChecked()
-        self.write_preference()
+        fsutils.write_settings({"darkmode": self.actionDark_Mode.isChecked()})
         self.set_dark_mode(self.actionDark_Mode.isChecked())
 
     def cw_macros_state_changed(self) -> None:
@@ -2216,7 +2137,7 @@ class MainWindow(QtWidgets.QMainWindow):
         """
 
         self.pref["command_buttons"] = self.actionCommand_Buttons.isChecked()
-        self.write_preference()
+        fsutils.write_settings({"command_buttons": self.actionCommand_Buttons.isChecked()})
         self.show_command_buttons()
 
     def show_command_buttons(self) -> None:
@@ -2341,10 +2262,10 @@ class MainWindow(QtWidgets.QMainWindow):
         text = text.upper()
         position = self.callsign.cursorPosition()
         stripped_text = text.strip().replace(" ", "")
-        self.callsign.setText(stripped_text)
-        self.callsign.setCursorPosition(position)
 
         if " " in text:
+            self.callsign.setText(stripped_text)
+            self.callsign.setCursorPosition(position)
             if stripped_text == "CW":
                 self.change_mode(stripped_text)
                 return
@@ -2398,9 +2319,12 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def handle_call_change_debounce(self):
         self.call_change_debounce_timer = False
-        appevent.emit(appevent.CallChanged(self.callsign.text()))
-        self.dupe_indicator.hide()
-        self.check_callsign(self.callsign.text())
+        if not self.callsign.text().strip():
+            self.clearinputs()
+        else:
+            appevent.emit(appevent.CallChanged(self.callsign.text().upper()))
+            self.dupe_indicator.hide()
+            self.check_callsign(self.callsign.text().upper())
 
     def change_freq(self, stripped_text: str) -> None:
         """
@@ -2505,38 +2429,46 @@ class MainWindow(QtWidgets.QMainWindow):
         None
         """
 
-        result = self.cty_lookup(callsign)
+        result = self.bigcty.find_call_match(callsign)
         logger.debug(f"cty lookup result {result}")
         if result:
-            for a in result.items():
-                entity = a[1].get("entity", "")
-                cq = a[1].get("cq", "")
-                itu = a[1].get("itu", "")
-                continent = a[1].get("continent")
-                lat = float(a[1].get("lat", "0.0"))
-                lon = float(a[1].get("long", "0.0"))
-                lon = lon * -1  # cty.dat file inverts longitudes
-                primary_pfx = a[1].get("primary_pfx", "")
-                heading = bearing_with_latlon(self.station.get("GridSquare"), lat, lon)
-                kilometers = distance_with_latlon(
-                    self.station.get("GridSquare"), lat, lon
-                )
-                self.heading_distance.setText(
-                    f"Regional Hdg {heading}° LP {reciprocol(heading)}° / "
-                    f"distance {int(kilometers * 0.621371)}mi {kilometers}km"
-                )
-                self.contact["CountryPrefix"] = primary_pfx
-                self.contact["ZN"] = int(cq)
+            entity = result.get("entity", "")
+            cq = result.get("cq", "")
+            itu = result.get("itu", "")
+            continent = result.get("continent")
+            lat = float(result.get("lat", "0.0"))
+            lon = float(result.get("long", "0.0"))
+            lon = lon * -1  # cty.dat file inverts longitudes
+            primary_pfx = result.get("primary_pfx", "")
+            heading = bearing_with_latlon(self.station.get("GridSquare"), lat, lon)
+            kilometers = distance_with_latlon(
+                self.station.get("GridSquare"), lat, lon
+            )
+            self.heading_distance.setText(
+                f"Regional Hdg {heading}° LP {reciprocol(heading)}° / "
+                f"distance {int(kilometers * 0.621371)}mi {kilometers}km"
+            )
+            self.contact["CountryPrefix"] = primary_pfx
+            self.contact["ZN"] = int(cq)
+            if self.contest:
+                if self.contest.name == "IARU HF":
+                    self.contact["ZN"] = int(itu)
+            self.contact["Continent"] = continent
+            self.dx_entity.setText(f"{primary_pfx}: {continent}/{entity} cq:{cq} itu:{itu}")
+            self.show_flag(result.get("dxcc"))
+            if len(callsign) > 2:
                 if self.contest:
-                    if self.contest.name == "IARU HF":
-                        self.contact["ZN"] = int(itu)
-                self.contact["Continent"] = continent
-                self.dx_entity.setText(
-                    f"{primary_pfx}: {continent}/{entity} cq:{cq} itu:{itu}"
-                )
-                if len(callsign) > 2:
-                    if self.contest:
-                        self.contest.prefill(self)
+                    self.contest.prefill(self)
+
+    def show_flag(self, dxcc):
+        if dxcc:
+            pixmap = flags.get_pixmap(dxcc, self.dx_entity.frameSize().height())
+            self.flag_label.setMaximumHeight(self.dx_entity.frameSize().height())
+            if pixmap:
+                self.flag_label.setPixmap(pixmap)
+        else:
+            self.flag_label.clear()
+
 
     def check_callsign_external(self, callsign) -> None:
         """
@@ -2955,6 +2887,8 @@ def run() -> None:
 
     window.show()
     window.callsign.setFocus()
+
+    model.persistent.loadPersistantDb(fsutils.USER_DATA_PATH / 'new_model.db')
 
     sys.exit(app.exec())
 

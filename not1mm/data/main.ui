@@ -620,6 +620,24 @@
                </item>
                <item>
                 <widget class="QLineEdit" name="callsign">
+                 <property name="sizePolicy">
+                  <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                   <horstretch>0</horstretch>
+                   <verstretch>0</verstretch>
+                  </sizepolicy>
+                 </property>
+                 <property name="minimumSize">
+                  <size>
+                   <width>0</width>
+                   <height>0</height>
+                  </size>
+                 </property>
+                 <property name="maximumSize">
+                  <size>
+                   <width>16777215</width>
+                   <height>16777215</height>
+                  </size>
+                 </property>
                  <property name="font">
                   <font>
                    <pointsize>20</pointsize>
@@ -632,10 +650,13 @@
                   <string>enter callsign here</string>
                  </property>
                  <property name="styleSheet">
-                  <string notr="true">QLineEdit {text-transform: uppercase; border-bottom-width: 2px; height:1.8em;}</string>
+                  <string notr="true"/>
                  </property>
                  <property name="maxLength">
                   <number>20</number>
+                 </property>
+                 <property name="frame">
+                  <bool>true</bool>
                  </property>
                 </widget>
                </item>
@@ -663,6 +684,12 @@
                </item>
                <item>
                 <widget class="QLineEdit" name="sent">
+                 <property name="sizePolicy">
+                  <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                   <horstretch>0</horstretch>
+                   <verstretch>0</verstretch>
+                  </sizepolicy>
+                 </property>
                  <property name="font">
                   <font>
                    <pointsize>20</pointsize>
@@ -672,7 +699,7 @@
                   <string>RST Sent</string>
                  </property>
                  <property name="styleSheet">
-                  <string notr="true">QLineEdit {border-bottom-width: 2px; height:1.8em}</string>
+                  <string notr="true"/>
                  </property>
                 </widget>
                </item>
@@ -700,6 +727,12 @@
                </item>
                <item>
                 <widget class="QLineEdit" name="receive">
+                 <property name="sizePolicy">
+                  <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                   <horstretch>0</horstretch>
+                   <verstretch>0</verstretch>
+                  </sizepolicy>
+                 </property>
                  <property name="font">
                   <font>
                    <pointsize>20</pointsize>
@@ -709,7 +742,7 @@
                   <string>RST Received</string>
                  </property>
                  <property name="styleSheet">
-                  <string notr="true">QLineEdit {border-bottom-width: 2px; height:1.8em}</string>
+                  <string notr="true"/>
                  </property>
                 </widget>
                </item>
@@ -737,6 +770,12 @@
                </item>
                <item>
                 <widget class="QLineEdit" name="other_1">
+                 <property name="sizePolicy">
+                  <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                   <horstretch>0</horstretch>
+                   <verstretch>0</verstretch>
+                  </sizepolicy>
+                 </property>
                  <property name="font">
                   <font>
                    <pointsize>20</pointsize>
@@ -746,7 +785,7 @@
                   <string>edit field3</string>
                  </property>
                  <property name="styleSheet">
-                  <string notr="true">QLineEdit {border-bottom-width: 2px; height:1.8em}</string>
+                  <string notr="true"/>
                  </property>
                 </widget>
                </item>
@@ -783,6 +822,12 @@
                </item>
                <item>
                 <widget class="QLineEdit" name="other_2">
+                 <property name="sizePolicy">
+                  <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                   <horstretch>0</horstretch>
+                   <verstretch>0</verstretch>
+                  </sizepolicy>
+                 </property>
                  <property name="font">
                   <font>
                    <pointsize>20</pointsize>
@@ -792,7 +837,7 @@
                   <string>edit field4</string>
                  </property>
                  <property name="styleSheet">
-                  <string notr="true">QLineEdit {border-bottom-width: 2px; height:1.8em;}</string>
+                  <string notr="true"/>
                  </property>
                 </widget>
                </item>
@@ -1255,6 +1300,13 @@
         <property name="sizeConstraint">
          <enum>QLayout::SetDefaultConstraint</enum>
         </property>
+        <item>
+         <widget class="QLabel" name="flag_label">
+          <property name="text">
+           <string>F</string>
+          </property>
+         </widget>
+        </item>
         <item>
          <widget class="QLabel" name="dx_entity">
           <property name="sizePolicy">

@@ -111,7 +111,7 @@ _default_column_order = [
     "CLAIMEDQSO"]
 
 _monospace_font = QFont()
-_monospace_font.setFamily("JetBrains Mono")
+_monospace_font.setFamily("Roboto Mono")
 
 class QsoTableModel(QAbstractTableModel):
     edited = pyqtSignal(dict, dict)

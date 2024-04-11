@@ -21,7 +21,6 @@ dependencies = [
     "sounddevice",
     "soundfile",
     "numpy",
-    "notctyparser >= 23.6.21",
     "rapidfuzz",
     "appdata",
     "pyqtdarktheme"

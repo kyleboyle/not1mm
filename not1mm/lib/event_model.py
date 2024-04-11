@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 
 from . import lookup
+from ..model import Contest
+
 
 class AppEvent():
     pass
@@ -150,3 +152,7 @@ class LoadDb(AppEvent):
 @dataclass
 class ExternalLookupResult(AppEvent):
     result: lookup.ExternalCallLookupService.Result
+
+@dataclass
+class ContestActive(AppEvent):
+    contest: Contest

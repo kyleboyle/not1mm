@@ -168,3 +168,6 @@ class Settings(QtWidgets.QDialog):
         if self.activate_23cm.isChecked():
             bandlist.append("23cm")
         self.preference["bands"] = bandlist
+
+
+

@@ -28,7 +28,7 @@ class Spot(BaseModel):
     @staticmethod
     def get_like_calls(search: str) -> list[str]:
         safe = re.sub('[^a-zA-Z0-9/?]', '', search.upper())
-        return Spot.select(Spot.callsign.distinct()).where(SQL(f"callsign like '%{safe.replace('?', '_')}%'"))
+        return list(Spot.select(Spot.callsign.distinct()).where(SQL(f"callsign like '%{safe.replace('?', '_')}%'")))
 
     @staticmethod
     def delete_before(minutes_ago: int):

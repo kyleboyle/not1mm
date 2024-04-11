@@ -10,11 +10,6 @@
     <height>693</height>
    </rect>
   </property>
-  <property name="font">
-   <font>
-    <family>JetBrains Mono</family>
-   </font>
-  </property>
   <property name="windowTitle">
    <string>New Contest</string>
   </property>
@@ -150,6 +145,9 @@
      <property name="alignment">
       <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
      </property>
+     <property name="buddy">
+      <cstring>For serial numbers, include 001 where the serial should be place in the exchage. It will be automatically increased and displayed for each QSO.</cstring>
+     </property>
     </widget>
    </item>
    <item row="9" column="0">
@@ -159,23 +157,6 @@
      </property>
      <property name="alignment">
       <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-     </property>
-    </widget>
-   </item>
-   <item row="0" column="0" colspan="4">
-    <widget class="QLabel" name="title">
-     <property name="font">
-      <font>
-       <family>JetBrains Mono</family>
-       <pointsize>14</pointsize>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>Select Contest Type for New Log</string>
-     </property>
-     <property name="alignment">
-      <set>Qt::AlignCenter</set>
      </property>
     </widget>
    </item>
@@ -346,14 +327,14 @@
      </property>
      <property name="time">
       <time>
-       <hour>16</hour>
+       <hour>0</hour>
        <minute>0</minute>
        <second>0</second>
       </time>
      </property>
      <property name="maximumDateTime">
       <datetime>
-       <hour>7</hour>
+       <hour>3</hour>
        <minute>59</minute>
        <second>59</second>
        <year>10000</year>

@@ -29,6 +29,9 @@ class EmacsCursorEventFilter(QObject):
                     box.cursorForward(self.mark_active)
                 elif event.key() == Qt.Key.Key_B:
                     box.cursorBackward(self.mark_active)
+                elif event.key() == Qt.Key.Key_Backspace:
+                    box.cursorWordBackward(True)
+                    box.backspace()
                 elif event.key() == Qt.Key.Key_D:
                     self.mark_active = False
                     # delete selected text or character in front of cursor

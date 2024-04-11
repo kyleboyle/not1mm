@@ -92,6 +92,7 @@ class ExternalCallProfileWindow(DockWidget):
             # make sure the station in the external data is still the active qso callsign
             return
         image_url = e.result.source_result.get('image', None)
+        logger.debug(f"image url {image_url}")
         if image_url:
             logger.debug(f"fetching {e.result.call} image url {image_url}")
             self.imageLabel.clear()

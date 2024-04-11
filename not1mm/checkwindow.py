@@ -206,6 +206,8 @@ class CheckWindow(DockWidget):
                         elif tag == 'insert' or tag == 'delete':
                             label_text += f"<span style='background-color: {self.character_add_color};'>{call[i1:i2]}</span>"
                     call_items.append((Levenshtein.hamming(call, self.call), label_text, call))
+
+        # TODO still some work to do on diffs. eg VE9KB doesnt show well
         #sorted(call_items, key=lambda x: x[0])
         for i in reversed(range(layout.count())):
             if layout.itemAt(i).widget():
@@ -215,7 +217,7 @@ class CheckWindow(DockWidget):
 
         for _, label_text, call in call_items:
             label = CallLabel(label_text, call=call)
-            label.setStyleSheet("QLabel {letter-spacing: 0.15em; font-family: 'JetBrains Mono';}")
+            label.setStyleSheet("QLabel {font-size: 0.8em; letter-spacing: 0.15em; font-family: 'Roboto Mono';}")
             layout.addWidget(label)
         # top aligns
         layout.addStretch(0)

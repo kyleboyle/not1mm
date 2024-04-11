@@ -15,6 +15,7 @@ from decimal import Decimal
 from json import loads
 
 from PyQt6 import QtCore, QtGui, QtWidgets, uic, QtNetwork
+from PyQt6.QtCore import Qt, QRectF
 from PyQt6.QtWidgets import QGraphicsView
 
 import not1mm.fsutils as fsutils
@@ -126,6 +127,10 @@ class BandMapWindow(QtWidgets.QDockWidget):
         self.bandmap_scene.clear()
         self.bandmap_scene.setFocusOnTouch(False)
         self.bandmap_scene.selectionChanged.connect(self.spot_clicked)
+
+        self.graphicsView.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
+        self.graphicsView.setMinimumWidth(200)
+
         self.freq = 0.0
         self.keepRXCenter = False
         self.update_timer = QtCore.QTimer()
@@ -259,7 +264,7 @@ class BandMapWindow(QtWidgets.QDockWidget):
 
         step, _digits = self.determine_step_digits()
         steps = int(round((self.currentBand.end - self.currentBand.start) / step))
-        self.graphicsView.setFixedSize(330, steps * PIXELSPERSTEP + 30)
+        self.graphicsView.setFixedHeight(steps * PIXELSPERSTEP + 30)
         self.graphicsView.setScene(self.bandmap_scene)
         for i in range(steps):  # Draw tickmarks
             length = 10
@@ -275,19 +280,14 @@ class BandMapWindow(QtWidgets.QDockWidget):
             if i % 5 == 0:  # Add Frequency
                 freq = self.currentBand.start + step * i
                 text = f"{freq:.3f}"
-                textItem = self.bandmap_scene.addText(text)
-                textItem.setDefaultTextColor(self.text_color)
-                textItem.setPos(
-                    -(textItem.boundingRect().width()), # + 10,
-                    i * PIXELSPERSTEP - (textItem.boundingRect().height() / 2),
-                )
+                text_item = self.bandmap_scene.addText(text)
+                text_item.setDefaultTextColor(self.text_color)
+                text_item.setPos(-(text_item.boundingRect().width()),
+                                 i * PIXELSPERSTEP - (text_item.boundingRect().height() / 2))
 
-        freq = self.currentBand.end + step * steps
-        endFreqDigits = f"{freq:.3f}"
-        self.bandmap_scene.setSceneRect(
-            160 - (len(endFreqDigits) * PIXELSPERSTEP), 0, 0, steps * PIXELSPERSTEP + 20
-        )
-
+        scene_rect = self.bandmap_scene.itemsBoundingRect()
+        scene_rect.setY(0)
+        self.bandmap_scene.setSceneRect(scene_rect)
         self.drawTXRXMarks(step)
         self.update_stations()
 
@@ -335,20 +335,10 @@ class BandMapWindow(QtWidgets.QDockWidget):
     def center_on_rxfreq(self):
         """doc"""
         freq_pos = self.Freq2ScenePos(self.rx_freq).y()
-        # self.graphicsView.verticalScrollBar().setSliderPosition(
-        #     int(freq_pos - (self.height() / 2) + 80)
-        # )
+
         self.scrollArea.verticalScrollBar().setValue(
             int(freq_pos - (self.height() / 2) + 80)
         )
-        # This does not work... Have no idea why.
-        # anim = QtCore.QPropertyAnimation(
-        #     self.scrollArea.verticalScrollBar(), "value".encode()
-        # )
-        # anim.setDuration(300)
-        # anim.setStartValue(self.scrollArea.verticalScrollBar().value())
-        # anim.setEndValue(int(freq_pos - (self.height() / 2) + 80))
-        # anim.start(QtCore.QAbstractAnimation.DeletionPolicy.DeleteWhenStopped)
 
     def drawfreqmark(self, freq, _step, color, currentPolygon) -> None:
         """doc"""

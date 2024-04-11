@@ -1,15 +1,8 @@
 from peewee import Model, CharField, IntegerField, ForeignKeyField, TextField, DateTimeField, FloatField, DoubleField, \
     UUIDField, BooleanField
 from playhouse.sqlite_ext import SqliteExtDatabase, JSONField
-
-_database = None
-
-
-def loadPersistantDb(path: str):
-    _database = SqliteExtDatabase(path, pragmas=(
-        ('check_same_thread', False),
-        ('journal_mode', 'wal'),  # Use WAL-mode (you should always use this!).
-        ('foreign_keys', 1)))  # Enforce foreign-key constraints.
+from . import persistent_migrations
+_database = SqliteExtDatabase(None)
 
 class BaseModel(Model):
     class Meta:
@@ -19,54 +12,97 @@ class BaseModel(Model):
 class Station(BaseModel):
     station_name = CharField()
     callsign = CharField(20)
-    arrl_sect = CharField(20)
-    license_class = CharField(20, null=True)
-    iaru_zone = IntegerField(null=True)
+    arrl_sect = CharField(20, null=True)
+
     club = CharField(null=True)
     email = CharField(null=True)
-    altitude = DoubleField(null=True)
     antenna = CharField(null=True)
-    city = CharField(null=True)
-    county = CharField(null=True)
-    country = CharField(null=True)
-    cq_zone = IntegerField(null=True)
-    dxcc = IntegerField(null=True)
-    fists = IntegerField(null=True)
+    rig = CharField(null=True)
+
     gridsquare = CharField(20, null=True)
     gridsquare_ext = CharField(20, null=True)
-    iota = CharField(null=True)
-    iota_island_id = CharField(null=True)
-    itu_zone = IntegerField(null=True)
     latitude = DoubleField(null=True)
     longitude = DoubleField(null=True)
+    altitude = DoubleField(null=True)
+    cq_zone = IntegerField(null=True)
+    dxcc = IntegerField(null=True)
+    iaru_zone = IntegerField(null=True)
+    itu_zone = IntegerField(null=True)
+
+    license_class = CharField(20, null=True)
     name = CharField(null=True)
-    postal_code = CharField(20, null=True)
-    pota_ref = CharField(null=True)
-    rig = CharField(null=True)
-    sig = CharField(null=True)
-    sig_info = CharField(null=True)
-    sota_ref = CharField(null=True)
-    state = CharField(null=True)
     street1 = CharField(null=True)
     street2 = CharField(null=True)
+    city = CharField(null=True)
+    state = CharField(null=True)
+    postal_code = CharField(20, null=True)
+    county = CharField(null=True)
+    country = CharField(null=True)
+    continent = CharField(2, null=True)  # NA,SA,EU,AF,OC,AS,AN
+
+    iota = CharField(null=True)
+    iota_island_id = CharField(null=True)
+    pota_ref = CharField(null=True)
+    fists = IntegerField(null=True)
     usaca_counties = CharField(null=True)
     vucc_grids = CharField(null=True)
     wwff_ref = CharField(null=True)
+    sota_ref = CharField(null=True)
+    sig = CharField(null=True)
+    sig_info = CharField(null=True)
 
+    deleted = BooleanField(default=False, null=True)
     #packet_node = CharField(null=True)
     #rover_qth = CharField(null=True)
     #antenna1 = CharField(30)
     #antenna2 = CharField(30)
 
 
+class ContestMeta(BaseModel):
+    name = CharField(30, null=True, primary_key=True)
+    display_name = CharField()
+    sort_order = IntegerField(null=True)
+    period = IntegerField(null=True)
+    points_per_contact = IntegerField(null=True)
+    mode = CharField(10)
+    dupe_type = IntegerField()
+    cabrillo_name = CharField(20)
+    cabrillo_version = CharField(20)
+    multiplier1_name = CharField(20, null=True)
+    multiplier2_name = CharField(20, null=True)
+    multiplier3_name = CharField(20, null=True)
+    digi_messages = CharField(null=True)
+    cw_messages = CharField(null=True)
+    master_dta = CharField(null=True)
+    ssb_messages = CharField(null=True)
 
+
+class Contest(BaseModel):
+    fk_contest_meta = ForeignKeyField(ContestMeta)
+    start_date = DateTimeField()
+    deleted = CharField(default=False)
+    fk_station = ForeignKeyField(Station)
+    assisted_category = CharField(30, null=True)
+    band_category = CharField(30, null=True)
+    claimed_score = IntegerField(null=True)
+    mode_category = CharField(30, null=True)
+    operator_category = CharField(30, null=True)
+    operators = CharField(null=True)
+    overlay_category = CharField(20, null=True)
+    power_category = CharField(20, null=True)
+    sent_exchange = CharField(50, null=True)
+    soapbox = TextField(null=True)
+    station_category = CharField(30, null=True)
+    sub_type = CharField(20, null=True)
+    time_category = CharField(30, null=True)
+    transmitter_category = CharField(30, null=True)
 
 # when creating a new record use .save(force_insert=True) because the id is not auto incrementing
 class QsoLog(BaseModel):
     id = UUIDField(primary_key=True)
-    time_on	= DateTimeField()
-    station_callsign = CharField(20)
-    call = CharField(20)
+    time_on = DateTimeField(index=True)
+    station_callsign = CharField(20, index=True)
+    call = CharField(20, index=True)
     time_off = DateTimeField(null=True)
     rst_sent = CharField(10)
     rst_rcvd = CharField(10)
@@ -76,20 +112,21 @@ class QsoLog(BaseModel):
     mode = CharField(20) # https://www.adif.org/314/ADIF_314.htm#Mode_Enumeration
     submode = CharField(20, null=True) # https://www.adif.org/314/ADIF_314.htm#Submode_Enumeration
     name = CharField(null=True)
-    comment	= CharField(null=True)
-    stx	= IntegerField(null=True) # serial number transmitted
+    comment = CharField(null=True)
+    stx = IntegerField(null=True) # serial number transmitted
     stx_string = CharField(null=True) # transmitted contest contents (if contest specific fields don't cover it)
-    srx	= IntegerField(null=True)
+    srx = IntegerField(null=True)
     srx_string = CharField(null=True)
     gridsquare = CharField(20, null=True)
     gridsquare_ext = CharField(20, null=True)
     qth = CharField(null=True)
     county = CharField(20, null=True) # https://www.adif.org/314/ADIF_314.htm#Secondary_Administrative_Subdivision
-    country	= CharField(20, null=True) # DXCC entity name
-    continent = CharField(2, null=True) # NA,SA,EU,AF,OC,AS,AN
+    country = CharField(30, null=True) # DXCC entity name
+    continent = CharField(2, null=True)  # NA,SA,EU,AF,OC,AS,AN
     state = CharField(20, null=True)
-    ve_prov	= CharField(20, null=True)
+    ve_prov = CharField(20, null=True)
     dxcc = IntegerField(null=True)
+    prefix = IntegerField(null=True) # region / dxcc prefix
     cqz = IntegerField(null=True)
     ituz = IntegerField(null=True)
     arrl_sect = CharField(4, null=True) # https://www.adif.org/314/ADIF_314.htm#ARRL_Section_Enumeration
@@ -136,8 +173,8 @@ class QsoLog(BaseModel):
     hrdlog_qso_upload_status = CharField(2, null=True)
     iota_island_id = IntegerField(null=True)
     k_index = IntegerField(null=True) # the geomagnetic K index at the time of the QSO [0, 9]
-    lat	= CharField(20, null=True) # XDDD MM.MMM
-    lon	= CharField(20, null=True) # XDDD MM.MMM
+    lat = CharField(20, null=True) # XDDD MM.MMM
+    lon = CharField(20, null=True) # XDDD MM.MMM
     lotw_qsl_rcvd = CharField(2, null=True) # https://www.adif.org/314/ADIF_314.htm#QSLRcvd_Enumeration
     lotw_qsl_sent = CharField(2, null=True)
     lotw_qslrdate = DateTimeField(null=True)
@@ -149,7 +186,7 @@ class QsoLog(BaseModel):
     my_ant_az = IntegerField(null=True)
     my_ant_el = IntegerField(null=True)
     my_arrl_sect = CharField(4, null=True)
-    my_city	= CharField(null=True)
+    my_city = CharField(null=True)
     my_county = CharField(20, null=True)
     my_country = CharField(20, null=True)
     my_cq_zone = IntegerField(null=True)
@@ -159,7 +196,7 @@ class QsoLog(BaseModel):
     my_gridsquare_ext = CharField(2, null=True) # if there is a 10 character gridsquare, this is the final 2 characters
     my_iota = CharField(15, null=True) # CC-XXX
     my_iota_island_id = IntegerField(null=True)
-    my_itu_zone	 = IntegerField(null=True)
+    my_itu_zone = IntegerField(null=True)
     my_lat = CharField(20, null=True) # XDDD MM.MMM
     my_lon = CharField(20, null=True) # XDDD MM.MMM
     my_name = CharField(null=True)
@@ -167,7 +204,7 @@ class QsoLog(BaseModel):
     my_pota_ref = CharField(null=True) # pota ref csv list. eg K-0817,K-4566,K-4576,K-4573,K-4578@US-WY
     my_rig = CharField(null=True)
     my_sig = CharField(null=True)
-    my_sig_info	= CharField(null=True)
+    my_sig_info = CharField(null=True)
     my_sota_ref = CharField(20, null=True)
     my_state = CharField(10, null=True)
     my_street = CharField(null=True)
@@ -181,7 +218,7 @@ class QsoLog(BaseModel):
     owner_callsign = CharField(20, null=True)
     precedence = CharField(10, null=True)
     prop_mode = CharField(15, null=True)
-    public_key= CharField(null=True)
+    public_key = CharField(null=True)
     qrzcom_qso_upload_date = DateTimeField(null=True)
     qrzcom_qso_upload_status = CharField(2, null=True) # Y N M
     qsl_rcvd = CharField(2, null=True)
@@ -214,6 +251,7 @@ class QsoLog(BaseModel):
     is_original = BooleanField(null=True) # log generated while using this app
     is_run = BooleanField(null=True) # contest operator is in 'run' mode (calling cq)
     fk_station = ForeignKeyField(Station)
+    fk_contest = ForeignKeyField(Contest)
     #fk_rig = ForeignKeyField(R)
 
 
@@ -222,42 +260,12 @@ class DeletedQsoLog(QsoLog):
 
 
 
-Station.
+def loadPersistantDb(path: str):
+    _database.init(path, pragmas=(
+        ('check_same_thread', False),
+        ('journal_mode', 'wal'),  # Use WAL-mode (you should always use this!).
+        ('foreign_keys', 1)))  # Enforce foreign-key constraints.
+    _database.create_tables([Station, Contest, ContestMeta, QsoLog, DeletedQsoLog])
 
-class ContestMeta(BaseModel):
-    cw_messages = CharField(255)
-    cabrillo_name = CharField(20)
-    cabrillo_version = CharField(20)
-    digi_messages = CharField(255)
-    display_name = CharField(200)
-    dupe_type = IntegerField()
-    master_dta = CharField(255)
-    mode = CharField(10)
-    multiplier1_name = CharField(20)
-    multiplier2_name = CharField(20)
-    multiplier3_name = CharField(20)
-    name = CharField(20)
-    period = IntegerField()
-    points_per_contact = IntegerField()
-    ssb_messages = CharField(255)
-
-
-class Contest(BaseModel):
-    assisted_category = CharField(30)
-    band_category = CharField(30)
-    claimed_score = IntegerField
-    fk_contest = ForeignKeyField(ContestMeta)
-    fk_station = ForeignKeyField(Station)
-    mode_category = CharField(30)
-    operator_category = CharField(30)
-    operators = CharField(255)
-    overlay_category = CharField(20)
-    power_category = CharField(20)
-    sent_exchange = CharField(50)
-    soapbox = TextField(null=True)
-    start_date = DateTimeField()
-    station_category = CharField(30, null=True)
-    sub_type = CharField(20, null=True)
-    time_category = CharField(30, null=True)
-    transmitter_category = CharField(30, null=True)
-
+    for migration in persistent_migrations.funcs:
+        migration(_database)

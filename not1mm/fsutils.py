@@ -4,7 +4,8 @@
 fsutils.py: Filesystem utilities for not1mm.
 @kyleboyle
 """
-# pylint: disable=invalid-name
+import json
+import logging
 
 import os
 import platform
@@ -13,6 +14,8 @@ import subprocess
 from pathlib import Path
 
 from appdata import AppDataPaths
+
+logger = logging.getLogger(__name__)
 
 WORKING_PATH = Path(os.path.dirname(os.path.abspath(__file__)))
 
@@ -63,3 +66,23 @@ def openFileWithOS(file):
     else:
         subprocess.Popen(["xdg-open", file])
         # os.system(f"xdg-open {fsutils.USER_DATA_PATH / macro_file}")
+
+def read_settings() -> dict:
+    if os.path.exists(CONFIG_FILE):
+        with open(CONFIG_FILE, "rt", encoding="utf-8") as file_descriptor:
+            return json.loads(file_descriptor.read())
+
+
+def write_settings(to_merge: dict) -> None:
+    # TODO compare with existing settings and signal diffs
+    try:
+        settings = None
+        if os.path.exists(CONFIG_FILE):
+            with open(CONFIG_FILE, "rt", encoding="utf-8") as file_descriptor:
+                 settings = json.loads(file_descriptor.read())
+        if settings:
+            with open(CONFIG_FILE, "wt", encoding="utf-8") as file_descriptor:
+                settings.update(to_merge)
+                file_descriptor.write(json.dumps(settings, indent=4))
+    except IOError as exception:
+        logger.exception(f"Error saving preferences document", exception)
