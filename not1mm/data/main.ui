@@ -700,16 +700,6 @@
              <number>10</number>
             </property>
             <item>
-             <widget class="QLabel" name="radio_icon">
-              <property name="text">
-               <string/>
-              </property>
-              <property name="alignment">
-               <set>Qt::AlignCenter</set>
-              </property>
-             </widget>
-            </item>
-            <item>
              <widget class="QLabel" name="dupe_indicator">
               <property name="enabled">
                <bool>true</bool>
@@ -828,6 +818,16 @@
               </property>
               <property name="text">
                <string>S&amp;&amp;P</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="radio_icon">
+              <property name="text">
+               <string/>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignCenter</set>
               </property>
              </widget>
             </item>
@@ -1508,7 +1508,7 @@
     <bool>false</bool>
    </property>
   </action>
-   <action name="actionEdit_Macros">
+  <action name="actionEdit_Macros">
    <property name="text">
     <string>Edit Macros</string>
    </property>

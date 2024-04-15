@@ -23,8 +23,9 @@ import not1mm.fsutils as fsutils
 from not1mm.contest.AbstractContest import AbstractContest
 import not1mm.lib.event as appevent
 from not1mm.lib import flags
-from not1mm.model import QsoLog, Contest, DeletedQsoLog, Station
+from not1mm.model import QsoLog, Contest, DeletedQsoLog, Station, Enums
 from not1mm.contest import contests_by_cabrillo_id
+from not1mm.qtcomponents.CustomItemDelegate import CustomItemDelegate, EnumEditor
 
 logger = logging.getLogger(__name__)
 
@@ -105,18 +106,31 @@ class QsoTableModel(QAbstractTableModel):
             if column_name in ['freq', 'freq_rx']:
                 return f'{val:,}'.replace(',', '.')
             return val
+
         if role == Qt.ItemDataRole.EditRole:
             column_name = self._columns[index.column()]
             val = getattr(self._data[index.row()], column_name)
             if isinstance(val, datetime):
                 return QDateTime(val.date(), val.time())
-            if isinstance(val, float):
-                return str(val)
             if column_name == 'rst_sent' or column_name == 'rst_received':
                 return int(val)
+            if column_name == 'mode':
+                return EnumEditor(val, Enums.adif_enums['mode'])
+            elif column_name == 'submode':
+                qso = self._data[index.row()]
+                if qso.mode in Enums.adif_enums['sub_mode_by_parent_mode']:
+                    return EnumEditor(val, Enums.adif_enums['sub_mode_by_parent_mode'][qso.mode])
+                else:
+                    return EnumEditor(val, Enums.adif_enums['sub_mode'])
+            elif column_name == 'arrl_sect' or column_name == 'my_arrl_sect':
+                return EnumEditor(val, [x[0] for x in Enums.adif_enums['arrl_sect']], True)
+            elif column_name in Enums.qso_field_enum_map.keys():
+                return EnumEditor(val, Enums.adif_enums[Enums.qso_field_enum_map[column_name]])
             return val
+
         if role == Qt.ItemDataRole.FontRole and self._columns[index.column()] in ('time_on', 'call', 'freq', 'freq_rx', 'time_off', 'rst_sent', 'rst_rcvd'):
             return _monospace_font
+
         if role == Qt.ItemDataRole.DecorationRole and self._columns[index.column()] == '_flag':
             qso = self._data[index.row()]
             if qso.dxcc:
@@ -155,6 +169,11 @@ class QsoTableModel(QAbstractTableModel):
             record.band_rx = hamutils.adif.common.convert_freq_to_band(int(value) / 1000_000)
         #TODO re-generate other dependent fields
 
+        if isinstance(record._meta.fields.get(column), FloatField):
+            try:
+                value = float(value)
+            except ValueError:
+                return False
         setattr(record, column, value)
         try:
             record.save()
@@ -224,7 +243,8 @@ class LogWindow(QtWidgets.QDockWidget):
 
         self.qsoTable.verticalHeader().setVisible(False)
         self.stationHistoryTable.verticalHeader().setVisible(False)
-
+        self.qsoTable.setItemDelegate(CustomItemDelegate(self))
+        self.stationHistoryTable.setItemDelegate(CustomItemDelegate(self))
         self.qsoTable.setSortingEnabled(True)
 
         self.qsoTable.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
@@ -274,7 +294,6 @@ class LogWindow(QtWidgets.QDockWidget):
 
         self.load_settings()
 
-        #self.qsoTable.setItemDelegateForColumn()
 
     def populate_qso_log(self) -> None:
         self.setWindowTitle(
@@ -359,20 +378,18 @@ class LogWindow(QtWidgets.QDockWidget):
         else:
             self.populate_qso_log()
 
-    def closeEvent(self, event: typing.Optional[QtGui.QCloseEvent]) -> None:
-        self.save_settings()
-
     def header_section_moved(self, logical_index: int, old_visual_index: int, new_visual_index: int):
         # replicate changes to station history table
-        self.stationHistoryTable.horizontalHeader().restoreState(self.qsoTable.horizontalHeader().saveState())
         self.save_settings()
 
     def header_section_resized(self, logical_index: int, old_size: int, new_size: int):
         # replicate changes to station history table
-        self.stationHistoryTable.horizontalHeader().restoreState(self.qsoTable.horizontalHeader().saveState())
         self.save_settings()
 
     def save_settings(self):
+        self.stationHistoryTable.horizontalHeader().restoreState(self.qsoTable.horizontalHeader().saveState())
+        self.stationHistoryTable.horizontalHeader().setSectionsMovable(False)
+        self.stationHistoryTable.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Fixed)
         if self.contest:
             column_state = self.qsoTable.horizontalHeader().saveState()
             self.contest.merge_settings({"qso_table_column_state": bytes(column_state.toHex()).decode('ascii')})
@@ -397,4 +414,5 @@ class LogWindow(QtWidgets.QDockWidget):
         self.qsoTable.horizontalHeader().setSectionsMovable(True)
         self.stationHistoryTable.horizontalHeader().setSectionsMovable(False)
         self.stationHistoryTable.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Fixed)
+
 

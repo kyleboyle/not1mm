@@ -14,20 +14,21 @@ class BaseModel(Model):
 class Station(BaseModel):
     station_name = CharField()
     callsign = CharField(20)
-    arrl_sect = CharField(20, null=True)
-
-    club = CharField(null=True)
-    email = CharField(null=True)
-    antenna = CharField(null=True)
-    rig = CharField(null=True)
 
     gridsquare = CharField(20, null=True)
     gridsquare_ext = CharField(20, null=True)
+
     latitude = DoubleField(null=True)
     longitude = DoubleField(null=True)
     altitude = IntegerField(null=True)
     cq_zone = IntegerField(null=True)
     dxcc = IntegerField(null=True)
+    arrl_sect = CharField(20, null=True)
+    club = CharField(null=True)
+    email = CharField(null=True)
+    antenna = CharField(null=True)
+    rig = CharField(null=True)
+
     iaru_zone = IntegerField(null=True)
     itu_zone = IntegerField(null=True)
 

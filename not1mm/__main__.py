@@ -1274,7 +1274,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.contact.operator = self.current_op
         self.contact.hostname = platform.node()[:255]
         self.contact.is_original = True
-
+        self.contact.qso_complete = 'Y'
         if self.contact.gridsquare:
             self.contact.lat, self.contact.lon = gridtolatlon(self.contact.gridsquare)
 

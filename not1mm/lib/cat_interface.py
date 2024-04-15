@@ -9,11 +9,9 @@ import socket
 import xmlrpc.client
 import http
 
-if __name__ == "__main__":
-    print("I'm not the program you are looking for.")
+# http://www.w1hkj.com/flrig-help/xmlrpc_server.html
 
 logger = logging.getLogger("cat_interface")
-
 
 class CAT:
     """CAT control rigctld or flrig"""
