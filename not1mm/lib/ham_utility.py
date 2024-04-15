@@ -10,6 +10,7 @@ from decimal import Decimal
 logger = logging.getLogger("ham_utility")
 
 
+# TODO - an invalid callsign should probably return nothing
 def calculate_wpx_prefix(the_call: str) -> str:
     """Calculate a WPX Prefix"""
     if not the_call:
@@ -110,6 +111,8 @@ def getband(freq) -> str:
         return "23cm"
     return "0"
 
+def get_n1mm_band(freq: str) -> str:
+    return get_logged_band(freq)
 
 def get_logged_band(freq: str) -> str:
     """

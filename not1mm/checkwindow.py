@@ -17,8 +17,9 @@ from PyQt6.QtWidgets import QLabel, QVBoxLayout, QWidget
 
 import not1mm.fsutils as fsutils
 import not1mm.lib.event as appevent
-from not1mm.lib.database import DataBase
+
 from not1mm.lib.super_check_partial import SCP
+from not1mm.model import QsoLog
 from not1mm.qtcomponents.DockWidget import DockWidget
 
 logger = logging.getLogger(__name__)
@@ -62,14 +63,9 @@ class CheckWindow(DockWidget):
 
         appevent.register(appevent.CallChanged, self.event_call_change)
         appevent.register(appevent.CheckSpots, self.event_check_spots)
-        appevent.register(appevent.UpdateLog, self.event_update_log)
 
         self.load_pref()
-        self.dbname = fsutils.USER_DATA_PATH / self.pref.get(
-            "current_database", "ham.db"
-        )
-        self.database = DataBase(self.dbname, fsutils.APP_DATA_PATH)
-        self.database.current_contest = self.pref.get("contest", 0)
+
         logger.debug(uic.widgetPluginPath)
         uic.loadUi(fsutils.APP_DATA_PATH / "checkwindow.ui", self)
 
@@ -78,14 +74,6 @@ class CheckWindow(DockWidget):
     def load_pref(self) -> None:
         """
         Load preference file to get current db filename and sets the initial darkmode state.
-
-        Parameters
-        ----------
-        None
-
-        Returns
-        -------
-        None
         """
         try:
             if os.path.exists(fsutils.CONFIG_FILE):
@@ -109,9 +97,6 @@ class CheckWindow(DockWidget):
 
         except IOError as exception:
             logger.critical("Error: %s", exception)
-
-    def event_update_log(self, event: appevent.UpdateLog):
-        self.clear_lists()
 
     def event_call_change(self, event: appevent.CallChanged):
         self.call = event.call
@@ -162,14 +147,9 @@ class CheckWindow(DockWidget):
         ----------
         call : str
         Call to get matches for
-
-        Returns
-        -------
-        None
         """
-        result = []
-        if call:
-            result = self.database.get_like_calls_and_bands(call)
+        result = QsoLog.get_like_calls(call, None)
+        # TODO option to include only current contest
         self.populate_layout(self.qsoLayout, result)
 
     def dxc_list(self, spots: list) -> None:
@@ -180,10 +160,6 @@ class CheckWindow(DockWidget):
         ----------
         spots : list
         List of spots to get matches for
-
-        Returns
-        -------
-        None
         """
         if spots:
             self.populate_layout(self.dxcLayout, filter(lambda x: x, [x.callsign for x in spots]))
@@ -195,20 +171,26 @@ class CheckWindow(DockWidget):
             if call:
                 if self.call:
                     label_text = ""
+                    diff_score = 0
+                    #logger.debug(f'opcodes for {call} {self.call}')
                     for tag, i1, i2, j1, j2 in Levenshtein.opcodes(call, self.call):
-                        #logger.debug('{:7}   a[{}:{}] --> b[{}:{}] {!r:>8} --> {!r}'.format(
+                        #logger.debug('{:7}   i[{}:{}] --> j[{}:{}] {!r:>8} --> {!r}'.format(
                         #    tag, i1, i2, j1, j2, call[i1:i2], self.call[j1:j2]))
                         if tag == 'equal':
                             label_text += call[i1:i2]
                             continue
                         elif tag == 'replace':
                             label_text += f"<span style='background-color: {self.character_remove_color};'>{call[i1:i2]}</span>"
+                            diff_score += max((i2 - i1), (j2 - j1)) * (max(len(call), len(self.call)) + 1 - min(i1, j1))
                         elif tag == 'insert' or tag == 'delete':
                             label_text += f"<span style='background-color: {self.character_add_color};'>{call[i1:i2]}</span>"
-                    call_items.append((Levenshtein.hamming(call, self.call), label_text, call))
+                            diff_score += max((i2 - i1), (j2 - j1)) * (max(len(call), len(self.call)) + 1 - min(i1, j1))
+                        #logger.debug(f"new score high is bad {diff_score}")
+                    #call_items.append((Levenshtein.hamming(call, self.call), label_text, call))
+                    call_items.append((diff_score, label_text, call))
 
         # TODO still some work to do on diffs. eg VE9KB doesnt show well
-        #sorted(call_items, key=lambda x: x[0])
+        call_items = sorted(call_items, key=lambda x: x[0])
         for i in reversed(range(layout.count())):
             if layout.itemAt(i).widget():
                 layout.itemAt(i).widget().setParent(None)

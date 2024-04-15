@@ -9,8 +9,8 @@ import datetime
 import importlib
 import logging
 import os
+import platform
 import signal
-import socket
 import sys
 import typing
 import uuid
@@ -20,51 +20,57 @@ from pathlib import Path
 from shutil import copyfile
 from typing import Optional
 
+import hamutils.adif.common
 import qdarktheme
-import sounddevice as sd
+try:
+    import sounddevice as sd
+except OSError as exception:
+    print(exception)
+    print("portaudio is not installed")
+    sd = None
 import soundfile as sf
 from PyQt6 import QtCore, QtGui, QtWidgets, uic
 from PyQt6.QtCore import QDir, Qt, QByteArray, QEvent, QTimer
-from PyQt6.QtGui import QFontDatabase, QKeyEvent, QPixmap
-from PyQt6.QtWidgets import QFileDialog, QDockWidget, QWidget, QLineEdit, QLabel
+from PyQt6.QtGui import QFontDatabase, QKeyEvent
+from PyQt6.QtWidgets import QFileDialog, QDockWidget, QLineEdit, QLabel, QHBoxLayout, QMessageBox
 
 import not1mm.fsutils as fsutils
-from not1mm import model
+from not1mm import model, contest
 from not1mm.bandmap import BandMapWindow
 from not1mm.callprofile import ExternalCallProfileWindow
 from not1mm.checkwindow import CheckWindow
+from not1mm.contest.AbstractContest import ContestFieldNextLine, ContestField, AbstractContest, DupeType
 from not1mm.lib import event as appevent, flags
 from not1mm.lib.about import About
 from not1mm.lib.bigcty import BigCty
 from not1mm.lib.cat_interface import CAT
 from not1mm.lib.cwinterface import CW
-from not1mm.lib.database import DataBase
 from not1mm.lib.edit_macro import EditMacro
 from not1mm.lib.edit_opon import OpOn
+from not1mm.lib.event_model import StationActivated
 from not1mm.lib.ham_utility import (
     bearing,
     bearing_with_latlon,
-    calculate_wpx_prefix,
     distance,
     distance_with_latlon,
     get_logged_band,
     getband,
     reciprocol,
-    fakefreq,
+    fakefreq, gridtolatlon, calculate_wpx_prefix,
 )
 from not1mm.lib.lookup import HamQTH, QRZlookup, ExternalCallLookupService
 from not1mm.lib.n1mm import N1MM
-from not1mm.lib.new_contest import NewContest
-from not1mm.lib.select_contest import SelectContest
 from not1mm.lib.settings import Settings
 from not1mm.lib.super_check_partial import SCP
 from not1mm.lib.version import __version__
 from not1mm.lib.versiontest import VersionTest
 from not1mm.logwindow import LogWindow
+from not1mm.model import Contest, Station, QsoLog
 from not1mm.qtcomponents.ContestEdit import ContestEdit
 from not1mm.qtcomponents.ContestFieldEventFilter import ContestFieldEventFilter
 from not1mm.qtcomponents.DockWidget import DockWidget
 from not1mm.qtcomponents.EmacsCursorEventFilter import EmacsCursorEventFilter
+from not1mm.qtcomponents.QsoEntryField import QsoEntryField
 from not1mm.qtcomponents.StationSettings import StationSettings
 from not1mm.vfo import VfoWindow
 
@@ -85,17 +91,17 @@ QFrame#Button_Row1 QPushButton, QFrame#Button_Row2 QPushButton {
     border-bottom-width: 2px;
     padding: 0;
 }
-#MainWindow #centralwidget QFrame QLineEdit#callsign {
+#MainWindow #centralwidget QFrame QLineEdit#callsign_input {
     text-transform: uppercase;
 }
 
+#MainWindow #Band_Mode_Frame_SSB QLabel, #MainWindow #Band_Mode_Frame_RTTY QLabel, #MainWindow #Band_Mode_Frame_CW QLabel {
+    border-radius: 4px;
+}
 """
-
+logger = logging.getLogger("__main__")
 
 class MainWindow(QtWidgets.QMainWindow):
-    """
-    The main window
-    """
 
     pref_ref = {
         "sounddevice": "default",
@@ -107,8 +113,6 @@ class MainWindow(QtWidgets.QMainWindow):
         "cw_macros": True,
         "bands_modes": True,
         "bands": ["160", "80", "40", "20", "15", "10"],
-        "current_database": "ham.db",
-        "contest": "",
         "send_n1mm_packets": False,
         "n1mm_station_name": "20M CW Tent",
         "n1mm_operator": "Bernie",
@@ -136,27 +140,27 @@ class MainWindow(QtWidgets.QMainWindow):
     }
 
     appstarted = False
-    contact = {}
-    contest = None
-    contest_settings = {}
+
+    contest: Contest = None
+    contest_plugin: AbstractContest = None
+    contest_fields: dict[str:QsoEntryField] = {}
+    contact: QsoLog = None
+
     pref = None
-    station = {}
-    current_op = ""
+    station: Station = None
+    current_op: str = None
     current_mode = ""
     current_band = ""
-    default_rst = "59"
+
     cw = None
     look_up: Optional[ExternalCallLookupService] = None
     run_state = False
     fkeys = {}
     about_dialog = None
-    qrz_dialog = None
-    settings_dialog = None
     edit_macro_dialog = None
-    contest_dialog = None
     configuration_dialog = None
     opon_dialog = None
-    dbname = fsutils.USER_DATA_PATH, "/ham.db"
+
     radio_state = {}
     rig_control = None
     worked_list = {}
@@ -164,7 +168,16 @@ class MainWindow(QtWidgets.QMainWindow):
     last_focus = None
     oldtext = ""
 
-    callsign: QLineEdit = None
+    qso_row1: QHBoxLayout
+    qso_row2: QHBoxLayout
+    callsign_entry: QsoEntryField
+    rst_sent_entry: QsoEntryField
+    rst_received_entry: QsoEntryField
+
+    """points to the input field that should be focused when the space bar is pressed in the callsign field"""
+    callsign_space_to_input: QLineEdit
+    space_character_removal_queue = []
+
     log_window: QDockWidget = None
     check_window: QDockWidget = None
     bandmap_window: QDockWidget = None
@@ -184,25 +197,27 @@ class MainWindow(QtWidgets.QMainWindow):
         super().__init__(*args, **kwargs)
         logger.info("MainWindow: __init__")
 
-        appevent.register(appevent.GetContestColumns, self.event_get_columns)
         appevent.register(appevent.GetActiveContest, self.event_get_contest_status)
-        appevent.register(appevent.GetWorkedList, self.event_get_worked_list)
         appevent.register(appevent.Tune, self.event_tune)
         appevent.register(appevent.ExternalLookupResult, self.event_external_call_lookup)
+        appevent.register(appevent.ContestActivated, self.activate_contest)
+        appevent.register(appevent.StationActivated, self.activate_station)
 
         self.setCorner(Qt.Corner.TopRightCorner, Qt.DockWidgetArea.RightDockWidgetArea)
         self.setCorner(Qt.Corner.BottomRightCorner, Qt.DockWidgetArea.RightDockWidgetArea)
+
         data_path = fsutils.APP_DATA_PATH / "main.ui"
         uic.loadUi(data_path, self)
+
         self.cw_entry.hide()
         self.leftdot.hide()
         self.rightdot.hide()
         self.mscp = SCP(fsutils.APP_DATA_PATH)
-        self.next_field = self.other_2
+
         self.dupe_indicator.hide()
         self.cw_speed.valueChanged.connect(self.cwspeed_spinbox_changed)
 
-        self.cw_entry.textChanged.connect(self.handle_text_change)
+        self.cw_entry.textChanged.connect(self.handle_cw_text_change)
         self.cw_entry.returnPressed.connect(self.toggle_cw_entry)
 
         self.actionCW_Macros.triggered.connect(self.cw_macros_state_changed)
@@ -223,12 +238,10 @@ class MainWindow(QtWidgets.QMainWindow):
         )
         self.actionStationSettings.triggered.connect(self.edit_station_settings)
 
-        self.actionNew_Contest.triggered.connect(self.new_contest_dialog)
-        self.actionOpen_Contest.triggered.connect(self.open_contest)
         self.actionEdit_Current_Contest.triggered.connect(self.edit_contest)
 
-        self.actionNew_Database.triggered.connect(self.new_database)
-        self.actionOpen_Database.triggered.connect(self.open_database)
+        self.actionNew_Database.triggered.connect(self.prompt_new_database_file)
+        self.actionOpen_Database.triggered.connect(self.prompt_open_database_file)
 
         self.actionEdit_Macros.triggered.connect(self.edit_cw_macros)
 
@@ -242,19 +255,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.radioButton_run.clicked.connect(self.run_sp_buttons_clicked)
         self.radioButton_sp.clicked.connect(self.run_sp_buttons_clicked)
         self.score.setText("0")
-        self.callsign.textEdited.connect(self.callsign_changed)
-        self.callsign.returnPressed.connect(self.save_contact)
-        self.callsign.editingFinished.connect(self.callsign_editing_finished)
 
-        self.sent.returnPressed.connect(self.save_contact)
-        self.receive.returnPressed.connect(self.save_contact)
-        self.other_1.returnPressed.connect(self.save_contact)
-        self.other_1.textEdited.connect(self.other_1_changed)
-        self.other_2.returnPressed.connect(self.save_contact)
-        self.other_2.textEdited.connect(self.other_2_changed)
-
-        self.sent.setText("59")
-        self.receive.setText("59")
         icon_path = fsutils.APP_DATA_PATH
         self.greendot = QtGui.QPixmap(str(icon_path / "greendot.png"))
         self.reddot = QtGui.QPixmap(str(icon_path / "reddot.png"))
@@ -465,25 +466,8 @@ class MainWindow(QtWidgets.QMainWindow):
             QtGui.QIcon(str(fsutils.APP_DATA_PATH / "k6gte.not1mm-64.png"))
         )
         self.readpreferences()
-        self.dbname = fsutils.USER_DATA_PATH / self.pref.get(
-            "current_database", "ham.db"
-        )
-        self.database = DataBase(self.dbname, fsutils.APP_DATA_PATH)
-        self.station = self.database.fetch_station()
-        if self.station is None:
-            self.station = {}
-            self.edit_station_settings()
-            self.station = self.database.fetch_station()
-            if self.station is None:
-                self.station = {}
-        self.contact = self.database.empty_contact
-        self.current_op = self.station.get("Call", "")
-        self.make_op_dir()
-        self.read_cw_macros()
-        self.clearinputs()
 
-        if self.pref.get("contest"):
-            self.load_contest()
+        model.persistent.loadPersistantDb(self.pref.get("current_database", fsutils.USER_DATA_PATH / 'qsodefault.db'))
 
         if not DEBUG_ENABLED:
             if VersionTest(__version__).test():
@@ -496,19 +480,82 @@ class MainWindow(QtWidgets.QMainWindow):
         self.rig_poll_timer.timeout.connect(self.poll_radio)
         self.rig_poll_timer.start(250)
 
-        field_filter = ContestFieldEventFilter(self.handle_input_focus, parent=self)
-        for i in [self.callsign, self.sent, self.receive, self.other_1, self.other_2]:
-            i.installEventFilter(field_filter)
-            i.installEventFilter(EmacsCursorEventFilter(parent=i))
+        self.callsign_entry = QsoEntryField('callsign', 'Callsign', self.centralwidget)
+        self.rst_sent_entry = QsoEntryField('rst_sent', 'RST Snt', self.centralwidget)
+        self.rst_received_entry = QsoEntryField('rst_rcvd', 'Rcv RST', self.centralwidget)
+        self.callsign_entry.input_field.setMaxLength(20)
+        self.callsign_entry.input_field.textEdited.connect(self.callsign_changed)
+        self.callsign_entry.input_field.returnPressed.connect(self.save_contact)
+        self.callsign_entry.input_field.editingFinished.connect(self.callsign_editing_finished)
+        self.callsign_entry.input_field.focused.connect(self.handle_input_focus, Qt.ConnectionType.QueuedConnection)
 
+        self.rst_sent_entry.input_field.returnPressed.connect(self.save_contact)
+        self.rst_sent_entry.input_field.focused.connect(self.handle_input_focus, Qt.ConnectionType.QueuedConnection)
+        self.rst_received_entry.input_field.returnPressed.connect(self.save_contact)
+        self.rst_received_entry.input_field.focused.connect(self.handle_input_focus, Qt.ConnectionType.QueuedConnection)
 
-    def handle_input_focus(self, source: QLineEdit, event: QEvent) -> None:
-        # TODO - should maybe have configuration that will auto select the field or cursor to end for all fields
-        if (source == self.receive or source == self.sent) and (source.text() == '59' or source.text() == '599'):
+        self.rst_sent_entry.input_field.setText("59")
+        self.rst_received_entry.input_field.setText("59")
+
+        self.qso_field_event_filter = ContestFieldEventFilter(self.handle_input_change, parent=self)
+
+        for entry in [self.callsign_entry, self.rst_received_entry, self.rst_sent_entry]:
+            entry.input_field.installEventFilter(self.qso_field_event_filter)
+            entry.input_field.installEventFilter(EmacsCursorEventFilter(parent=entry.input_field))
+
+        self.read_cw_macros()
+        self.open_database()
+
+    def open_database(self):
+        station_id = self.pref.get('active_station_id', None)
+        if station_id:
+            self.station = Station.select().where(Station.id == station_id).get_or_none()
+        contest_id = self.pref.get('active_contest_id', None)
+        if contest_id:
+            self.contest = Contest.select().where(Contest.id == contest_id).get_or_none()
+
+        if not self.station:
+            fsutils.write_settings({"active_station_id": None})
+            self.edit_station_settings()
+        else:
+            appevent.emit(appevent.StationActivated(self.station))
+            if not self.contest:
+                fsutils.write_settings({"active_contest_id": None})
+                self.edit_contest()
+            else:
+                appevent.emit(appevent.ContestActivated(self.contest))
+
+    def activate_station(self, event: StationActivated):
+        self.station = event.station
+        self.current_op = self.station.callsign
+        self.make_op_dir()
+        if not self.contest:
+            # show contest config window
+            self.edit_contest()
+
+    def handle_input_focus(self, source: QLineEdit) -> None:
+        """handle events from input fields"""
+        if (source == self.rst_received_entry.input_field or source == self.rst_sent_entry.input_field) and (source.text() == '59' or source.text() == '599'):
             source.setSelection(1, 1)
         else:
+            # TODO - should maybe have configuration that will define what to do on field focus
+            # IE auto select the field or cursor to end for all fields
+            # default behaviour on focus
             source.deselect()
             source.end(False)
+
+        # clear up any spaces that need to be removed as a result of pressing the space bar
+        while self.space_character_removal_queue:
+            input, text = self.space_character_removal_queue.pop()
+            input.setText(text)
+
+    def handle_input_change(self, source: QLineEdit, event: QEvent) -> None:
+        """check for "space does tab" fields and if the space bar is pressed then execute a focus to next field"""
+        if event.type() == QEvent.Type.KeyPress and event.key() == Qt.Key.Key_Space and event.modifiers() == Qt.KeyboardModifier.NoModifier:
+            conf: ContestField = source.property('field_config')
+            if conf and conf.name != 'call' and conf and conf.space_tabs:
+                # the text currently does not have the space character in it
+                self.handle_space_tab(conf.name, source)
 
 
     def set_radio_icon(self, state: int) -> None:
@@ -519,10 +566,6 @@ class MainWindow(QtWidgets.QMainWindow):
         ----------
         state : int
         The state of the CAT icon. 0 = grey, 1 = red, 2 = green
-
-        Returns
-        -------
-        None
         """
 
         displaystate = [self.radio_grey, self.radio_red, self.radio_green]
@@ -534,14 +577,6 @@ class MainWindow(QtWidgets.QMainWindow):
     def toggle_cw_entry(self) -> None:
         """
         Toggle the CW entry field on and off.
-
-        Parameters
-        ----------
-        None
-
-        Returns
-        -------
-        None
         """
 
         self.cw_entry_visible = not self.cw_entry_visible
@@ -556,19 +591,7 @@ class MainWindow(QtWidgets.QMainWindow):
         if self.last_focus:
             self.last_focus.setFocus()
 
-    def handle_text_change(self) -> None:
-        """
-        ....
-
-        Parameters
-        ----------
-        None
-
-        Returns
-        -------
-        None
-        """
-
+    def handle_cw_text_change(self) -> None:
         newtext = self.cw_entry.text()
         if len(newtext) < len(self.oldtext):
             # self.send_backspace()
@@ -587,10 +610,6 @@ class MainWindow(QtWidgets.QMainWindow):
         ----------
         band : int
         mode : str
-
-        Returns
-        -------
-        Nothing
         """
         if mode in ["CW", "SSB", "RTTY"]:
             freq = fakefreq(str(band), mode)
@@ -603,14 +622,6 @@ class MainWindow(QtWidgets.QMainWindow):
     def show_message_box(self, message: str) -> None:
         """
         Displays a dialog box with a message.
-
-        Paramters
-        ---------
-        message : str
-
-        Returns
-        -------
-        None
         """
 
         message_box = QtWidgets.QMessageBox()
@@ -623,14 +634,6 @@ class MainWindow(QtWidgets.QMainWindow):
     def show_about_dialog(self) -> None:
         """
         Show the About dialog when the menu item is clicked.
-
-        Parameters
-        ----------
-        Takes no parameters.
-
-        Returns
-        -------
-        None
         """
 
         self.about_dialog = About(fsutils.APP_DATA_PATH)
@@ -642,14 +645,6 @@ class MainWindow(QtWidgets.QMainWindow):
     def show_help_dialog(self):
         """
         Show the Help dialog when the menu item is clicked.
-
-        Parameters
-        ----------
-        Takes no parameters.
-
-        Returns
-        -------
-        None
         """
 
         self.about_dialog = About(fsutils.APP_DATA_PATH)
@@ -666,14 +661,6 @@ class MainWindow(QtWidgets.QMainWindow):
         Tries to update the MASTER.SCP file when the menu item is clicked.
 
         Displays a dialog advising if it was updated.
-
-        Parameters
-        ----------
-        Takes no parameters.
-
-        Returns
-        -------
-        None
         """
 
         if self.mscp.update_masterscp():
@@ -684,14 +671,6 @@ class MainWindow(QtWidgets.QMainWindow):
     def edit_configuration_settings(self) -> None:
         """
         Configuration Settings was clicked
-
-        Parameters
-        ----------
-        None
-
-        Returns
-        -------
-        None
         """
 
         self.configuration_dialog = Settings(fsutils.APP_DATA_PATH, self.pref)
@@ -702,14 +681,6 @@ class MainWindow(QtWidgets.QMainWindow):
     def edit_configuration_return(self) -> None:
         """
         Returns here when configuration dialog closed with okay.
-
-        Parameters
-        ----------
-        None
-
-        Returns
-        -------
-        None
         """
 
         self.configuration_dialog.save_changes()
@@ -717,341 +688,195 @@ class MainWindow(QtWidgets.QMainWindow):
         # logger.debug("%s", f"{self.pref}")
         self.readpreferences()
 
-    def new_database(self) -> None:
-        """
-        Create new database file.
+    def prompt_open_database_file(self) -> None:
+        current_file = self.pref.get("current_database", None)
+        filename, _ = QFileDialog.getOpenFileName(
+            self,
+            "Open Existing Database File",
+            os.path.dirname(current_file),
+            "Database (*.db)",
+            options=QFileDialog.Option.DontUseNativeDialog | QFileDialog.Option.DontConfirmOverwrite,
+        )
+        if filename:
+            self.pref["current_database"] = filename
+            fsutils.write_settings({"current_database": filename})
+            model.loadPersistantDb(filename)
+            self.open_database()
 
-        Parameters
-        ----------
-        None
-
-        Returns
-        -------
-        None
-        """
-
-        filename = self.filepicker("new")
+    def prompt_new_database_file(self) -> None:
+        current_file = self.pref.get("current_database", None)
+        filename, _ = QFileDialog.getSaveFileName(
+            self,
+            "Create a New Database File",
+            str(Path(os.path.dirname(current_file)) / f"qsolog_{datetime.datetime.now().strftime('%Y%m%d_%H%M')}.db"),
+            "Database (*.db)",
+            options=QFileDialog.Option.DontUseNativeDialog,
+        )
         if filename:
             if filename[-3:] != ".db":
                 filename += ".db"
-            self.pref["current_database"] = os.path.basename(filename)
-            self.write_preference()
-            self.dbname = fsutils.USER_DATA_PATH / self.pref.get(
-                "current_database", "ham.db"
-            )
-            self.database = DataBase(self.dbname, fsutils.APP_DATA_PATH)
-            self.contact = self.database.empty_contact
-            self.station = self.database.fetch_station()
-            if self.station is None:
-                self.station = {}
-            self.current_op = self.station.get("Call", "")
-            self.make_op_dir()
+            filepath = Path(filename)
 
-            appevent.emit(appevent.LoadDb())
+            if filepath.exists():
+                if filepath.is_dir():
+                    logger.error("Cannot use a directory as a new db file")
+                    return
+                elif filepath.exists():
+                    # when creating a new db if the chosen file is is exsting, back it up
+                    filepath.rename(f"{str(filepath)}_{datetime.datetime.now().strftime('YYYMMDD_hhmm')}_backup")
 
-            self.clearinputs()
-            self.edit_station_settings()
-
-    def open_database(self) -> None:
-        """
-        Open existing database file.
-
-        Parameters
-        ----------
-        None
-
-        Returns
-        -------
-        None
-        """
-
-        filename = self.filepicker("open")
-        if filename:
-            self.pref["current_database"] = os.path.basename(filename)
-            self.write_preference()
-            self.dbname = fsutils.USER_DATA_PATH / self.pref.get(
-                "current_database", "ham.db"
-            )
-            self.database = DataBase(self.dbname, fsutils.MODULE_PATH)
-            self.contact = self.database.empty_contact
-            self.station = self.database.fetch_station()
-            if self.station is None:
-                self.station = {}
-            if self.station.get("Call", "") == "":
-                self.edit_station_settings()
-            self.current_op = self.station.get("Call", "")
-            self.make_op_dir()
-
-            appevent.emit(appevent.LoadDb())
-
-            self.clearinputs()
-
-    def new_contest(self) -> None:
-        """Create new contest in existing database."""
-
-    def open_contest(self) -> None:
-        """
-        Switch to a different existing contest in existing database.
-
-        Parameters
-        ----------
-        None
-
-        Returns
-        -------
-        None
-        """
-
-        logger.debug("Open Contest selected")
-        contests = self.database.fetch_all_contests()
-        logger.debug("%s", f"{contests}")
-
-        if contests:
-            self.contest_dialog = SelectContest(fsutils.APP_DATA_PATH)
-
-            self.contest_dialog.contest_list.setRowCount(0)
-            self.contest_dialog.contest_list.setColumnCount(4)
-            self.contest_dialog.contest_list.verticalHeader().setVisible(False)
-            self.contest_dialog.contest_list.setColumnWidth(1, 200)
-            self.contest_dialog.contest_list.setColumnWidth(2, 200)
-            self.contest_dialog.contest_list.setHorizontalHeaderItem(
-                0, QtWidgets.QTableWidgetItem("Contest Nr")
-            )
-            self.contest_dialog.contest_list.setHorizontalHeaderItem(
-                1, QtWidgets.QTableWidgetItem("Contest Name")
-            )
-            self.contest_dialog.contest_list.setHorizontalHeaderItem(
-                2, QtWidgets.QTableWidgetItem("Contest Start")
-            )
-            self.contest_dialog.contest_list.setHorizontalHeaderItem(
-                3, QtWidgets.QTableWidgetItem("Not UIsed")
-            )
-            self.contest_dialog.contest_list.setColumnHidden(0, True)
-            self.contest_dialog.contest_list.setColumnHidden(3, True)
-            self.contest_dialog.accepted.connect(self.open_contest_return)
-            for contest in contests:
-                number_of_rows = self.contest_dialog.contest_list.rowCount()
-                self.contest_dialog.contest_list.insertRow(number_of_rows)
-                contest_id = str(contest.get("ContestID", 1))
-                contest_name = contest.get("ContestName", 1)
-                start_date = contest.get("StartDate", 1)
-                self.contest_dialog.contest_list.setItem(
-                    number_of_rows, 0, QtWidgets.QTableWidgetItem(contest_id)
-                )
-                self.contest_dialog.contest_list.setItem(
-                    number_of_rows, 1, QtWidgets.QTableWidgetItem(contest_name)
-                )
-                self.contest_dialog.contest_list.setItem(
-                    number_of_rows, 2, QtWidgets.QTableWidgetItem(start_date)
-                )
-        self.contest_dialog.show()
-
-    def open_contest_return(self) -> None:
-        """
-        Called by open_contest when contest selected.
-
-        Parameters
-        ----------
-        None
-
-        Returns
-        -------
-        None
-        """
-
-        selected_row = self.contest_dialog.contest_list.currentRow()
-        contest = self.contest_dialog.contest_list.item(selected_row, 0).text()
-        self.pref["contest"] = contest
-        self.write_preference()
-        logger.debug("Selected contest: %s", f"{contest}")
-        self.load_contest()
-        self.worked_list = self.database.get_calls_and_bands()
-        self.send_worked_list()
-
-
+            self.pref["current_database"] = filename
+            fsutils.write_settings({"current_database": filename})
+            model.loadPersistantDb(filename)
+            self.open_database()
 
     def edit_contest(self) -> None:
+        contest_dialog = ContestEdit(fsutils.APP_DATA_PATH, parent=self)
+        contest_dialog.open()
 
-        station_dialog = ContestEdit(fsutils.APP_DATA_PATH, parent=self)
-        station_dialog.open()
-        return
-        """
-        Edit the current contest settings.
-
-        Parameters
-        ----------
-        None
-
-        Returns
-        -------
-        None
-        """
-
-        logger.debug("Edit contest Dialog")
-        if self.contest is None:
-            self.show_message_box("You have no contest defined.")
-            return
-        if self.contest_settings is None:
-            return
-
-        self.contest_dialog = NewContest(fsutils.APP_DATA_PATH)
-
-        self.contest_dialog.setWindowTitle("Edit Contest")
-        self.contest_dialog.accepted.connect(self.save_edited_contest)
-        value = self.contest_settings.get("ContestName").upper().replace("_", " ")
-        if value == "GENERAL LOGGING":
-            value = "General Logging"
-        self.refill_dropdown(self.contest_dialog.contest, value)
-        value = self.contest_settings.get("OperatorCategory")
-        self.refill_dropdown(self.contest_dialog.operator_class, value)
-        value = self.contest_settings.get("BandCategory")
-        self.refill_dropdown(self.contest_dialog.band, value)
-        value = self.contest_settings.get("PowerCategory")
-        self.refill_dropdown(self.contest_dialog.power, value)
-        value = self.contest_settings.get("ModeCategory")
-        self.refill_dropdown(self.contest_dialog.mode, value)
-        value = self.contest_settings.get("OverlayCategory")
-        self.refill_dropdown(self.contest_dialog.overlay, value)
-        self.contest_dialog.operators.setText(self.contest_settings.get("Operators"))
-        self.contest_dialog.soapbox.setPlainText(self.contest_settings.get("Soapbox"))
-        self.contest_dialog.exchange.setText(self.contest_settings.get("SentExchange"))
-        value = self.contest_settings.get("StationCategory")
-        self.refill_dropdown(self.contest_dialog.station, value)
-        value = self.contest_settings.get("AssistedCategory")
-        self.refill_dropdown(self.contest_dialog.assisted, value)
-        value = self.contest_settings.get("TransmitterCategory")
-        self.refill_dropdown(self.contest_dialog.transmitter, value)
-        value = self.contest_settings.get("StartDate")
-        the_date, the_time = value.split()
-        self.contest_dialog.dateTimeEdit.setDate(
-            QtCore.QDate.fromString(the_date, "yyyy-MM-dd")
-        )
-        self.contest_dialog.dateTimeEdit.setCalendarPopup(True)
-        self.contest_dialog.dateTimeEdit.setTime(
-            QtCore.QTime.fromString(the_time, "hh:mm:ss")
-        )
-        self.contest_dialog.open()
-
-    def save_edited_contest(self) -> None:
-        """
-        Save the edited contest.
-        Called by edit_contest().
-
-        Parameters
-        ----------
-        None
-
-        Returns
-        -------
-        None
-        """
-        contest = {}
-        contest["ContestName"] = (
-            self.contest_dialog.contest.currentText().lower().replace(" ", "_")
-        )
-        contest["StartDate"] = self.contest_dialog.dateTimeEdit.dateTime().toString(
-            "yyyy-MM-dd hh:mm:ss"
-        )
-        contest["OperatorCategory"] = self.contest_dialog.operator_class.currentText()
-        contest["BandCategory"] = self.contest_dialog.band.currentText()
-        contest["PowerCategory"] = self.contest_dialog.power.currentText()
-        contest["ModeCategory"] = self.contest_dialog.mode.currentText()
-        contest["OverlayCategory"] = self.contest_dialog.overlay.currentText()
-        contest["Operators"] = self.contest_dialog.operators.text()
-        contest["Soapbox"] = self.contest_dialog.soapbox.toPlainText()
-        contest["SentExchange"] = self.contest_dialog.exchange.text()
-        contest["ContestNR"] = self.pref.get("contest", 1)
-        contest["StationCategory"] = self.contest_dialog.station.currentText()
-        contest["AssistedCategory"] = self.contest_dialog.assisted.currentText()
-        contest["TransmitterCategory"] = self.contest_dialog.transmitter.currentText()
-
-        logger.debug("%s", f"{contest}")
-        self.database.update_contest(contest)
-        self.write_preference()
+    def activate_contest(self, event: appevent.ContestActivated) -> None:
+        self.contest = event.contest
+        self.contest_plugin = contest.contests_by_cabrillo_id[self.contest.fk_contest_meta.cabrillo_name](self.contest)
         self.load_contest()
 
+    def set_blank_qso(self):
+        self.contact = QsoLog()
+        self.contact.fk_contest = self.contest
+        self.contact.fk_station = self.station
+        # TODO if the user "pins" qso information, merge that into default qso values here
+
+        self.contact.station_callsign = self.station.callsign
+        self.contact.my_arrl_sect = self.station.arrl_sect
+
+        self.contact.my_antenna = self.station.antenna
+        self.contact.my_rig = self.station.rig
+
+        self.contact.my_gridsquare = self.station.gridsquare
+        self.contact.my_gridsquare_ext = self.station.gridsquare_ext
+        self.contact.my_lat = self.station.latitude
+        self.contact.my_lon = self.station.longitude
+        self.contact.my_altitude = self.station.altitude
+        self.contact.my_cq_zone = self.station.cq_zone
+        self.contact.my_dxcc = self.station.dxcc
+
+        self.contact.my_itu_zone = self.station.itu_zone
+
+        self.contact.my_name = self.station.name
+        self.contact.my_street = self.station.street1
+        if self.station.street2:
+            self.contact.my_street += self.station.street2
+
+        self.contact.my_city = self.station.city
+        self.contact.my_state = self.station.state
+        self.contact.my_postal_code = self.station.postal_code
+        self.contact.my_county = self.station.county
+        self.contact.my_country = self.station.country
+
+        self.contact.my_iota = self.station.iota
+        self.contact.my_iota_island_id = self.station.iota_island_id
+        self.contact.my_pota_ref = self.station.pota_ref
+
+        self.contact.my_fists = self.station.fists
+        self.contact.my_usaca_counties = self.station.usaca_counties
+        self.contact.my_vucc_grids = self.station.vucc_grids
+        self.contact.my_wwff_ref = self.station.wwff_ref
+        self.contact.my_sota_ref = self.station.sota_ref
+        self.contact.my_sig = self.station.sig
+        self.contact.my_sig_info = self.station.sig_info
+
+        self.contest_plugin.intermediate_qso_update(self.contact, None)
+
     def load_contest(self) -> None:
-        """
-        Loads the contest stored in the preference file.
-        If no contest is defined, a new contest is created.
+        assert self.contest
+        assert self.contest_plugin
+        # clear out previous contest
+        for layout in [self.qso_row1, self.qso_row2]:
+            for i in reversed(range(layout.count())):
+                widgetToRemove = layout.itemAt(i).widget()
+                # remove it from the layout list
+                layout.removeWidget(widgetToRemove)
+                # remove it from the gui
+                widgetToRemove.setParent(None)
+                if widgetToRemove not in [self.callsign_entry, self.rst_sent_entry, self.rst_received_entry]:
+                    widgetToRemove.deleteLater()
 
-        Parameters
-        ----------
-        None
+        # define and populate input fields for contest fields
+        # callsign is always first.
+        self.qso_row1.addWidget(self.callsign_entry, 4)
+        row = self.qso_row1
+        self.contest_fields = {'call': self.callsign_entry}
+        self.callsign_space_to_input = None
+        for f in self.contest_plugin.get_qso_fields():
+            if f.__class__ == ContestFieldNextLine:
+                row = self.qso_row2
+                continue
 
-        Returns
-        -------
-        None
-        """
+            field: QsoEntryField
+            if f.name == 'rst_sent':
+                field = self.rst_sent_entry
+            elif f.name == 'rst_rcvd':
+                field = self.rst_received_entry
+            else:
+                field = QsoEntryField(f.name, f.display_label, parent=self.centralwidget)
+            row.addWidget(field, f.stretch_factor)
+            if f.name not in ['rst_rcvd', 'rst_sent']:
+                field.input_field.installEventFilter(self.qso_field_event_filter)
+                field.input_field.installEventFilter(EmacsCursorEventFilter(parent=field))
+                field.input_field.returnPressed.connect(self.save_contact)
+                field.input_field.focused.connect(self.handle_input_focus, Qt.ConnectionType.QueuedConnection)
 
-        if self.pref.get("contest"):
-            self.contest_settings = self.database.fetch_contest_by_id(
-                self.pref.get("contest")
-            )
-            if self.contest_settings:
-                try:
-                    self.database.current_contest = self.pref.get("contest")
-                    if self.contest_settings.get("ContestName"):
-                        self.contest = doimp(self.contest_settings.get("ContestName"))
-                        logger.debug("Loaded Contest Name = %s", self.contest.name)
-                        self.set_window_title()
-                        self.contest.init_contest(self)
-                        self.hide_band_mode(
-                            self.contest_settings.get("ModeCategory", "")
-                        )
-                        logger.debug("%s", f"{self.contest_settings}")
-                        if self.contest_settings.get("ModeCategory", "") == "CW":
-                            self.setmode("CW")
-                            self.radio_state["mode"] = "CW"
-                            if self.rig_control:
-                                if self.rig_control.online:
-                                    self.rig_control.set_mode("CW")
-                            band = getband(str(self.radio_state.get("vfoa", "0.0")))
-                            self.set_band_indicator(band)
-                            self.set_window_title()
-                        if self.contest_settings.get("ModeCategory", "") == "SSB":
-                            self.setmode("SSB")
-                            if int(self.radio_state.get("vfoa", 0)) > 10000000:
-                                self.radio_state["mode"] = "USB"
-                            else:
-                                self.radio_state["mode"] = "LSB"
-                            band = getband(str(self.radio_state.get("vfoa", "0.0")))
-                            self.set_band_indicator(band)
-                            self.set_window_title()
-                            if self.rig_control:
-                                self.rig_control.set_mode(self.radio_state.get("mode"))
-                except ModuleNotFoundError:
-                    self.pref["contest"] = 1
-                    self.show_message_box("Contest plugin not found")
+            if f.callsign_space_to_here:
+                self.callsign_space_to_input = field.input_field
+            field.input_field.setProperty('field_config', f)
+            field.input_field.setFocusPolicy(Qt.FocusPolicy.ClickFocus)
+            field.input_field.setMaxLength(f.max_chars)
+            self.contest_fields[f.name] = field
 
-                if hasattr(self.contest, "mode"):
-                    logger.debug("%s", f"  ****  {self.contest}")
-                    if self.contest.mode in ["CW", "BOTH"]:
-                        self.cw_speed.show()
-                    else:
-                        self.cw_speed.hide()
+        # setup tab order, contests have a change to exclude or skip fields
+        tab_order = [x for x in self.contest_plugin.get_tab_order() if x != 'call']
+        missing = [x for x in tab_order if x not in self.contest_fields.keys()]
+        if missing:
+            logger.warning(f"contest plugin defines a tab order for qso fields it does not define: {missing}")
+        for x in missing:
+            tab_order.remove(x)
 
-                # set qso entry tab order
-                next_widget = self.callsign
-                count = 0
-                while True:
-                    count += 1
-                    current_focus = next_widget
-                    if count > 1 and current_focus == self.callsign:
-                        break
-                    next_widget: QWidget = self.tab_next.get(current_focus)
-                    if next_widget:
-                        logger.debug(f"set tab order {current_focus.accessibleName()} -> {next_widget.accessibleName()}")
-                        self.setTabOrder(current_focus, next_widget)
-                    else:
-                        break
-                    if count > len(self.tab_next) + 1:
-                        break
+        tab_order.insert(0, 'call')
+        for i in range(1,len(tab_order)):
+            current = self.contest_fields[tab_order[i-1]].input_field
+            focus_next = self.contest_fields[tab_order[i]].input_field
+            current.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+            focus_next.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+            self.setTabOrder(current, focus_next)
 
-                appevent.emit(appevent.LoadDb())
+        self.hide_band_mode(self.contest.mode_category)
+        if self.contest.mode_category == "CW":
+            self.setmode("CW")
+            self.radio_state["mode"] = "CW"
+            if self.rig_control:
+                if self.rig_control.online:
+                    self.rig_control.set_mode("CW")
+            band = getband(str(self.radio_state.get("vfoa", "0.0")))
+            self.set_band_indicator(band)
+        elif self.contest.mode_category == "SSB":
+            self.setmode("SSB")
+            if int(self.radio_state.get("vfoa", 0)) > 10000000:
+                self.radio_state["mode"] = "USB"
+            else:
+                self.radio_state["mode"] = "LSB"
+            band = getband(str(self.radio_state.get("vfoa", "0.0")))
+            self.set_band_indicator(band)
+            if self.rig_control:
+                self.rig_control.set_mode(self.radio_state.get("mode"))
+        self.set_window_title()
 
-                if hasattr(self.contest, "columns"):
-                    appevent.emit(appevent.ContestColumns(self.contest.columns))
+        if 'CW' in self.contest.mode_category:
+            self.cw_speed.show()
+        else:
+            self.cw_speed.hide()
+
+        self.set_blank_qso()
+        self.clearinputs()
+        self.callsign_entry.input_field.setFocus()
 
     def check_for_new_cty(self) -> None:
         """
@@ -1060,14 +885,6 @@ class MainWindow(QtWidgets.QMainWindow):
         - Check if the file exists
         - Check if the file is newer than the one in the data folder
         - If the file is newer, load it and show a message box
-
-        Parameters
-        ----------
-        None
-
-        Returns
-        -------
-        None
         """
 
         try:
@@ -1095,10 +912,6 @@ class MainWindow(QtWidgets.QMainWindow):
         ----------
         the_mode : str
         The mode to show.
-
-        Returns
-        -------
-        None
         """
 
         logger.debug("%s", f"{the_mode}")
@@ -1129,14 +942,6 @@ class MainWindow(QtWidgets.QMainWindow):
         """
         Show help box for hotkeys.
         Provides a list of hotkeys and what they do.
-
-        Parameters
-        ----------
-        None
-
-        Returns
-        -------
-        None
         """
 
         self.show_message_box(
@@ -1161,46 +966,12 @@ class MainWindow(QtWidgets.QMainWindow):
             "[CTRL-SHIFT-K] Open CW text input field.\n"
         )
 
-    def filepicker(self, action: str) -> str:
-        """
-        Get a filename
-
-        Parameters:
-        ----------
-        action: 'new' or 'open'
-
-        Returns:
-        -------
-        str: filename
-        """
-
-        options = QFileDialog.Option.DontUseNativeDialog | QFileDialog.Option.DontConfirmOverwrite
-
-        if action == "new":
-            file, _ = QFileDialog.getSaveFileName(
-                self,
-                "Choose a Database",
-                str(fsutils.USER_DATA_PATH),
-                "Database (*.db)",
-                options=options,
-            )
-        if action == "open":
-            file, _ = QFileDialog.getOpenFileName(
-                self,
-                "Choose a Database",
-                str(fsutils.USER_DATA_PATH),
-                "Database (*.db)",
-                options=options,
-            )
-        return file
-
     def recalculate_mults(self) -> None:
         """Recalculate Multipliers"""
         self.contest.recalculate_mults(self)
         self.clearinputs()
 
     def launch_log_window(self) -> None:
-        """Launch the log window"""
         if not self.log_window:
             self.log_window = LogWindow()
             self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, self.log_window)
@@ -1243,14 +1014,6 @@ class MainWindow(QtWidgets.QMainWindow):
     def clear_band_indicators(self) -> None:
         """
         Clear the indicators.
-
-        Parameters:
-        ----------
-        None
-
-        Returns:
-        -------
-        None
         """
         for _, indicators in self.all_mode_indicators.items():
             for _, indicator in indicators.items():
@@ -1266,10 +1029,6 @@ class MainWindow(QtWidgets.QMainWindow):
         ----------
         band: str
         band to set indicator for
-
-        Returns:
-        -------
-        None
         """
 
         if band and self.current_mode:
@@ -1277,7 +1036,7 @@ class MainWindow(QtWidgets.QMainWindow):
             indicator = self.all_mode_indicators[self.current_mode].get(band, None)
             if indicator:
                 indicator.setFrameShape(QtWidgets.QFrame.Shape.Box)
-                indicator.setStyleSheet("QLabel { color : green; }")
+                indicator.setStyleSheet("QLabel {color:white; background-color : green;}")
 
     def closeEvent(self, event) -> None:
 
@@ -1298,14 +1057,6 @@ class MainWindow(QtWidgets.QMainWindow):
     def cwspeed_spinbox_changed(self) -> None:
         """
         Triggered when value of CW speed in the spinbox changes.
-
-        Parameters:
-        ----------
-        None
-
-        Returns:
-        -------
-        None
         """
         if self.cw is None:
             return
@@ -1324,18 +1075,18 @@ class MainWindow(QtWidgets.QMainWindow):
                 return
         if event.key() == Qt.Key.Key_S and modifier == Qt.KeyboardModifier.ControlModifier:
             freq = self.radio_state.get("vfoa")
-            dx = self.callsign.text()
+            dx = self.callsign_entry.input_field.text()
             if len(dx) > 3 and freq and dx:
                 appevent.emit(appevent.SpotDx(self.station.get("Call", ""), dx, freq))
             return
         if event.key() == Qt.Key.Key_M and modifier == Qt.KeyboardModifier.ControlModifier:
             freq = self.radio_state.get("vfoa")
-            dx = self.callsign.text()
+            dx = self.callsign_entry.input_field.text()
             if len(dx) > 2 and freq and dx:
                 appevent.emit(appevent.MarkDx(self.station.get("Call", ""), dx, freq))
             return
         if event.key() == Qt.Key.Key_G and modifier == Qt.KeyboardModifier.ControlModifier:
-            dx = self.callsign.text()
+            dx = self.callsign_entry.input_field.text()
             if dx:
                 appevent.emit(appevent.FindDx(dx))
             return
@@ -1396,7 +1147,6 @@ class MainWindow(QtWidgets.QMainWindow):
         if event.key() == Qt.Key.Key_F12:
             self.process_function_key(self.F12)
 
-
     def set_window_title(self) -> None:
         """
         Set window title based on current state.
@@ -1412,7 +1162,7 @@ class MainWindow(QtWidgets.QMainWindow):
             vfoa = 0.0
         contest_name = ""
         if self.contest:
-            contest_name = self.contest.name
+            contest_name = self.contest.fk_contest_meta.display_name
         line = (
             f"vfoa:{round(vfoa, 2)} "
             f"mode:{self.radio_state.get('mode', '')} "
@@ -1430,233 +1180,130 @@ class MainWindow(QtWidgets.QMainWindow):
         """
 
         self.dupe_indicator.hide()
-        self.contact = self.database.empty_contact
+        self.set_blank_qso()
         self.heading_distance.setText("")
         self.dx_entity.setText("")
         self.flag_label.clear()
         if self.contest:
-            mults = self.contest.show_mults(self)
-            qsos = self.contest.show_qso(self)
+            # TODO multiplier logic unknown
+            mults = 0 #self.contest.show_mults(self)
+            qsos = QsoLog.select().where(QsoLog.fk_contest == self.contest).count()
             multstring = f"{qsos}/{mults}"
             self.mults.setText(multstring)
-            score = self.contest.calc_score(self)
-            self.score.setText(str(score))
-            self.contest.reset_label(self)
-        self.callsign.clear()
+            score = self.contest_plugin.calculate_total_points()
+            self.score.setText(str(score or '0'))
+
+        for name, field in self.contest_fields.items():
+            if name not in ['call', 'rst_sent', 'rst_rcvd']:
+                field.input_field.clear()
+                # if any values have been pre-filled by the contest plugin, set them in the input fields
+                value = getattr(self.contact, name)
+                if value:
+                    field.input_field.setText(str(value))
+
         if self.current_mode == "CW":
-            self.sent.setText("599")
-            self.receive.setText("599")
+            self.rst_sent_entry.input_field.setText("599")
+            self.rst_received_entry.input_field.setText("599")
         else:
-            self.sent.setText("59")
-            self.receive.setText("59")
-        self.other_1.clear()
-        self.other_2.clear()
-        self.callsign.setFocus()
+            self.rst_sent_entry.input_field.setText("59")
+            self.rst_received_entry.input_field.setText("59")
+        self.callsign_entry.input_field.clear()
+        self.callsign_entry.input_field.setFocus()
 
         appevent.emit(appevent.CallChanged(''))
 
     def callsign_editing_finished(self) -> None:
-        """This signal is invoked after the enter button is pressed so it doesn't conflict with saving a qso.
+        """
+        This signal is invoked after the enter button is pressed so it doesn't conflict with saving a qso.
         This signal is used to handle the "callsign loses focus" event. if the call sign is empty it means the
         qso has been persisted and we can do nothing
         """
         # alt tabbing will trigger this also, not sure if that is correct or not nore how to prevent it
-        callsign_value = self.callsign.text().strip().upper()
+        callsign_value = self.callsign_entry.input_field.text().strip().upper()
         if not callsign_value:
             return
+        if not self.contact.time_on:
+            self.contact.time_on = datetime.datetime.now()
         logger.debug(f'callsign field exit value {callsign_value}')
         self.check_callsign(callsign_value)
-        if self.check_dupe(callsign_value):
+        if self.is_dupe_call(callsign_value):
             self.dupe_indicator.show()
         else:
             self.dupe_indicator.hide()
 
         self.check_callsign_external(callsign_value)
+        # TODO could do prefill from previous station contact here
 
     def save_contact(self) -> None:
         """
         Save contact to database.
-
-        Parameters
-        ----------
-        None
-
-        Returns
-        -------
-        None
         """
-
         logger.debug("saving contact")
         if self.contest is None:
             self.show_message_box("You have no contest defined.")
             return
-        if len(self.callsign.text()) < 3:
+        if len(self.callsign_entry.input_field.text()) < 3:
             return
-        if not any(char.isdigit() for char in self.callsign.text()):
+        if not any(char.isdigit() for char in self.callsign_entry.input_field.text()):
             return
-        if not any(char.isalpha() for char in self.callsign.text()):
+        if not any(char.isalpha() for char in self.callsign_entry.input_field.text()):
             return
-        self.contact["TS"] = datetime.datetime.now(datetime.timezone.utc).isoformat(
-            " "
-        )[:19]
-        self.contact["Call"] = self.callsign.text()
-        self.contact["Freq"] = round(float(self.radio_state.get("vfoa", 0.0)) / 1000, 2)
-        self.contact["QSXFreq"] = round(
-            float(self.radio_state.get("vfoa", 0.0)) / 1000, 2
-        )
-        self.contact["Mode"] = self.radio_state.get("mode", "")
-        self.contact["ContestName"] = self.contest.cabrillo_name
-        self.contact["ContestNR"] = self.pref.get("contest", "0")
-        self.contact["StationPrefix"] = self.station.get("Call", "")
-        self.contact["WPXPrefix"] = calculate_wpx_prefix(self.callsign.text())
-        self.contact["IsRunQSO"] = self.radioButton_run.isChecked()
-        self.contact["Operator"] = self.current_op
-        self.contact["NetBiosName"] = socket.gethostname()
-        self.contact["IsOriginal"] = 1
-        self.contact["ID"] = uuid.uuid4().hex
-        self.contest.set_contact_vars(self)
-        self.contact["Points"] = self.contest.points(self)
-        debug_output = f"{self.contact}"
-        logger.debug(debug_output)
+        if not self.contact.time_on:
+            self.contact.time_on = datetime.datetime.now()
+        self.contact.time_off = datetime.datetime.now()
 
-        inserted = self.database.log_contact(self.contact)
-        self.worked_list = self.database.get_calls_and_bands()
-        self.send_worked_list()
-        self.clearinputs()
+        for name, field in self.contest_fields.items():
+            setattr(self.contact, name, field.input_field.text())
+        self.contact.station_callsign = self.contact.fk_station.callsign
+        self.contact.call = self.callsign_entry.input_field.text().strip().upper()
+        self.contact.freq = int(self.radio_state.get("vfoa", 0.0))
 
-        appevent.emit(appevent.UpdateLog())
-        appevent.emit(appevent.QsoAdded(inserted))
+        # TODO - important for dexpediation - split mode
+        self.contact.freq_rx = int(self.radio_state.get("vfoa", 0.0))
 
-    def new_contest_dialog(self) -> None:
-        """
-        Show new contest dialog.
+        self.contact.band = hamutils.adif.common.convert_freq_to_band(self.contact.freq / 1000_000)
+        self.contact.band_rx = hamutils.adif.common.convert_freq_to_band(self.contact.freq_rx / 1000_000)
 
-        Parameters
-        ----------
-        None
+        self.contact.mode = self.radio_state.get("mode", "").upper()
+        if self.contact.mode in ['USB', 'LSB']:
+            self.contact.submode = self.contact.mode
+            self.contact.mode = 'SSB'
+        if self.contact.prefix:
+            self.contact.wpx_prefix = calculate_wpx_prefix(self.contact.call)
+        self.contact.is_run = self.radioButton_run.isChecked()
+        self.contact.operator = self.current_op
+        self.contact.hostname = platform.node()[:255]
+        self.contact.is_original = True
 
-        Returns
-        -------
-        None
-        """
+        if self.contact.gridsquare:
+            self.contact.lat, self.contact.lon = gridtolatlon(self.contact.gridsquare)
 
-        logger.debug("New contest Dialog")
+        self.contact.points = self.contest_plugin.points_for_qso(self.contact)
+        # TODO verify correct adif format for contest_id
+        self.contact.contest_id = self.contact.fk_contest.fk_contest_meta.cabrillo_name
 
-        self.contest_dialog = NewContest(fsutils.APP_DATA_PATH)
+        # TODO special features from parsing the comment field (eg pota/iota/sota references)
 
-        self.contest_dialog.accepted.connect(self.save_contest)
-        self.contest_dialog.dateTimeEdit.setDate(QtCore.QDate.currentDate())
-        self.contest_dialog.dateTimeEdit.setCalendarPopup(True)
-        self.contest_dialog.dateTimeEdit.setTime(QtCore.QTime(0, 0))
-        self.contest_dialog.power.setCurrentText("LOW")
-        self.contest_dialog.station.setCurrentText("FIXED")
-        self.contest_dialog.open()
+        # contest may need to do re calculation or normalization or something
+        self.contest_plugin.pre_process_qso_log(self.contact)
 
-    def save_contest(self) -> None:
-        """
-        Save Contest to database.
-
-        Parameters
-        ----------
-        None
-
-        Returns
-        -------
-        None
-        """
-
-        next_number = self.database.get_next_contest_nr()
-        contest = {}
-        contest["ContestName"] = (
-            self.contest_dialog.contest.currentText().lower().replace(" ", "_")
-        )
-        contest["StartDate"] = self.contest_dialog.dateTimeEdit.dateTime().toString(
-            "yyyy-MM-dd hh:mm:ss"
-        )
-        contest["OperatorCategory"] = self.contest_dialog.operator_class.currentText()
-        contest["BandCategory"] = self.contest_dialog.band.currentText()
-        contest["PowerCategory"] = self.contest_dialog.power.currentText()
-        contest["ModeCategory"] = self.contest_dialog.mode.currentText()
-        contest["OverlayCategory"] = self.contest_dialog.overlay.currentText()
-        # contest['ClaimedScore'] = self.contest_dialog.
-        contest["Operators"] = self.contest_dialog.operators.text()
-        contest["Soapbox"] = self.contest_dialog.soapbox.toPlainText()
-        contest["SentExchange"] = self.contest_dialog.exchange.text()
-        contest["ContestNR"] = next_number.get("count", 1)
-        self.pref["contest"] = next_number.get("count", 1)
-        # contest['SubType'] = self.contest_dialog.
-        contest["StationCategory"] = self.contest_dialog.station.currentText()
-        contest["AssistedCategory"] = self.contest_dialog.assisted.currentText()
-        contest["TransmitterCategory"] = self.contest_dialog.transmitter.currentText()
-        # contest['TimeCategory'] = self.contest_dialog.
-        logger.debug("%s", f"{contest}")
-        self.database.add_contest(contest)
-        self.write_preference()
-        self.load_contest()
+        self.contact.id = uuid.uuid4()
+        try:
+            self.contact.save(force_insert=True)
+            self.clearinputs()
+            appevent.emit(appevent.QsoAdded(self.contact))
+        except Exception as e:
+            logger.exception("error saving qso record")
+            dlg = QMessageBox(self)
+            dlg.setWindowTitle("Error saving QSO log")
+            dlg.setText(str(e))
+            dlg.exec()
 
     def edit_station_settings(self) -> None:
-        """
-        Show settings dialog for station.
-
-        Parameters
-        ----------
-        None
-
-        Returns
-        -------
-        None
-        """
-
         logger.debug("Station Settings selected")
         station_dialog = StationSettings(fsutils.APP_DATA_PATH, parent=self)
         station_dialog.open()
 
-    def save_settings(self) -> None:
-        """
-        Save settings to database.
-
-        Parameters
-        ----------
-        None
-
-        Returns
-        -------
-        None
-        """
-
-        cs = self.settings_dialog.Call.text()
-        self.station = {}
-        self.station["Call"] = cs.upper()
-        self.station["Name"] = self.settings_dialog.Name.text().title()
-        self.station["Street1"] = self.settings_dialog.Address1.text().title()
-        self.station["Street2"] = self.settings_dialog.Address2.text().title()
-        self.station["City"] = self.settings_dialog.City.text().title()
-        self.station["State"] = self.settings_dialog.State.text().upper()
-        self.station["Zip"] = self.settings_dialog.Zip.text()
-        self.station["Country"] = self.settings_dialog.Country.text().title()
-        self.station["GridSquare"] = self.settings_dialog.GridSquare.text()
-        self.station["CQZone"] = self.settings_dialog.CQZone.text()
-        self.station["IARUZone"] = self.settings_dialog.ITUZone.text()
-        self.station["LicenseClass"] = self.settings_dialog.License.text().title()
-        self.station["Latitude"] = self.settings_dialog.Latitude.text()
-        self.station["Longitude"] = self.settings_dialog.Longitude.text()
-        self.station["STXeq"] = self.settings_dialog.StationTXRX.text()
-        self.station["SPowe"] = self.settings_dialog.Power.text()
-        self.station["SAnte"] = self.settings_dialog.Antenna.text()
-        self.station["SAntH1"] = self.settings_dialog.AntHeight.text()
-        self.station["SAntH2"] = self.settings_dialog.ASL.text()
-        self.station["ARRLSection"] = self.settings_dialog.ARRLSection.text().upper()
-        self.station["RoverQTH"] = self.settings_dialog.RoverQTH.text()
-        self.station["Club"] = self.settings_dialog.Club.text().title()
-        self.station["Email"] = self.settings_dialog.Email.text()
-        self.database.add_station(self.station)
-        self.settings_dialog.close()
-        if self.current_op == "":
-            self.current_op = self.station.get("Call", "")
-            self.make_op_dir()
-        contest_count = self.database.fetch_all_contests()
-        if len(contest_count) == 0:
-            self.new_contest_dialog()
 
     def set_dark_mode(self, enabled):
         qdarktheme.setup_theme(theme="dark" if enabled else "light", corner_shape="sharp",
@@ -1681,10 +1328,6 @@ class MainWindow(QtWidgets.QMainWindow):
         ----------
         function_key : str
         Function key to edit.
-
-        Returns
-        -------
-        None
         """
 
         self.edit_macro_dialog = EditMacro(function_key, fsutils.APP_DATA_PATH)
@@ -1695,14 +1338,6 @@ class MainWindow(QtWidgets.QMainWindow):
     def edited_macro(self) -> None:
         """
         Save edited macro to database.
-
-        Parameters
-        ----------
-        None
-
-        Returns
-        -------
-        None
         """
 
         self.edit_macro_dialog.function_key.setText(
@@ -1735,11 +1370,11 @@ class MainWindow(QtWidgets.QMainWindow):
         macro = macro.upper()
         macro = macro.replace("#", next_serial)
         macro = macro.replace("{MYCALL}", self.station.get("Call", ""))
-        macro = macro.replace("{HISCALL}", self.callsign.text())
+        macro = macro.replace("{HISCALL}", self.callsign_entry.input_field.text())
         if self.radio_state.get("mode") == "CW":
-            macro = macro.replace("{SNT}", self.sent.text().replace("9", "n"))
+            macro = macro.replace("{SNT}", self.rst_sent_entry.input_field.text().replace("9", "n"))
         else:
-            macro = macro.replace("{SNT}", self.sent.text())
+            macro = macro.replace("{SNT}", self.rst_sent_entry.input_field.text())
         macro = macro.replace("{SENTNR}", self.other_1.text())
         macro = macro.replace(
             "{EXCH}", self.contest_settings.get("SentExchange", "xxx")
@@ -1754,13 +1389,12 @@ class MainWindow(QtWidgets.QMainWindow):
         ----------
         the_string : str
         String to voicify.
-
-        Returns
-        -------
-        None
         """
 
         logger.debug("Voicing: %s", the_string)
+        if sd is None:
+            logger.warning("Sounddevice/portaudio not installed.")
+            return
         op_path = fsutils.USER_DATA_PATH / self.current_op
         if "[" in the_string:
             sub_string = the_string.strip("[]").lower()
@@ -1801,14 +1435,6 @@ class MainWindow(QtWidgets.QMainWindow):
     def ptt_on(self) -> None:
         """
         Turn on ptt for rig.
-
-        Parameters
-        ----------
-        None
-
-        Returns
-        -------
-        None
         """
 
         logger.debug("PTT On")
@@ -1820,14 +1446,6 @@ class MainWindow(QtWidgets.QMainWindow):
     def ptt_off(self) -> None:
         """
         Turn off ptt for rig.
-
-        Parameters
-        ----------
-        None
-
-        Returns
-        -------
-        None
         """
         logger.debug("PTT Off")
         if self.rig_control:
@@ -1843,10 +1461,6 @@ class MainWindow(QtWidgets.QMainWindow):
         ----------
         function_key : QPushButton
         Function key to process.
-
-        Returns
-        -------
-        None
         """
 
         logger.debug("Function Key: %s", function_key.text())
@@ -1871,7 +1485,7 @@ class MainWindow(QtWidgets.QMainWindow):
         None
         """
         self.pref["run_state"] = self.radioButton_run.isChecked()
-        self.write_preference()
+        fsutils.write_settings({"run_state": self.radioButton_run.isChecked()})
         self.read_cw_macros()
         if self.n1mm:
             self.n1mm.set_operator(self.current_op, self.pref.get("run_state", False))
@@ -1900,16 +1514,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def readpreferences(self) -> None:
         """
         Restore preferences if they exist, otherwise create some sane defaults.
-
-        Parameters
-        ----------
-        None
-
-        Returns
-        -------
-        None
         """
-
         logger.debug("readpreferences")
         try:
             if os.path.exists(fsutils.CONFIG_FILE):
@@ -2037,46 +1642,43 @@ class MainWindow(QtWidgets.QMainWindow):
                 if band_to_show in _indicator:
                     _indicator[band_to_show].show()
 
-
-    def event_get_columns(self, event: appevent.GetContestColumns):
-        if hasattr(self.contest, "columns"):
-            appevent.emit(appevent.ContestColumns(self.contest.columns))
-
     def event_tune(self, event: appevent.Tune):
         if event.freq_hz:
             self.radio_state["vfoa"] = event.freq_hz
             if self.rig_control:
                 self.rig_control.set_vfo(event.freq_hz)
-        if event.dx and self.callsign.text().strip() != event.dx:
-           self.callsign.setText(event.dx)
-           self.callsign_changed()
-        self.callsign.setFocus()
+        if event.dx and self.callsign_entry.input_field.text().strip() != event.dx:
+            self.callsign_entry.input_field.setText(event.dx)
+            self.callsign_changed()
+            self.check_callsign_external(event.dx)
 
-    def event_get_worked_list(self, event: appevent.GetWorkedList):
-        result = self.database.get_calls_and_bands()
-        appevent.emit(appevent.WorkedList(result))
+
+        self.callsign_entry.input_field.setFocus()
 
     def event_get_contest_status(self, event: appevent.GetActiveContest):
-        appevent.emit(appevent.ActiveContest(self.contest_settings, self.current_op))
+        appevent.emit(appevent.GetActiveContestResponse(self.contest, self.current_op))
 
     def event_external_call_lookup(self, event: appevent.ExternalLookupResult):
-        current_call = self.callsign.text().strip().upper()
+        current_call = self.callsign_entry.input_field.text().strip().upper()
         if event.result.call == current_call:
-             # Get the grid square and calculate the distance and heading.
-            self.contact["GridSquare"] = event.result.grid
+            # Get the grid square and calculate the distance and heading.
+            self.contact.gridsquare = event.result.grid
+            if self.pref.get('lookup_populate_name', None):
+                name_field = self.contest_fields.get('name', None)
+                if name_field and name_field.input_field.text() == '':
+                    name_field.input_field.setText(event.result.name)
 
-            if self.station.get("GridSquare", ""):
-                heading = bearing(self.station.get("GridSquare", ""), event.result.grid)
-                kilometers = distance(self.station.get("GridSquare"), event.result.grid)
+            # TODO populate more fields from the external lookup
+
+            self.contest_plugin.intermediate_qso_update(self.contact, ['gridsquare', 'name'])
+
+            if self.station.gridsquare:
+                heading = bearing(self.station.gridsquare, event.result.grid)
+                kilometers = distance(self.station.gridsquare, event.result.grid)
                 self.heading_distance.setText(
                     f"{event.result.grid} Hdg {heading}° LP {reciprocol(heading)}° / "
                     f"{int(kilometers * 0.621371)}mi {kilometers}km"
                 )
-            # TODO set name field generically
-            if self.pref.get('lookup_populate_name', None):
-                label = self.field3.findChild(QtWidgets.QLabel)
-                if label.text() == "Name":
-                    self.other_1.setText(event.result.name)
 
     def dark_mode_state_changed(self) -> None:
         self.pref["darkmode"] = self.actionDark_Mode.isChecked()
@@ -2086,14 +1688,6 @@ class MainWindow(QtWidgets.QMainWindow):
     def cw_macros_state_changed(self) -> None:
         """
         Menu item to show/hide macro buttons.
-
-        Parameters
-        ----------
-        None
-
-        Returns
-        -------
-        None
         """
 
         self.pref["cw_macros"] = self.actionCW_Macros.isChecked()
@@ -2103,14 +1697,6 @@ class MainWindow(QtWidgets.QMainWindow):
     def show_CW_macros(self) -> None:
         """
         Show/Hide the macro buttons.
-
-        Parameters
-        ----------
-        None
-
-        Returns
-        -------
-        None
         """
 
         if self.pref.get("cw_macros"):
@@ -2123,14 +1709,6 @@ class MainWindow(QtWidgets.QMainWindow):
     def command_buttons_state_change(self) -> None:
         """
         Menu item to show/hide command buttons
-
-        Parameters
-        ----------
-        None
-
-        Returns
-        -------
-        None
         """
 
         self.pref["command_buttons"] = self.actionCommand_Buttons.isChecked()
@@ -2140,14 +1718,6 @@ class MainWindow(QtWidgets.QMainWindow):
     def show_command_buttons(self) -> None:
         """
         Show/Hide the command buttons depending on the preference.
-
-        Parameters
-        ----------
-        None
-
-        Returns
-        -------
-
         """
 
         if self.pref.get("command_buttons"):
@@ -2178,91 +1748,21 @@ class MainWindow(QtWidgets.QMainWindow):
             return False
         return True
 
-    def other_1_changed(self) -> None:
-        """
-        The text in the other_1 field has changed.
-        Strip out any spaces and set the text.
-
-        Parameters
-        ----------
-        None
-
-        Returns
-        -------
-        None
-        """
-
-        if self.contest:
-            if hasattr(self.contest, "advance_on_space"):
-                if self.contest.advance_on_space[3]:
-                    text = self.other_1.text()
-                    text = text.upper()
-                    # position = self.other_1.cursorPosition()
-                    stripped_text = text.strip().replace(" ", "")
-                    self.other_1.setText(stripped_text)
-                    # self.other_1.setCursorPosition(position)
-                    if " " in text:
-                        next_tab = self.tab_next.get(self.other_1)
-                        next_tab.setFocus()
-                        next_tab.deselect()
-                        next_tab.end(False)
-
-    def other_2_changed(self) -> None:
-        """
-        Text in other_2 has changed.
-        Strip out any spaces and set the text.
-        Parse the exchange if the contest is ARRL Sweepstakes.
-
-        Parameters
-        ----------
-        None
-
-        Returns
-        -------
-        None
-        """
-
-        if self.contest:
-            if "ARRL Sweepstakes" in self.contest.name:
-                self.contest.parse_exchange(self)
-                return
-            if hasattr(self.contest, "advance_on_space"):
-                if self.contest.advance_on_space[3]:
-                    text = self.other_2.text()
-                    text = text.upper()
-                    # position = self.other_2.cursorPosition()
-                    stripped_text = text.strip().replace(" ", "")
-                    self.other_2.setText(stripped_text)
-                    # self.other_2.setCursorPosition(position)
-                    if " " in text:
-                        next_tab = self.tab_next.get(self.other_2)
-                        next_tab.setFocus()
-                        next_tab.deselect()
-                        next_tab.end(False)
-
     def callsign_changed(self) -> None:
         """
         Called when text in the callsign field has changed.
         Strip out any spaces and set the text.
         Check if the field contains a command.
-
-        Parameters
-        ----------
-        None
-
-        Returns
-        -------
-        None
         """
 
-        text = self.callsign.text()
+        text = self.callsign_entry.input_field.text()
         text = text.upper()
-        position = self.callsign.cursorPosition()
+        position = self.callsign_entry.input_field.cursorPosition()
         stripped_text = text.strip().replace(" ", "")
 
         if " " in text:
-            self.callsign.setText(stripped_text)
-            self.callsign.setCursorPosition(position)
+            self.callsign_entry.input_field.setText(stripped_text)
+            self.callsign_entry.input_field.setCursorPosition(position)
             if stripped_text == "CW":
                 self.change_mode(stripped_text)
                 return
@@ -2294,19 +1794,14 @@ class MainWindow(QtWidgets.QMainWindow):
                 return
 
             self.check_callsign(stripped_text)
-            if self.check_dupe(stripped_text):
+            if self.is_dupe_call(stripped_text):
                 self.dupe_indicator.show()
             else:
                 self.dupe_indicator.hide()
 
             self.check_callsign_external(text)
-            #_thethread = threading.Thread(
-            #    target=self.check_callsign_external,
-            #    args=(text,),
-            #    daemon=True,
-            #)
-            #_thethread.start()
-            self.next_field.setFocus()
+            # space-to-tab
+            self.handle_space_tab('call', self.callsign_entry.input_field)
             return
 
         #  debounce the potentially rapid callsign change activities
@@ -2316,12 +1811,24 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def handle_call_change_debounce(self):
         self.call_change_debounce_timer = False
-        if not self.callsign.text().strip():
+        if not self.callsign_entry.input_field.text().strip():
             self.clearinputs()
         else:
-            appevent.emit(appevent.CallChanged(self.callsign.text().upper()))
+            appevent.emit(appevent.CallChanged(self.callsign_entry.input_field.text().upper()))
             self.dupe_indicator.hide()
-            self.check_callsign(self.callsign.text().upper())
+            self.check_callsign(self.callsign_entry.input_field.text().upper())
+
+    def handle_space_tab(self, field_name, field_input):
+        if field_name == 'call':
+            if self.callsign_space_to_input:
+                self.callsign_space_to_input.setFocus()
+            else:
+                self.focusNextChild()
+        else:
+            field_input.deselect()
+            # the text currently does not contain the space because the keypress event is fired befor the change
+            self.space_character_removal_queue.append((field_input, field_input.text()))
+            self.focusNextChild()
 
     def change_freq(self, stripped_text: str) -> None:
         """
@@ -2344,7 +1851,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.set_band_indicator(band)
         self.radio_state["vfoa"] = vfo
         self.radio_state["band"] = band
-        self.contact["Band"] = get_logged_band(str(vfo))
         self.set_window_title()
         self.clearinputs()
         if self.rig_control:
@@ -2420,12 +1926,8 @@ class MainWindow(QtWidgets.QMainWindow):
         ----------
         callsign : str
         Callsign to check.
-
-        Returns
-        -------
-        None
         """
-
+        self.contact.call = callsign
         result = self.bigcty.find_call_match(callsign)
         logger.debug(f"cty lookup result {result}")
         if result:
@@ -2437,25 +1939,32 @@ class MainWindow(QtWidgets.QMainWindow):
             lon = float(result.get("long", "0.0"))
             lon = lon * -1  # cty.dat file inverts longitudes
             primary_pfx = result.get("primary_pfx", "")
-            heading = bearing_with_latlon(self.station.get("GridSquare"), lat, lon)
-            kilometers = distance_with_latlon(
-                self.station.get("GridSquare"), lat, lon
-            )
-            self.heading_distance.setText(
-                f"Regional Hdg {heading}° LP {reciprocol(heading)}° / "
-                f" {int(kilometers * 0.621371)}mi {kilometers}km"
-            )
-            self.contact["CountryPrefix"] = primary_pfx
-            self.contact["ZN"] = int(cq)
-            if self.contest:
-                if self.contest.name == "IARU HF":
-                    self.contact["ZN"] = int(itu)
-            self.contact["Continent"] = continent
-            self.dx_entity.setText(f"{primary_pfx}: {continent}/{entity} cq:{cq} itu:{itu}")
-            self.show_flag(result.get("dxcc"))
-            if len(callsign) > 2:
-                if self.contest:
-                    self.contest.prefill(self)
+            self.contact.country = entity
+            self.contact.prefix = primary_pfx
+            self.contact.cqz = int(cq)
+            self.contact.continent = continent
+            self.contact.ituz = itu
+            self.contact.dxcc = result.get("dxcc", None)
+            self.contact.lat = lat
+            self.contact.lon = lon
+            self.contest_plugin.intermediate_qso_update(self.contact, None)
+
+            if self.station.gridsquare:
+                heading = bearing_with_latlon(self.station.gridsquare, self.contact.lat, self.contact.lon)
+                kilometers = distance_with_latlon(
+                    self.station.gridsquare, lat, lon
+                )
+
+                self.heading_distance.setText(
+                    f"Regional Hdg {heading}° LP {reciprocol(heading)}° / "
+                    f" {int(kilometers * 0.621371)}mi {kilometers}km"
+                )
+            else:
+                self.heading_distance.setText("Heading/Distance Error: Set your station grid square!")
+
+            self.dx_entity.setText(f"{self.contact.prefix}: {self.contact.continent}/{self.contact.country} cq:{self.contact.cqz} itu:{self.contact.ituz}")
+            self.show_flag(self.contact.dxcc)
+
 
     def show_flag(self, dxcc):
         if dxcc:
@@ -2468,48 +1977,35 @@ class MainWindow(QtWidgets.QMainWindow):
 
 
     def check_callsign_external(self, callsign) -> None:
-        """
-        Check the callsign after it has been entered.
-        Look up the callsign in the callsign database.
-        Get the grid square and calculate the distance and heading.
-
-        Parameters
-        ----------
-        callsign : str
-        Callsign to check.
-
-        Returns
-        -------
-        None
-        """
-
+        """starts the process of getting station from external source"""
         callsign = callsign.strip()
         if self.look_up and self.look_up.did_init():
             self.look_up.lookup(callsign)
 
-
-    def check_dupe(self, call: str) -> bool:
+    def is_dupe_call(self, call: str) -> bool:
         """Checks if a callsign is a dupe on current band/mode."""
-        if self.contest is None:
-            self.show_message_box("You have no contest loaded.")
+        dupe_type = self.contest_plugin.get_dupe_type()
+        if not dupe_type:
             return False
-        self.contest.predupe(self)
-        band = float(get_logged_band(str(self.radio_state.get("vfoa", 0.0))))
+
+        band = hamutils.adif.common.convert_freq_to_band(int(self.radio_state.get("vfoa", 0.0)) / 1000_000)
         mode = self.radio_state.get("mode", "")
-        debugline = (
-            f"Call: {call} Band: {band} Mode: {mode} Dupetype: {self.contest.dupe_type}"
-        )
-        logger.debug("%s", debugline)
-        if self.contest.dupe_type == 1:
-            result = self.database.check_dupe(call)
-        if self.contest.dupe_type == 2:
-            result = self.database.check_dupe_on_band(call, band)
-        if self.contest.dupe_type == 3:
-            result = self.database.check_dupe_on_band_mode(call, band, mode)
-        if self.contest.dupe_type == 4:
-            result = {"isdupe": False}
-        logger.debug(f"{result}")
-        return result.get("isdupe", False)
+        if mode == 'USB' or mode == 'LSB':
+            mode = 'SSB'
+        logger.debug(f"Call: {call} Band: {band} Mode: {mode} Dupetype: {dupe_type}")
+
+        if dupe_type == DupeType.ONCE:
+            return self.contest_plugin.contest_qso_select() \
+                .where(QsoLog.call == call).limit(1).get_or_none() is not None
+        if dupe_type == DupeType.EACH_BAND:
+            return self.contest_plugin.contest_qso_select()\
+                .where(QsoLog.call == call).where(QsoLog.band == band).limit(1).get_or_none() is not None
+        if dupe_type == DupeType.EACH_BAND_MODE:
+            return self.contest_plugin.contest_qso_select() \
+                .where(QsoLog.call == call).where(QsoLog.band == band)\
+                .where(QsoLog.mode == mode).limit(1).get_or_none() is not None
+
+        return False
 
     def setmode(self, mode: str) -> None:
         """Call when the mode changes."""
@@ -2520,24 +2016,24 @@ class MainWindow(QtWidgets.QMainWindow):
             if self.current_mode != "CW":
                 self.current_mode = "CW"
                 # self.mode.setText("CW")
-                self.sent.setText("599")
-                self.receive.setText("599")
+                self.rst_sent_entry.input_field.setText("599")
+                self.rst_received_entry.input_field.setText("599")
                 self.read_cw_macros()
             return
         if mode == "SSB":
             if self.current_mode != "SSB":
                 self.current_mode = "SSB"
                 # self.mode.setText("SSB")
-                self.sent.setText("59")
-                self.receive.setText("59")
+                self.rst_sent_entry.input_field.setText("59")
+                self.rst_received_entry.input_field.setText("59")
                 self.read_cw_macros()
             return
         if mode == "RTTY":
             if self.current_mode != "RTTY":
                 self.current_mode = "RTTY"
                 # self.mode.setText("RTTY")
-                self.sent.setText("59")
-                self.receive.setText("59")
+                self.rst_sent_entry.input_field.setText("59")
+                self.rst_received_entry.input_field.setText("59")
 
     def get_opon(self) -> None:
         """
@@ -2611,15 +2107,8 @@ class MainWindow(QtWidgets.QMainWindow):
     def poll_radio(self) -> None:
         """
         Poll radio for VFO, mode, bandwidth.
-
-        Parameters
-        ----------
-        None
-
-        Returns
-        -------
-        None
         """
+        # TODO recover from disconnection
         self.set_radio_icon(0)
         if self.rig_control:
             if self.rig_control.online is False:
@@ -2646,7 +2135,6 @@ class MainWindow(QtWidgets.QMainWindow):
                     self.radio_state["vfoa"] = vfo
                 band = getband(str(vfo))
                 self.radio_state["band"] = band
-                self.contact["Band"] = get_logged_band(str(vfo))
                 self.set_band_indicator(band)
 
                 if self.radio_state.get("mode") != mode:
@@ -2883,9 +2371,7 @@ def run() -> None:
     signal.signal(signal.SIGINT, lambda sig, frame: window.close())
 
     window.show()
-    window.callsign.setFocus()
 
-    model.persistent.loadPersistantDb(fsutils.USER_DATA_PATH / 'new_model.db')
 
     sys.exit(app.exec())
 
@@ -2894,7 +2380,6 @@ DEBUG_ENABLED = False
 if Path("./debug").exists():
     DEBUG_ENABLED = True
 
-logger = logging.getLogger("__main__")
 
 logging.basicConfig(
     level=logging.DEBUG if DEBUG_ENABLED else logging.CRITICAL,
@@ -2908,12 +2393,11 @@ logging.basicConfig(
 logging.getLogger('PyQt6.uic.uiparser').setLevel('INFO')
 logging.getLogger('PyQt6.uic.properties').setLevel('INFO')
 logging.getLogger('peewee').setLevel('INFO')
-os.environ["QT_QPA_PLATFORMTHEME"] = "gnome"
+#os.environ["QT_QPA_PLATFORMTHEME"] = "gnome"
 app = QtWidgets.QApplication(sys.argv)
 install_icons()
 families = load_fonts_from_dir(os.fspath(fsutils.APP_DATA_PATH))
 logger.info(f"font families {families}")
-
 
 if __name__ == "__main__":
     run()

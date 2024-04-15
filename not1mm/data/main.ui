@@ -10,7 +10,7 @@
     <x>0</x>
     <y>0</y>
     <width>768</width>
-    <height>416</height>
+    <height>403</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -24,6 +24,16 @@
   </property>
   <property name="windowTitle">
    <string>QSource Logger</string>
+  </property>
+  <property name="windowIcon">
+   <iconset>
+    <normaloff>k6gte.not1mm-32.png</normaloff>k6gte.not1mm-32.png</iconset>
+  </property>
+  <property name="iconSize">
+   <size>
+    <width>32</width>
+    <height>32</height>
+   </size>
   </property>
   <widget class="QWidget" name="centralwidget">
    <property name="enabled">
@@ -47,13 +57,13 @@
       <item>
        <layout class="QHBoxLayout" name="mainsection">
         <property name="spacing">
-         <number>0</number>
+         <number>2</number>
         </property>
         <item>
          <widget class="QFrame" name="Band_Mode_Frame_CW">
           <property name="minimumSize">
            <size>
-            <width>40</width>
+            <width>30</width>
             <height>0</height>
            </size>
           </property>
@@ -231,7 +241,7 @@
          <widget class="QFrame" name="Band_Mode_Frame_SSB">
           <property name="minimumSize">
            <size>
-            <width>40</width>
+            <width>30</width>
             <height>0</height>
            </size>
           </property>
@@ -409,7 +419,7 @@
          <widget class="QFrame" name="Band_Mode_Frame_RTTY">
           <property name="minimumSize">
            <size>
-            <width>40</width>
+            <width>30</width>
             <height>0</height>
            </size>
           </property>
@@ -587,20 +597,20 @@
          </widget>
         </item>
         <item>
-         <layout class="QVBoxLayout" name="main_dialog" stretch="0,0,0,0,0,0">
+         <layout class="QVBoxLayout" name="main_dialog" stretch="0,0,0,0,0,0,0">
           <property name="spacing">
-           <number>10</number>
+           <number>0</number>
           </property>
           <property name="leftMargin">
-           <number>5</number>
+           <number>2</number>
           </property>
           <item>
-           <layout class="QHBoxLayout" name="qso_row1" stretch="2,1,1,2,2">
+           <layout class="QHBoxLayout" name="qso_row1" stretch="2">
             <property name="spacing">
              <number>-1</number>
             </property>
             <item>
-             <widget class="QFrame" name="callsignfield">
+             <widget class="QFrame" name="callsignfieldplaceholder">
               <layout class="QVBoxLayout" name="input_call">
                <property name="spacing">
                 <number>0</number>
@@ -611,7 +621,7 @@
                <item>
                 <widget class="QLabel" name="callsign_label">
                  <property name="text">
-                  <string>Callsign</string>
+                  <string>Callsign placeholder</string>
                  </property>
                  <property name="alignment">
                   <set>Qt::AlignBottom|Qt::AlignLeading|Qt::AlignLeft</set>
@@ -663,187 +673,6 @@
               </layout>
              </widget>
             </item>
-            <item>
-             <widget class="QFrame" name="field1">
-              <layout class="QVBoxLayout" name="input_snt">
-               <property name="spacing">
-                <number>0</number>
-               </property>
-               <property name="margin" stdset="0">
-                <number>0</number>
-               </property>
-               <item>
-                <widget class="QLabel" name="snt_label">
-                 <property name="text">
-                  <string>Snt RST</string>
-                 </property>
-                 <property name="alignment">
-                  <set>Qt::AlignBottom|Qt::AlignLeading|Qt::AlignLeft</set>
-                 </property>
-                </widget>
-               </item>
-               <item>
-                <widget class="QLineEdit" name="sent">
-                 <property name="sizePolicy">
-                  <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-                   <horstretch>0</horstretch>
-                   <verstretch>0</verstretch>
-                  </sizepolicy>
-                 </property>
-                 <property name="font">
-                  <font>
-                   <pointsize>20</pointsize>
-                  </font>
-                 </property>
-                 <property name="accessibleName">
-                  <string>RST Sent</string>
-                 </property>
-                 <property name="styleSheet">
-                  <string notr="true"/>
-                 </property>
-                </widget>
-               </item>
-              </layout>
-             </widget>
-            </item>
-            <item>
-             <widget class="QFrame" name="field2">
-              <layout class="QVBoxLayout" name="input_rcv">
-               <property name="spacing">
-                <number>0</number>
-               </property>
-               <property name="margin" stdset="0">
-                <number>0</number>
-               </property>
-               <item>
-                <widget class="QLabel" name="rcv_label">
-                 <property name="text">
-                  <string>Rcv RST</string>
-                 </property>
-                 <property name="alignment">
-                  <set>Qt::AlignBottom|Qt::AlignLeading|Qt::AlignLeft</set>
-                 </property>
-                </widget>
-               </item>
-               <item>
-                <widget class="QLineEdit" name="receive">
-                 <property name="sizePolicy">
-                  <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-                   <horstretch>0</horstretch>
-                   <verstretch>0</verstretch>
-                  </sizepolicy>
-                 </property>
-                 <property name="font">
-                  <font>
-                   <pointsize>20</pointsize>
-                  </font>
-                 </property>
-                 <property name="accessibleName">
-                  <string>RST Received</string>
-                 </property>
-                 <property name="styleSheet">
-                  <string notr="true"/>
-                 </property>
-                </widget>
-               </item>
-              </layout>
-             </widget>
-            </item>
-            <item>
-             <widget class="QFrame" name="field3">
-              <layout class="QVBoxLayout" name="input_other">
-               <property name="spacing">
-                <number>0</number>
-               </property>
-               <property name="margin" stdset="0">
-                <number>0</number>
-               </property>
-               <item>
-                <widget class="QLabel" name="other_label">
-                 <property name="text">
-                  <string>OTHER_1</string>
-                 </property>
-                 <property name="alignment">
-                  <set>Qt::AlignBottom|Qt::AlignLeading|Qt::AlignLeft</set>
-                 </property>
-                </widget>
-               </item>
-               <item>
-                <widget class="QLineEdit" name="other_1">
-                 <property name="sizePolicy">
-                  <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-                   <horstretch>0</horstretch>
-                   <verstretch>0</verstretch>
-                  </sizepolicy>
-                 </property>
-                 <property name="font">
-                  <font>
-                   <pointsize>20</pointsize>
-                  </font>
-                 </property>
-                 <property name="accessibleName">
-                  <string>edit field3</string>
-                 </property>
-                 <property name="styleSheet">
-                  <string notr="true"/>
-                 </property>
-                </widget>
-               </item>
-              </layout>
-             </widget>
-            </item>
-            <item>
-             <widget class="QFrame" name="field4">
-              <layout class="QVBoxLayout" name="verticalLayout_2">
-               <property name="spacing">
-                <number>0</number>
-               </property>
-               <property name="sizeConstraint">
-                <enum>QLayout::SetDefaultConstraint</enum>
-               </property>
-               <property name="margin" stdset="0">
-                <number>0</number>
-               </property>
-               <item>
-                <widget class="QLabel" name="exch_label">
-                 <property name="text">
-                  <string>OTHER_2</string>
-                 </property>
-                 <property name="textFormat">
-                  <enum>Qt::AutoText</enum>
-                 </property>
-                 <property name="alignment">
-                  <set>Qt::AlignBottom|Qt::AlignLeading|Qt::AlignLeft</set>
-                 </property>
-                 <property name="buddy">
-                  <cstring>field4</cstring>
-                 </property>
-                </widget>
-               </item>
-               <item>
-                <widget class="QLineEdit" name="other_2">
-                 <property name="sizePolicy">
-                  <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-                   <horstretch>0</horstretch>
-                   <verstretch>0</verstretch>
-                  </sizepolicy>
-                 </property>
-                 <property name="font">
-                  <font>
-                   <pointsize>20</pointsize>
-                  </font>
-                 </property>
-                 <property name="accessibleName">
-                  <string>edit field4</string>
-                 </property>
-                 <property name="styleSheet">
-                  <string notr="true"/>
-                 </property>
-                </widget>
-               </item>
-              </layout>
-             </widget>
-            </item>
            </layout>
           </item>
           <item>
@@ -863,6 +692,12 @@
             </property>
             <property name="sizeConstraint">
              <enum>QLayout::SetDefaultConstraint</enum>
+            </property>
+            <property name="topMargin">
+             <number>10</number>
+            </property>
+            <property name="bottomMargin">
+             <number>10</number>
             </property>
             <item>
              <widget class="QLabel" name="radio_icon">
@@ -1107,13 +942,13 @@
               <number>0</number>
              </property>
              <property name="topMargin">
-              <number>0</number>
+              <number>10</number>
              </property>
              <property name="rightMargin">
               <number>0</number>
              </property>
              <property name="bottomMargin">
-              <number>0</number>
+              <number>10</number>
              </property>
              <item>
               <widget class="QPushButton" name="F7">
@@ -1294,6 +1129,19 @@
             </layout>
            </widget>
           </item>
+          <item>
+           <spacer name="verticalSpacer_4">
+            <property name="orientation">
+             <enum>Qt::Vertical</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>20</width>
+              <height>40</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
          </layout>
         </item>
        </layout>
@@ -1306,7 +1154,7 @@
         <item>
          <widget class="QLabel" name="flag_label">
           <property name="text">
-           <string>F</string>
+           <string>-</string>
           </property>
          </widget>
         </item>
@@ -1319,7 +1167,7 @@
            </sizepolicy>
           </property>
           <property name="text">
-           <string>dxentity</string>
+           <string>-</string>
           </property>
          </widget>
         </item>
@@ -1382,7 +1230,7 @@
      <x>0</x>
      <y>0</y>
      <width>768</width>
-     <height>37</height>
+     <height>24</height>
     </rect>
    </property>
    <property name="nativeMenuBar">
@@ -1395,12 +1243,9 @@
     <addaction name="actionNew_Database"/>
     <addaction name="actionOpen_Database"/>
     <addaction name="separator"/>
-    <addaction name="actionNew_Contest"/>
-    <addaction name="actionOpen_Contest"/>
-    <addaction name="actionEdit_Current_Contest"/>
-    <addaction name="separator"/>
-    <addaction name="actionConfiguration_Settings"/>
     <addaction name="actionStationSettings"/>
+    <addaction name="actionEdit_Current_Contest"/>
+    <addaction name="actionConfiguration_Settings"/>
     <addaction name="separator"/>
     <addaction name="actionGenerate_ADIF"/>
     <addaction name="actionGenerate_Cabrillo"/>
@@ -1564,7 +1409,7 @@
   </action>
   <action name="actionConfiguration_Settings">
    <property name="text">
-    <string>Configuration Settings</string>
+    <string>Preferences</string>
    </property>
    <property name="autoRepeat">
     <bool>false</bool>
@@ -1635,20 +1480,6 @@
     <bool>false</bool>
    </property>
   </action>
-  <action name="actionNew_Contest">
-   <property name="text">
-    <string>New Contest</string>
-   </property>
-   <property name="autoRepeat">
-    <bool>false</bool>
-   </property>
-   <property name="iconVisibleInMenu">
-    <bool>false</bool>
-   </property>
-   <property name="shortcutVisibleInContextMenu">
-    <bool>false</bool>
-   </property>
-  </action>
   <action name="actionNew_Database">
    <property name="text">
     <string>New Database</string>
@@ -1677,21 +1508,7 @@
     <bool>false</bool>
    </property>
   </action>
-  <action name="actionOpen_Contest">
-   <property name="text">
-    <string>Open Contest</string>
-   </property>
-   <property name="autoRepeat">
-    <bool>false</bool>
-   </property>
-   <property name="iconVisibleInMenu">
-    <bool>false</bool>
-   </property>
-   <property name="shortcutVisibleInContextMenu">
-    <bool>false</bool>
-   </property>
-  </action>
-  <action name="actionEdit_Macros">
+   <action name="actionEdit_Macros">
    <property name="text">
     <string>Edit Macros</string>
    </property>
@@ -1707,7 +1524,7 @@
   </action>
   <action name="actionEdit_Current_Contest">
    <property name="text">
-    <string>Edit Current Contest</string>
+    <string>Contest Settings</string>
    </property>
   </action>
   <action name="actionBandmap">

@@ -1,5 +1,8 @@
+from typing import Optional, Any
+import re
+
 from peewee import Model, CharField, IntegerField, ForeignKeyField, TextField, DateTimeField, FloatField, DoubleField, \
-    UUIDField, BooleanField
+    UUIDField, BooleanField, SQL
 from playhouse.sqlite_ext import SqliteExtDatabase, JSONField
 from . import persistent_migrations
 _database = SqliteExtDatabase(None)
@@ -7,7 +10,6 @@ _database = SqliteExtDatabase(None)
 class BaseModel(Model):
     class Meta:
         database = _database
-
 
 class Station(BaseModel):
     station_name = CharField()
@@ -23,7 +25,7 @@ class Station(BaseModel):
     gridsquare_ext = CharField(20, null=True)
     latitude = DoubleField(null=True)
     longitude = DoubleField(null=True)
-    altitude = DoubleField(null=True)
+    altitude = IntegerField(null=True)
     cq_zone = IntegerField(null=True)
     dxcc = IntegerField(null=True)
     iaru_zone = IntegerField(null=True)
@@ -42,7 +44,7 @@ class Station(BaseModel):
 
     iota = CharField(null=True)
     iota_island_id = CharField(null=True)
-    pota_ref = CharField(null=True)
+    pota_ref = CharField(null=True) # multi park entered as csv list
     fists = IntegerField(null=True)
     usaca_counties = CharField(null=True)
     vucc_grids = CharField(null=True)
@@ -96,6 +98,14 @@ class Contest(BaseModel):
     sub_type = CharField(20, null=True)
     time_category = CharField(30, null=True)
     transmitter_category = CharField(30, null=True)
+    settings = JSONField(default={})
+
+    def merge_settings(self, to_merge: dict[str: Any]):
+        self.settings.update(to_merge)
+        self.save()
+
+    def get_setting(self, setting_name: str, default_value: Any = None):
+        return dict(self.settings).get(setting_name, default_value)
 
 # when creating a new record use .save(force_insert=True) because the id is not auto incrementing
 class QsoLog(BaseModel):
@@ -106,8 +116,8 @@ class QsoLog(BaseModel):
     time_off = DateTimeField(null=True)
     rst_sent = CharField(10)
     rst_rcvd = CharField(10)
-    freq = IntegerField()
-    freq_rx = IntegerField(null=True) # if running split
+    freq = IntegerField() # frequency in Megahertz
+    freq_rx = IntegerField(null=True) # if split frequency QSO, the logging station's receiving frequency in Megahertz
     band = CharField(10) # https://www.adif.org/314/ADIF_314.htm#Band_Enumeration
     mode = CharField(20) # https://www.adif.org/314/ADIF_314.htm#Mode_Enumeration
     submode = CharField(20, null=True) # https://www.adif.org/314/ADIF_314.htm#Submode_Enumeration
@@ -141,7 +151,7 @@ class QsoLog(BaseModel):
     a_index = IntegerField(null=True) # the geomagnetic A index at the time of the QSO in the range 0 to 400 (inclusive)
     address = CharField(null=True)
     age = IntegerField(null=True)
-    altitude = FloatField(null=True)
+    altitude = DoubleField(null=True)
     ant_path = CharField(2, null=True) # G(grayline), O(other), S(short path), L(long path)
     award_granted = CharField(null=True)
     award_submitted = CharField(null=True)
@@ -173,15 +183,15 @@ class QsoLog(BaseModel):
     hrdlog_qso_upload_status = CharField(2, null=True)
     iota_island_id = IntegerField(null=True)
     k_index = IntegerField(null=True) # the geomagnetic K index at the time of the QSO [0, 9]
-    lat = CharField(20, null=True) # XDDD MM.MMM
-    lon = CharField(20, null=True) # XDDD MM.MMM
+    lat = DoubleField(null=True) # adif spec is: XDDD MM.MMM, needs to be converted
+    lon = DoubleField(null=True) # adif spec is: XDDD MM.MMM, needs to be converted
     lotw_qsl_rcvd = CharField(2, null=True) # https://www.adif.org/314/ADIF_314.htm#QSLRcvd_Enumeration
     lotw_qsl_sent = CharField(2, null=True)
     lotw_qslrdate = DateTimeField(null=True)
     lotw_qslsdate = DateTimeField(null=True)
     max_bursts = IntegerField(null=True)
     ms_shower = CharField(null=True) # the name of the meteor shower in progress
-    my_altitude = FloatField(null=True) # meters
+    my_altitude = DoubleField(null=True) # meters
     my_antenna = CharField(null=True)
     my_ant_az = IntegerField(null=True)
     my_ant_el = IntegerField(null=True)
@@ -197,8 +207,8 @@ class QsoLog(BaseModel):
     my_iota = CharField(15, null=True) # CC-XXX
     my_iota_island_id = IntegerField(null=True)
     my_itu_zone = IntegerField(null=True)
-    my_lat = CharField(20, null=True) # XDDD MM.MMM
-    my_lon = CharField(20, null=True) # XDDD MM.MMM
+    my_lat = DoubleField(null=True) # adif = XDDD MM.MMM
+    my_lon = DoubleField(null=True) # adif = XDDD MM.MMM
     my_name = CharField(null=True)
     my_postal_code = CharField(20, null=True)
     my_pota_ref = CharField(null=True) # pota ref csv list. eg K-0817,K-4566,K-4576,K-4573,K-4578@US-WY
@@ -231,7 +241,7 @@ class QsoLog(BaseModel):
     qslsdate = DateTimeField(null=True)
     qso_complete = CharField(4, null=True) # Y yes, N no, NIL not heard, ? uncertain
     qso_random = BooleanField(null=True)
-    region = CharField(5, null=True) #the contacted station's WAE or CQ entity contained within a DXCC entity.
+    region = CharField(5, null=True) # the contacted station's WAE or CQ entity contained within a DXCC entity.
     rig = TextField(null=True)
     rx_pwr = IntegerField(null=True) # the contacted station's transmitter power in Watts
     sat_mode = CharField(null=True)
@@ -249,15 +259,29 @@ class QsoLog(BaseModel):
     web = CharField(null=True)
     other = JSONField(null=True) # catch-all json document
     is_original = BooleanField(null=True) # log generated while using this app
+    hostname = CharField(null=True)
     is_run = BooleanField(null=True) # contest operator is in 'run' mode (calling cq)
     fk_station = ForeignKeyField(Station)
     fk_contest = ForeignKeyField(Contest)
-    #fk_rig = ForeignKeyField(R)
 
+    @staticmethod
+    def get_like_calls(search: str, contest: Optional[Contest]) -> list[str]:
+        safe = re.sub('[^a-zA-Z0-9/?]', '', search.upper())
+        result = QsoLog.select(QsoLog.call.distinct()).where(SQL(f"call like '%{safe.replace('?', '_')}%'"))
+        if contest:
+            result = result.where(QsoLog.fk_contest == contest)
+        return [x.call for x in result]
+
+    @staticmethod
+    def get_logs_by_like_call(search: str, contest: Optional[Contest]) -> list[str]:
+        safe = re.sub('[^a-zA-Z0-9/?]', '', search.upper())
+        result = QsoLog.select().where(SQL(f"call like '%{safe.replace('?', '_')}%'"))
+        if contest:
+            result = result.where(QsoLog.fk_contest == contest)
+        return result
 
 class DeletedQsoLog(QsoLog):
     pass
-
 
 
 def loadPersistantDb(path: str):

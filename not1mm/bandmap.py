@@ -92,6 +92,7 @@ class BandMapWindow(QtWidgets.QDockWidget):
     connected = False
     bandwidth = 0
     bandwidth_mark = []
+    # TODO pull worked calls from db, maintain list with app events
     worked_list = {}
     text_color = QtGui.QColor(45, 45, 45)
     graphicsView: QGraphicsView = None
@@ -100,14 +101,13 @@ class BandMapWindow(QtWidgets.QDockWidget):
         super().__init__(*args, **kwargs)
 
         appevent.register(appevent.CallChanged, self.event_call_changed)
-        appevent.register(appevent.ActiveContest, self.event_contest_status)
+        appevent.register(appevent.GetActiveContestResponse, self.event_contest_status)
         appevent.register(appevent.FindDx, self.event_find_dx)
         appevent.register(appevent.MarkDx, self.event_mark_dx)
         appevent.register(appevent.SpotDx, self.event_spot_dx)
         appevent.register(appevent.RadioState, self.event_radio_state)
         appevent.register(appevent.BandmapSpotNext, self.event_tune_next_spot)
         appevent.register(appevent.BandmapSpotPrev, self.event_tune_prev_spot)
-        appevent.register(appevent.WorkedList, self.event_worked)
 
         uic.loadUi(fsutils.APP_DATA_PATH / "bandmap.ui", self)
         self.settings = self.get_settings()
@@ -138,9 +138,7 @@ class BandMapWindow(QtWidgets.QDockWidget):
         self.update_timer.start(UPDATE_INTERVAL)
         self.update()
 
-        appevent.emit(appevent.GetWorkedList())
         appevent.emit(appevent.GetActiveContest())
-
 
     def get_settings(self) -> dict:
         """Get the settings."""
@@ -226,9 +224,6 @@ class BandMapWindow(QtWidgets.QDockWidget):
         if spot:
             appevent.emit(appevent.Tune(spot.freq_hz,  spot.callsign))
 
-    def event_worked(self, event: appevent.WorkedList):
-        self.worked_list = event.worked
-
     def event_call_changed(self, event: appevent.CallChanged):
         result = None
         if event.call:
@@ -236,9 +231,9 @@ class BandMapWindow(QtWidgets.QDockWidget):
             result = Spot.get_like_calls(event.call)
         appevent.emit(appevent.CheckSpots(result))
 
-    def event_contest_status(self, event: appevent.ActiveContest):
+    def event_contest_status(self, event: appevent.GetActiveContestResponse):
         # pre-fill the cluster login station name for convenience
-        if not self.callsignField.text():
+        if not self.callsignField.text() and event.operator:
             self.callsignField.setText(event.operator.upper())
 
     def spot_clicked(self):
@@ -251,7 +246,6 @@ class BandMapWindow(QtWidgets.QDockWidget):
         self.update_stations()
 
     def update(self):
-
         try:
             self.update_timer.setInterval(UPDATE_INTERVAL)
         except AttributeError:
@@ -403,6 +397,7 @@ class BandMapWindow(QtWidgets.QDockWidget):
                 pen_color = self.text_color
                 if spot.comment == "MARKED":
                     pen_color = QtGui.QColor(47, 47, 255)
+                # TODO there should be a better way to properly work the contest dupe settings into the colors here
                 if spot.callsign in self.worked_list:
                     call_bandlist = self.worked_list.get(spot.callsign)
                     if self.currentBand.altname in call_bandlist:

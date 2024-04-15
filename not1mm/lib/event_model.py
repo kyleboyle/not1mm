@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 
 from . import lookup
-from ..model import Contest
+from ..model import Contest, Station, QsoLog
 
 
 class AppEvent():
@@ -42,63 +42,30 @@ class BandmapSpotNext(AppEvent):
 class BandmapSpotPrev(AppEvent):
     pass
 
-
-# TODO clients should access the db if they want source of truth on qsos
-@dataclass
-class WorkedList(AppEvent):
-    worked: list = None
-
-    def __init__(self, worked):
-        self.worked = worked
-
-
-@dataclass
-class GetWorkedList(AppEvent):
-    pass
-
-
 @dataclass
 class CallChanged(AppEvent):
     call: str = None
 
-    def __init__(self, call):
-        self.call = call
 
 # something has changed in the log, dependents should reload
 @dataclass
-class UpdateLog(AppEvent):
-    pass
+class QsoUpdated(AppEvent):
+    qso: QsoLog
+
 
 @dataclass
 class QsoAdded(AppEvent):
-    qso: dict
-
-    def __init__(self, qso):
-        self.qso = qso
+    qso: QsoLog
 
 @dataclass
 class QsoDeleted(AppEvent):
-    qso: dict
+    qso: QsoLog
 
-    def __init__(self, qso):
-        self.qso = qso
 
 @dataclass
 class QsoUpdated(AppEvent):
-    qso_before: dict
-    qso_after: dict
-
-@dataclass
-class GetContestColumns(AppEvent):
-    pass
-
-
-@dataclass
-class ContestColumns(AppEvent):
-    columns: list
-
-    def __init__(self, columns):
-        self.columns = columns
+    qso_before: QsoLog
+    qso_after: QsoLog
 
 
 @dataclass
@@ -111,18 +78,17 @@ class Tune(AppEvent):
             self.freq_hz = int(freq_hz)
         self.dx = dx
 
+
 @dataclass
 class GetActiveContest(AppEvent):
     pass
 
+
 @dataclass
-class ActiveContest(AppEvent):
-    contest: dict
+class GetActiveContestResponse(AppEvent):
+    contest: Contest
     operator: str
 
-    def __init__(self, contest, operator):
-        self.contest = contest
-        self.operator = operator
 
 @dataclass
 class RadioState(AppEvent):
@@ -132,7 +98,7 @@ class RadioState(AppEvent):
     bandwith_hz: int
 
     def __init__(self, vfoa_hz, vfob_hz, mode, bandwith_hz):
-        self.vfoa_hz = float(int(vfoa_hz))
+        self.vfoa_hz = int(vfoa_hz)
         self.vfob_hz = vfob_hz
         self.mode = mode
         self.bandwith_hz = bandwith_hz
@@ -146,13 +112,14 @@ class CheckSpots(AppEvent):
         self.spots = spots
 
 @dataclass
-class LoadDb(AppEvent):
-    pass
-
-@dataclass
 class ExternalLookupResult(AppEvent):
     result: lookup.ExternalCallLookupService.Result
 
 @dataclass
-class ContestActive(AppEvent):
+class ContestActivated(AppEvent):
     contest: Contest
+
+@dataclass
+class StationActivated(AppEvent):
+    station: Station
+

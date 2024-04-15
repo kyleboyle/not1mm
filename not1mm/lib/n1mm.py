@@ -3,7 +3,8 @@ import socket
 
 from dicttoxml import dicttoxml
 
-from . import event as appevent
+from . import event as appevent, ham_utility
+from ..model import QsoLog
 
 logger = logging.getLogger(__name__)
 
@@ -94,6 +95,39 @@ class N1MM:
         "ID": "",
     }
 
+    def _qso_to_n1mm_dict(self, qso: QsoLog):
+        payload = dict(self.contact_info)
+        payload["timestamp"] = qso.time_on.strftime('%Y-%m-%d %H:%M:%S')
+        payload["oldcall"] = payload["call"] = qso.call
+        payload["txfreq"] = qso.freq / 10
+        payload["rxfreq"] = qso.freq_rx / 10
+        payload["mode"] = qso.mode
+        payload["contestname"] = qso.fk_contest.fk_contest_meta.cabrillo_name.replace("-", "")
+        payload["contestnr"] = qso.fk_contest.id
+        payload["stationprefix"] = qso.station_callsign
+        payload["wpxprefix"] = qso.wpx_prefix
+        payload["IsRunQSO"] = qso.is_run
+        payload["operator"] = qso.operator
+        payload["mycall"] = qso.operator
+        payload["StationName"] = payload["NetBiosName"] = qso.hostname
+        payload["IsOriginal"] = qso.is_original
+        payload["ID"] = qso.id
+        payload["points"] = qso.points
+        payload["snt"] = qso.rst_sent
+        payload["rcv"] = qso.rst_rcvd
+        payload["sntnr"] = qso.stx
+        payload["rcvnr"] = qso.rtx
+        #payload["ismultiplier1"] = False  # TODO
+        #payload["ismultiplier2"] = False  # TODO
+        #payload["ismultiplier3"] = False  # TODO
+        payload["section"] = qso.arrl_sect
+        payload["prec"] = qso.precedence
+        payload["ck"] = qso.check
+        payload["zn"] = qso.my_cq_zone
+        #payload["power"] = ''  # TODO
+        payload["band"] = ham_utility.get_n1mm_band(qso.freq)
+        return payload
+
     def __init__(
         self,
         radioport="127.0.0.1:12060",
@@ -149,88 +183,20 @@ class N1MM:
 
     def send_contact_info(self, event: appevent.QsoAdded):
         if self.send_contact_packets:
-            payload = dict(self.contact_info)
-            payload["timestamp"] = event.qso["TS"]
-            payload["oldcall"] = payload["call"] = event.qso["Call"]
-            payload["txfreq"] = payload["rxfreq"] = event.qso["Freq"]
-            payload["mode"] = event.qso["Mode"]
-            payload["contestname"] = event.qso["ContestName"].replace("-", "")
-            payload["contestnr"] = event.qso["ContestNR"]
-            payload["stationprefix"] = event.qso["StationPrefix"]
-            payload["wpxprefix"] = event.qso["WPXPrefix"]
-            payload["IsRunQSO"] = event.qso["IsRunQSO"]
-            payload["operator"] = event.qso["Operator"]
-            payload["mycall"] = event.qso["Operator"]
-            payload["StationName"] = payload["NetBiosName"] = event.qso["NetBiosName"]
-            payload["IsOriginal"] = event.qso["IsOriginal"]
-            payload["ID"] = event.qso["ID"]
-            payload["points"] = event.qso["Points"]
-            payload["snt"] = event.qso["SNT"]
-            payload["rcv"] = event.qso["RCV"]
-            payload["sntnr"] = event.qso["SentNr"]
-            payload["rcvnr"] = event.qso["NR"]
-            payload["ismultiplier1"] = event.qso.get("IsMultiplier1", 0)
-            payload["ismultiplier2"] = event.qso.get("IsMultiplier2", 0)
-            payload["ismultiplier3"] = event.qso.get("IsMultiplier3", 0)
-            payload["section"] = event.qso["Sect"]
-            payload["prec"] = event.qso["Prec"]
-            payload["ck"] = event.qso["CK"]
-            payload["zn"] = event.qso["ZN"]
-            payload["power"] = event.qso["Power"]
-            payload["band"] = event.qso["Band"]
+            payload = self._qso_to_n1mm_dict(event.qso)
+
             self._send(self.contact_port, payload, "contactinfo")
 
     def send_contactreplace(self, event: appevent.QsoUpdated):
         """Send replace"""
         if self.send_contact_packets:
-            payload = dict(self.contact_info)
-            payload["timestamp"] = event.qso_after["TS"]
-            payload["contestname"] = event.qso_after["ContestName"].replace("-", "")
-            payload["contestnr"] = event.qso_after["ContestNR"]
-            payload["operator"] = event.qso_after["Operator"]
-            payload["mycall"] = event.qso_after["Operator"]
-            payload["band"] = event.qso_after["Band"]
-            payload["mode"] = event.qso_after["Mode"]
-            payload["stationprefix"] = event.qso_after["StationPrefix"]
-            payload["continent"] = event.qso_after["Continent"]
-            payload["gridsquare"] = event.qso_after["GridSquare"]
-            payload["ismultiplier1"] = event.qso_after["IsMultiplier1"]
-            payload["ismultiplier2"] = event.qso_after["IsMultiplier2"]
-
-            payload["call"] = event.qso_after["Call"]
-            payload["oldcall"] = event.qso_before["Call"]
-
-            payload["rxfreq"] = str(int(float(event.qso_after["Freq"]) * 100))
-            payload["txfreq"] = str(int(float(event.qso_after["QSXFreq"]) * 100))
-
-            payload["snt"] = event.qso_after["SNT"]
-            payload["rcv"] = event.qso_after["RCV"]
-            payload["sntnr"] = event.qso_after["SentNr"]
-            payload["rcvnr"] = event.qso_after["NR"]
-            payload["exchange1"] = event.qso_after.get("Exchange1", "")
-            payload["ck"] = event.qso_after["CK"]
-            payload["prec"] = event.qso_after["Prec"]
-            payload["section"] = event.qso_after["Sect"]
-            payload["wpxprefix"] = event.qso_after["WPXPrefix"]
-            payload["power"] = event.qso_after["Power"]
-
-            payload["zone"] = event.qso_after["ZN"]
-
-            payload["countryprefix"] = event.qso_after["CountryPrefix"]
-            payload["points"] = event.qso_after["Points"]
-            payload["name"] = event.qso_after["Name"]
-            payload["misctext"] = event.qso_after["Comment"]
-            payload["ID"] = event.qso_after["ID"]
+            payload = self._qso_to_n1mm_dict(event.qso_after)
+            payload["oldcall"] = event.qso_before.call
             self._send(self.contact_port, payload, "contactreplace")
 
     def send_contact_delete(self, event: appevent.QsoDeleted):
         if self.send_contact_packets:
-            payload = dict(self.contactdelete)
-            payload["timestamp"] = event.qso["TS"]
-            payload["call"] = event.qso["Call"]
-            payload["contestnr"] = event.qso["ContestNR"]
-            payload["ID"] = event.qso['ID']
-
+            payload = self._qso_to_n1mm_dict(event.qso)
             self._send(self.contact_port, payload, "contactdelete")
 
     def send_lookup(self, event: appevent.ExternalLookupResult):

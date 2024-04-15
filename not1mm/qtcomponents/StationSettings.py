@@ -5,9 +5,10 @@ import typing
 
 from PyQt6 import QtWidgets, uic, QtGui
 from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import QTableWidget, QTableWidgetItem, QPushButton, QComboBox, QMessageBox
+from PyQt6.QtWidgets import QTableWidget, QTableWidgetItem, QPushButton, QComboBox, QMessageBox, QAbstractItemView
 
 from not1mm import fsutils
+from not1mm.lib import event as appevent
 from not1mm.lib.bigcty import BigCty
 from not1mm.lib.ham_utility import gridtolatlon
 from not1mm.model import Station
@@ -41,14 +42,14 @@ class StationSettings(QtWidgets.QDialog):
         self.select_station.currentIndexChanged.connect(self.edit_station)
 
         self.table_station.itemChanged.connect(self.item_edit)
-
+        self.table_station.setEditTriggers(QAbstractItemView.EditTrigger.AllEditTriggers)
         self.populate_select()
 
         if not self.station:
             # first run, new station
             s = Station()
             s.station_name = 'My Base Station'
-            s.callsign = "VE9AA"
+            s.callsign = "K6GTE"
             self.populate_station_table(s)
 
     def populate_select(self):
@@ -115,7 +116,6 @@ class StationSettings(QtWidgets.QDialog):
 
     def call_change(self, call):
         """Populate zones"""
-        fields = self.get_fields()
         if call:
             results = self.bigcty.find_call_match(call)
             if results:
@@ -135,7 +135,8 @@ class StationSettings(QtWidgets.QDialog):
             event.ignore()
             dlg = QMessageBox(self)
             dlg.setWindowTitle("Station Settings Required")
-            dlg.setText("You must define a station to continue. The basic information required is station callsign and the station's name.")
+            dlg.setText("You must define a station to continue. The basic information required is station"
+                        " callsign and the station's name. A 6 character grid square is also useful.")
             dlg.exec()
 
     def save_station_table(self):
@@ -146,6 +147,7 @@ class StationSettings(QtWidgets.QDialog):
         self.station.save()
         self.settings['active_station_id'] = self.station.id
         fsutils.write_settings({'active_station_id': self.station.id})
+        appevent.emit(appevent.StationActivated(self.station))
         self.populate_select()
 
     def delete_station(self):

@@ -4,10 +4,10 @@ from .AbstractContest import *
 class GeneralLogging(AbstractContest):
 
     _fields = [
-        ContestField(name='rst_sent', display_label='RST Snd', space_tabs=True, stretch_factor=1, requires_validation=False),
-        ContestField(name='rst_rcvd', display_label='RST Rcv', space_tabs=True, stretch_factor=1, requires_validation=False),
-        ContestField(name='name', display_label='Name', space_tabs=False, stretch_factor=2, requires_validation=False),
-        ContestField(name='comment', display_label='Comment', space_tabs=False, stretch_factor=2, requires_validation=False),
+        ContestField(name='rst_sent', display_label='RST Snd', space_tabs=True, stretch_factor=1, max_chars=3),
+        ContestField(name='rst_rcvd', display_label='RST Rcv', space_tabs=True, stretch_factor=1, max_chars=3),
+        ContestField(name='name', display_label='Name', stretch_factor=4, callsign_space_to_here=True),
+        ContestField(name='comment', display_label='Comment', stretch_factor=4),
     ]
 
     def __init__(self, contest: Contest):
@@ -20,7 +20,8 @@ class GeneralLogging(AbstractContest):
     def get_dupe_type(self) -> DupeType:
         return DupeType.NONE
 
-    def get_preferred_column_order(self) -> list[str]:
+    @staticmethod
+    def get_preferred_column_order() -> list[str]:
         return ['band', 'rst_sent', 'rst_rcvd', 'name', 'comment', 'mode', 'submode']
 
     def get_qso_fields(self) -> list[ContestField]:
@@ -33,14 +34,11 @@ class GeneralLogging(AbstractContest):
     def get_suggested_contest_setup() -> dict[str: str]:
         return {
             "band_category": "ALL",
-            "mode_category": "MIXED",
+            "mode_category": "SSB+CW+DIGITAL",
             "operator_category": "SINGLE-OP",
             "station_category": "FIXED",
             "transmitter_category": "UNLIMITED",
         }
-
-    def default_field_value(self, field_name) -> Optional[str]:
-        return super().default_field_value(field_name)
 
     def pre_process_qso_log(self, qso: QsoLog):
         super().pre_process_qso_log(qso)

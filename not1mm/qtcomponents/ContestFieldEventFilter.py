@@ -16,11 +16,13 @@ class ContestFieldEventFilter(QObject):
         self.field_signal.connect(callback, Qt.ConnectionType.QueuedConnection)
 
     def eventFilter(self, source: Optional[QObject], event: Optional[QEvent]) -> bool:
-        #print(f"{source.objectName()} event filter")
-        if event.type() == QEvent.Type.FocusIn and isinstance(source, QLineEdit):
-            self.field_signal.emit(source, event)
-
-
+        if event.type() == QEvent.Type.KeyPress and isinstance(source, QLineEdit):
+            # can't pass events from eveint proces to a Qt.ConnectionType.QueuedConnection slot as it
+            # appears the qevent objects get reused somewhere in the middle an dthe event at the slot is
+            # not the same event
+            #self.field_signal.emit(source, event)
+            event.accept()
+            self.callback(source, event)
         return super(ContestFieldEventFilter, self).eventFilter(source, event)
 
 

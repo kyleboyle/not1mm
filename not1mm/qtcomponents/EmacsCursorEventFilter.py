@@ -13,7 +13,7 @@ class EmacsCursorEventFilter(QObject):
         super(EmacsCursorEventFilter, self).__init__(parent)
 
     def eventFilter(self, source: Optional[QObject], event: Optional[QEvent]) -> bool:
-        if event.type() == QEvent.Type.KeyPress and type(source) == QLineEdit:
+        if event.type() == QEvent.Type.KeyPress and isinstance(source, QLineEdit):
             box: QLineEdit = source
             modifiers = event.modifiers()
             if modifiers == Qt.KeyboardModifier.MetaModifier:
@@ -44,7 +44,7 @@ class EmacsCursorEventFilter(QObject):
                             box.backspace()
                 elif event.key() == Qt.Key.Key_K:
                     self.mark_active = False
-                    # delete selected text or character in front of cursor
+                    # delete selected text or all characters in front of cursor
                     if box.selectedText():
                         box.backspace()
                     else:

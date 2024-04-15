@@ -1,12 +1,13 @@
 """New Contest Dialog"""
 import datetime
 
-from PyQt6 import QtWidgets, uic
-from PyQt6.QtCore import QDateTime, QDate, QTime
+import typing
+from PyQt6 import uic, QtGui
+from PyQt6.QtCore import QDate, QTime
 from PyQt6.QtWidgets import QComboBox, QPlainTextEdit, QDateTimeEdit, QLineEdit, QDialog, QPushButton, QMessageBox
 
 from not1mm import fsutils
-from not1mm.lib.event_model import ContestActive
+from not1mm.lib.event_model import ContestActivated
 from not1mm.model import Contest, ContestMeta, Station, QsoLog, DeletedQsoLog
 from not1mm.contest import contest_plugin_list, contests_by_cabrillo_id
 
@@ -80,10 +81,10 @@ class ContestEdit(QDialog):
             name = f"{contest.start_date.date()} {contest.fk_contest_meta.display_name}"
             if active_contest_id == contest.id:
                 name = f"[ACTIVE] {name}"
-                self.contest = contest
                 found_active = True
             self.select_contest.addItem(name, contest)
             if select_contest and select_contest.get_id() == contest.get_id():
+                self.contest = contest
                 self.select_contest.setCurrentIndex(self.select_contest.count() - 1)
         if not found_active and 'active_contest_id' in self.settings:
             # make sure settings doesn't get out of sync with db contents
@@ -183,8 +184,9 @@ class ContestEdit(QDialog):
         self.select_contest.setCurrentIndex(0)
         c = Contest()
         c.start_date = (datetime.datetime.now() + datetime.timedelta(hours=1)).replace(minute=0, second=0, microsecond=0)
-
         self.populate_form(c)
+        # prefill default contest values
+        self.contest_meta_changed()
 
     def save_contest(self):
         if not self.contest:
@@ -208,16 +210,17 @@ class ContestEdit(QDialog):
         self.populate_contest_select(self.contest)
 
     def activate_contest(self):
+        # TODO activating a new contest didn't work
         if not self.contest:
             return
 
-        if self.settings['active_contest_id'] == self.contest.id:
+        if self.settings.get('active_contest_id', None) == self.contest.id:
             return
 
         self.settings['active_contest_id'] = self.contest.id
         fsutils.write_settings({'active_contest_id': self.contest.id})
         self.populate_contest_select(self.contest)
-        appevent.emit(ContestActive(self.contest))
+        appevent.emit(ContestActivated(self.contest))
 
     def delete_contest(self):
         if self.settings['active_contest_id'] == self.contest.id:
@@ -231,8 +234,7 @@ class ContestEdit(QDialog):
             result = QMessageBox.question(self, f"Delete Contest with {qso_count} QSO logs",
                                           f"Are you sure you want to delete contest "
                                           f"{self.contest.start_date.date()} - {self.contest.fk_contest_meta.display_name}? "
-                                          f"TODO show number of QSOs. "
-                                          f"All associated # of QSO logs will also be removed.",
+                                          f"All associated {qso_count} QSO logs will also be removed.",
                                           )
             if result == QMessageBox.StandardButton.Yes:
                 self.contest.deleted = True
@@ -240,19 +242,19 @@ class ContestEdit(QDialog):
                 # foreign keys should still work as the station and contest are not actually removed from the table
                 DeletedQsoLog.insert_from(
                     query=QsoLog.select().where(QsoLog.fk_contest == self.contest),
-                    fields=list(QsoLog._meta.sorted_field_names))
+                    fields=list(QsoLog._meta.sorted_field_names)).execute()
                 QsoLog.delete().where(QsoLog.fk_contest == self.contest)
                 self.populate_contest_select()
 
     def contest_meta_changed(self):
-        """if the contest type (meta) is changed and this is a new conteset (not saved yet), then fill in
+        """if the contest type (meta) is changed and this is a new contest (not saved yet), then fill in
         default values from the contest plugin
         """
         if self.contest and not self.contest.id:
             plugin = contests_by_cabrillo_id[self.fk_contest.currentData().cabrillo_name]
             values = plugin.get_suggested_contest_setup()
 
-            for name in ['assisted_category', 'band_category', 'operator_category', 'overlay_category', 'power_category', 'station_category', 'transmitter_category']:
+            for name in ['assisted_category', 'mode_category', 'band_category', 'operator_category', 'overlay_category', 'power_category', 'station_category', 'transmitter_category']:
                 if name in values:
                     self.select_item(getattr(self, name), values[name])
                 else:
@@ -266,3 +268,11 @@ class ContestEdit(QDialog):
                 self.start_date.setDate(values['start_date'])
             if 'start_time' in values:
                 self.start_date.setTime(values['start_time'])
+
+    def closeEvent(self, event: typing.Optional[QtGui.QCloseEvent]) -> None:
+        if not self.settings.get('active_contest_id', None):
+            event.ignore()
+            dlg = QMessageBox(self)
+            dlg.setWindowTitle("Contest Required")
+            dlg.setText("You must create and activate a contest to continue. Go for General Logging to start with.")
+            dlg.exec()

@@ -16,9 +16,11 @@ class DupeType(Enum):
 class ContestField:
     name: str
     display_label: str
-    space_tabs: bool
-    requires_validation: bool
-    stretch_factor: int
+    space_tabs: Optional[bool] = False
+    callsign_space_to_here: Optional[bool] = False
+    requires_validation: Optional[bool] = False
+    stretch_factor: Optional[int] = 2
+    max_chars: Optional[int] = 255
 
 
 class ContestFieldNextLine(ContestField):
@@ -70,7 +72,8 @@ class AbstractContest:
     def get_dupe_type(self) -> DupeType:
         raise NotImplementedError()
 
-    def get_preferred_column_order(self) -> list[str]:
+    @staticmethod
+    def get_preferred_column_order() -> list[str]:
         """
         The db columns / qso fields that are important for this contest and given display priority in the
         QSO log table.
@@ -104,7 +107,15 @@ class AbstractContest:
         """chance to mutate qso before it is persisted to the log database"""
         pass
 
-    def calculate_points(self, qso: QsoLog) -> Optional[int]:
+    def intermediate_qso_update(self, qso: QsoLog, fields: Optional[list[str]]):
+        """one or more fields have been modified"""
+        pass
+
+    def calculate_total_points(self):
+        if not self.points_per_contact or self.points_per_contact == 0:
+            return None
+
+    def points_for_qso(self, qso: QsoLog) -> Optional[int]:
         if not self.points_per_contact or self.points_per_contact == 0:
             return None
 
@@ -121,4 +132,5 @@ class AbstractContest:
         raise NotImplementedError()
 
     def contest_qso_select(self):
+        """helper for plugins to start a select statement which contains all qso's for the contest"""
         return QsoLog.select().where(QsoLog.fk_contest == self.contest)
