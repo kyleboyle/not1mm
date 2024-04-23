@@ -19,7 +19,6 @@ from PyQt6.QtWidgets import QDockWidget
 
 import not1mm.fsutils as fsutils
 from not1mm.lib import event
-from not1mm.lib.cat_interface import CAT
 
 logger = logging.getLogger(__name__)
 

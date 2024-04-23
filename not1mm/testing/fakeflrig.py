@@ -44,17 +44,18 @@ def set_ptt(flag):
     radio_state["ptt"] = flag
     return 0
 
+def get_ptt():
+    return radio_state["ptt"]
+
 def get_mode():
     """return mode"""
     return radio_state["mode"]
-
 
 def set_mode(mode):
     """set frequency in hz"""
     logging.warning("%s", f"Mode set to: {mode}")
     radio_state["mode"] = mode
     return 0
-
 
 def get_bw():
     """return bandwidth"""
@@ -66,6 +67,8 @@ def set_bw(bandwidth):
     logging.warning("%s", f"bandwidth set to: {bandwidth}")
     radio_state["bw"] = bandwidth
 
+def get_power():
+    return 100
 
 def get_version():
     """return flrig version"""
@@ -90,6 +93,8 @@ with SimpleXMLRPCServer(
     server.register_function(set_bw, name="rig.set_bw")
     server.register_function(get_version, name="main.get_version")
     server.register_function(set_ptt, name="rig.set_ptt")
+    server.register_function(get_ptt, name="rig.get_ptt")
+    server.register_function(get_power, name="rig.get_power")
 
     server.register_introspection_functions()
     server.serve_forever()

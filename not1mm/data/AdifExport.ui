@@ -1,22 +1,22 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>AdifImport</class>
- <widget class="QDialog" name="AdifImport">
+ <class>AdifExport</class>
+ <widget class="QDialog" name="AdifExport">
   <property name="geometry">
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>530</width>
-    <height>538</height>
+    <width>548</width>
+    <height>226</height>
    </rect>
   </property>
   <property name="windowTitle">
-   <string>ADIF File Import</string>
+   <string>ADIF File Export</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
-    <layout class="QHBoxLayout" name="horizontalLayout_4">
-     <item>
+    <layout class="QGridLayout" name="gridLayout">
+     <item row="0" column="0">
       <widget class="QLabel" name="label_intro">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
@@ -25,7 +25,7 @@
         </sizepolicy>
        </property>
        <property name="text">
-        <string>All new logs will be imported into the current Contest Session:</string>
+        <string>Export Logs for the current Contest:</string>
        </property>
        <property name="alignment">
         <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
@@ -35,7 +35,7 @@
        </property>
       </widget>
      </item>
-     <item>
+     <item row="0" column="1">
       <widget class="QLabel" name="label_contest">
        <property name="font">
         <font>
@@ -47,6 +47,23 @@
        </property>
       </widget>
      </item>
+     <item row="1" column="0">
+      <widget class="QLabel" name="label_3">
+       <property name="text">
+        <string>QSO Log Count:</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="1">
+      <widget class="QLabel" name="label_qso_count">
+       <property name="text">
+        <string>qso_count</string>
+       </property>
+      </widget>
+     </item>
     </layout>
    </item>
    <item>
@@ -54,7 +71,7 @@
      <item>
       <widget class="QLabel" name="label">
        <property name="text">
-        <string>Import File:</string>
+        <string>Save to File:</string>
        </property>
       </widget>
      </item>
@@ -93,10 +110,26 @@
    <item>
     <layout class="QHBoxLayout" name="horizontalLayout_3">
      <item>
-      <widget class="QLabel" name="label_2">
+      <widget class="QRadioButton" name="radio_adi">
        <property name="text">
-        <string>Import Preview</string>
+        <string>ADI Text</string>
        </property>
+       <property name="checked">
+        <bool>true</bool>
+       </property>
+       <attribute name="buttonGroup">
+        <string notr="true">buttonGroup_2</string>
+       </attribute>
+      </widget>
+     </item>
+     <item>
+      <widget class="QRadioButton" name="radio_xml">
+       <property name="text">
+        <string>ADX XML</string>
+       </property>
+       <attribute name="buttonGroup">
+        <string notr="true">buttonGroup_2</string>
+       </attribute>
       </widget>
      </item>
      <item>
@@ -113,38 +146,36 @@
       </spacer>
      </item>
      <item>
-      <widget class="QLabel" name="label_stats">
+      <widget class="QLabel" name="label_success">
        <property name="text">
-        <string>Summary Stats</string>
+        <string>Success!</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="button_export">
+       <property name="text">
+        <string>Export</string>
+       </property>
+       <property name="autoDefault">
+        <bool>false</bool>
        </property>
       </widget>
      </item>
     </layout>
    </item>
    <item>
-    <widget class="QTableWidget" name="table_preview">
-     <property name="editTriggers">
-      <set>QAbstractItemView::NoEditTriggers</set>
+    <spacer name="verticalSpacer">
+     <property name="orientation">
+      <enum>Qt::Vertical</enum>
      </property>
-     <property name="showDropIndicator" stdset="0">
-      <bool>false</bool>
+     <property name="sizeHint" stdset="0">
+      <size>
+       <width>20</width>
+       <height>40</height>
+      </size>
      </property>
-     <property name="alternatingRowColors">
-      <bool>true</bool>
-     </property>
-     <property name="selectionMode">
-      <enum>QAbstractItemView::SingleSelection</enum>
-     </property>
-     <property name="selectionBehavior">
-      <enum>QAbstractItemView::SelectRows</enum>
-     </property>
-     <property name="sortingEnabled">
-      <bool>true</bool>
-     </property>
-     <attribute name="horizontalHeaderStretchLastSection">
-      <bool>true</bool>
-     </attribute>
-    </widget>
+    </spacer>
    </item>
    <item>
     <layout class="QHBoxLayout" name="horizontalLayout_2">
@@ -172,12 +203,25 @@
       </spacer>
      </item>
      <item>
-      <widget class="QPushButton" name="button_save">
+      <widget class="QPushButton" name="button_open_dir">
        <property name="enabled">
         <bool>false</bool>
        </property>
        <property name="text">
-        <string>Execute Import</string>
+        <string>Open Directory</string>
+       </property>
+       <property name="autoDefault">
+        <bool>false</bool>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="button_open_file">
+       <property name="enabled">
+        <bool>false</bool>
+       </property>
+       <property name="text">
+        <string>Open File</string>
        </property>
        <property name="autoDefault">
         <bool>false</bool>
@@ -190,10 +234,14 @@
  </widget>
  <tabstops>
   <tabstop>button_file</tabstop>
-  <tabstop>table_preview</tabstop>
-  <tabstop>button_save</tabstop>
+  <tabstop>button_export</tabstop>
+  <tabstop>button_open_dir</tabstop>
+  <tabstop>button_open_file</tabstop>
   <tabstop>button_close</tabstop>
  </tabstops>
  <resources/>
  <connections/>
+ <buttongroups>
+  <buttongroup name="buttonGroup_2"/>
+ </buttongroups>
 </ui>

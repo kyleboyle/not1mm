@@ -2,14 +2,15 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Optional
 
-from not1mm.model import QsoLog, Contest
+from not1mm.model import QsoLog, Contest, Station
+from not1mm.model.adapters import CabrilloRecord
 
 
 class DupeType(Enum):
-    ONCE = 1 # a callsign only counts once
-    EACH_BAND = 2 # a callsign can be logged in multiple bands
-    EACH_BAND_MODE = 3 # a callsign can be logged for multiple modes in the same band
-    NONE = 4 # duplicates don't matter
+    ONCE = 1  # a callsign only counts once
+    EACH_BAND = 2  # a callsign can be logged in multiple bands
+    EACH_BAND_MODE = 3  # a callsign can be logged for multiple modes in the same band
+    NONE = 4  # duplicates don't matter
 
 
 @dataclass(kw_only=True)
@@ -27,10 +28,9 @@ class ContestFieldNextLine(ContestField):
     def __init__(self):
         pass
 
-
 class AbstractContest:
     """
-    Defines interface contract and generic methods for contest implementations
+    Defines interface contract and generic methods / default implementations for contest plugins
     """
 
     def __init__(self, contest: Contest):
@@ -39,7 +39,7 @@ class AbstractContest:
 
     @staticmethod
     def get_cabrillo_name() -> str:
-        """Must match one fo the Contest Meta db entries"""
+        """Must match one of the Contest Meta db entries"""
         raise NotImplementedError()
 
     def get_modes(self) -> list[str]:
@@ -119,17 +119,49 @@ class AbstractContest:
         if not self.points_per_contact or self.points_per_contact == 0:
             return None
 
-    def adif_headers(self):
-        raise NotImplementedError()
+    def cabrillo_headers(self, station: Station) -> list[tuple[2]]:
+        """ by default, generate all the headers"""
+        headers = [
+            ('CONTEST', self.contest.fk_contest_meta.cabrillo_name),
+            ('CALLSIGN', station.callsign),
+            ('CATEGORY-OPERATOR', self.contest.operator_category),
+            ('CATEGORY-ASSISTED', self.contest.assisted_category),
+            ('CATEGORY-BAND', self.contest.band_category),
+            ('CATEGORY-MODE', self.contest.mode_category),
+            ('CATEGORY-TRANSMITTER', self.contest.transmitter_category),
+            ('CATEGORY-OVERLAY', self.contest.overlay_category),
+            ('GRID-LOCATOR', station.gridsquare),
+            ('CATEGORY-POWER', self.contest.power_category),
+            ('OPERATORS', ",".join([x.operator for x in QsoLog.select(QsoLog.operator.distinct())
+                                   .where(QsoLog.fk_contest == self.contest)])),
+        ]
+        claimed_points = self.calculate_total_points()
+        if claimed_points:
+            headers.append(('CLAIMED-SCORE', claimed_points))
+        if station.name:
+            headers.append(('NAME', station.name))
+        if station.club:
+            headers.append(('CLUB', station.club))
+        if station.arrl_sect:
+            headers.append(("LOCATION", station.arrl_sect))
+        if station.street1:
+            headers.append(("ADDRESS", station.street1))
+        if station.street2:
+            headers.append(("ADDRESS", station.street2))
+        if station.city:
+            headers.append(("ADDRESS-CITY", station.city))
+        if station.state:
+            headers.append(("ADDRESS-STATE-PROVINCE", station.state))
+        if station.postal_code:
+            headers.append(("ADDRESS-POSTALCODE", station.postal_code))
+        if station.country:
+            headers.append(("ADDRESS-COUNTRY", station.country))
+        if station.email:
+            headers.append(("EMAIL", station.email))
+        return headers
 
-    def adif_qso(self, qso: QsoLog):
-        raise NotImplementedError()
-
-    def cabrillo_headers(self):
-        raise NotImplementedError()
-
-    def cabrillo_qso(self, qso: QsoLog):
-        raise NotImplementedError()
+    def cabrillo_log(self, qso: QsoLog, cbr: CabrilloRecord) -> CabrilloRecord:
+        return cbr
 
     def contest_qso_select(self):
         """helper for plugins to start a select statement which contains all qso's for the contest"""

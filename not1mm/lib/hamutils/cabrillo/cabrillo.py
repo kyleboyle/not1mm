@@ -1,5 +1,7 @@
 import datetime
 
+from not1mm.lib import version
+
 
 class CabrilloWriter:
     cabrillo_ver = '3.0'
@@ -17,8 +19,7 @@ class CabrilloWriter:
             else:
                 self.write_tag('CREATED-BY', '%s' % (program_id))
         else:
-            from hamutils import __version__ as hamutils_version
-            self.write_tag('CREATED-BY', 'hamutils %s' % hamutils_version)
+            self.write_tag('CREATED-BY', 'qsource-logger %s' % version.__version__)
 
 
     def write_tags(self, **kw):

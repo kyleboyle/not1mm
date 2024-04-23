@@ -5,39 +5,26 @@ Display current log
 # pylint: disable=no-name-in-module, unused-import, no-member, c-extension-no-member
 # pylint: disable=logging-fstring-interpolation, too-many-lines
 
+import copy
 import logging
 import os
-import copy
-import uuid
 from datetime import datetime
 
-import hamutils.adif.common
-import typing
 from PyQt6 import QtGui, QtWidgets, uic
-from PyQt6.QtCore import Qt, QAbstractTableModel, QModelIndex, QSortFilterProxyModel, pyqtSignal, QDateTime, QByteArray
-from PyQt6.QtGui import QFont, QAction, QIcon
+from PyQt6.QtCore import Qt, QAbstractTableModel, QModelIndex, QSortFilterProxyModel, pyqtSignal, QByteArray
+from PyQt6.QtGui import QAction
 from PyQt6.QtWidgets import QTableView, QHeaderView, QAbstractItemView
-from peewee import DoubleField, FloatField
 
-import not1mm.fsutils as fsutils
-from not1mm.contest.AbstractContest import AbstractContest
-import not1mm.lib.event as appevent
-from not1mm.lib import flags
-from not1mm.model import QsoLog, Contest, DeletedQsoLog, Station, Enums
-from not1mm.contest import contests_by_cabrillo_id
-from not1mm.qtcomponents.CustomItemDelegate import CustomItemDelegate, EnumEditor
+from . import fsutils
+from .contest import contests_by_cabrillo_id
+from .contest.AbstractContest import AbstractContest
+from .lib import event as appevent
+from .lib import flags
+from .model import QsoLog, Contest, DeletedQsoLog
+from .qsoeditwindow import QsoEditWindow
+from .qtcomponents.QsoFieldDelegate import QsoFieldDelegate, handle_set_data, get_table_data, field_display_names
 
 logger = logging.getLogger(__name__)
-
-_monospace_font = QFont()
-_monospace_font.setFamily("Roboto Mono")
-
-_column_names = {
-    'time_on': 'timestamp',
-    '_flag': '',
-    'srx': 'serial_rcv',
-    'stx': 'serial_snt',
-}
 
 def _show_info_message_box(message: str) -> None:
     message_box = QtWidgets.QMessageBox()
@@ -88,48 +75,26 @@ class QsoTableModel(QAbstractTableModel):
         self._data = list(data)
         self.endResetModel()
 
-    def data(self, index: QModelIndex, role:  Qt.ItemDataRole = None):
+    def data(self, index: QModelIndex, role: Qt.ItemDataRole = None):
 
-        if role == Qt.ItemDataRole.DisplayRole:
+        if role == Qt.ItemDataRole.DisplayRole or role == Qt.ItemDataRole.EditRole or role == Qt.ItemDataRole.FontRole:
             column_name = self._columns[index.column()]
-            if column_name.startswith('_'):
+            return get_table_data(self._data[index.row()], column_name, role)
+
+        if role == Qt.ItemDataRole.UserRole:
+            # custom sort values that may differ from the display value
+            column_name = self._columns[index.column()]
+            if column_name == '_flag':
+                return self._data[index.row()].dxcc or -1
+            if column_name.startswith("_"):
                 return None
             val = getattr(self._data[index.row()], column_name)
+            if column_name in ['freq', 'freq_rx'] and val:
+                return val
             if isinstance(val, datetime):
-                return val.strftime('%Y-%b-%d %H:%M:%S')
-            if isinstance(val, uuid.UUID) or isinstance(val, dict):
-                return str(val)
-            if isinstance(val, Contest):
-                return f"({val.id}){val.fk_contest_meta.display_name}"
-            if isinstance(val, Station):
-                return val.station_name
-            if column_name in ['freq', 'freq_rx']:
-                return f'{val:,}'.replace(',', '.')
-            return val
-
-        if role == Qt.ItemDataRole.EditRole:
-            column_name = self._columns[index.column()]
-            val = getattr(self._data[index.row()], column_name)
-            if isinstance(val, datetime):
-                return QDateTime(val.date(), val.time())
-            if column_name == 'rst_sent' or column_name == 'rst_received':
-                return int(val)
-            if column_name == 'mode':
-                return EnumEditor(val, Enums.adif_enums['mode'])
-            elif column_name == 'submode':
-                qso = self._data[index.row()]
-                if qso.mode in Enums.adif_enums['sub_mode_by_parent_mode']:
-                    return EnumEditor(val, Enums.adif_enums['sub_mode_by_parent_mode'][qso.mode])
-                else:
-                    return EnumEditor(val, Enums.adif_enums['sub_mode'])
-            elif column_name == 'arrl_sect' or column_name == 'my_arrl_sect':
-                return EnumEditor(val, [x[0] for x in Enums.adif_enums['arrl_sect']], True)
-            elif column_name in Enums.qso_field_enum_map.keys():
-                return EnumEditor(val, Enums.adif_enums[Enums.qso_field_enum_map[column_name]])
-            return val
-
-        if role == Qt.ItemDataRole.FontRole and self._columns[index.column()] in ('time_on', 'call', 'freq', 'freq_rx', 'time_off', 'rst_sent', 'rst_rcvd'):
-            return _monospace_font
+                return val.strftime('%Y-%m-%d %H:%M:%S')
+            # default to display value
+            return get_table_data(self._data[index.row()], column_name)
 
         if role == Qt.ItemDataRole.DecorationRole and self._columns[index.column()] == '_flag':
             qso = self._data[index.row()]
@@ -157,37 +122,21 @@ class QsoTableModel(QAbstractTableModel):
         record_before = copy.deepcopy(record)
         column = self._columns[index.column()]
 
-        if isinstance(value, QDateTime):
-            value = value.toPyDateTime()
-        if getattr(record, column) == value:
-            logger.warning(f"abort edit qso record for {record.id}, {column} = {value}, value is not different")
-            return False
-        logger.warning(f"update db qso record for {record.id}, {column} = {value}")
-        if column == 'freq':
-            record.band = hamutils.adif.common.convert_freq_to_band(int(value) / 1000_000)
-        if column == 'freq_rx':
-            record.band_rx = hamutils.adif.common.convert_freq_to_band(int(value) / 1000_000)
-        #TODO re-generate other dependent fields
-
-        if isinstance(record._meta.fields.get(column), FloatField):
+        result = handle_set_data(record, column, value)
+        if result:
             try:
-                value = float(value)
-            except ValueError:
-                return False
-        setattr(record, column, value)
-        try:
-            record.save()
-            self.edited.emit(record_before, record)
-            return True
-        except Exception as e:
-            logger.exception("Problem saving qso log")
-            _show_info_message_box(str(e))
+                record.save()
+                self.edited.emit(record_before, record)
+                return True
+            except Exception as e:
+                logger.exception("Problem saving qso log")
+                _show_info_message_box(str(e))
         return False
 
     def headerData(self, section: int, orientation: Qt.Orientation, role: Qt.ItemDataRole = Qt.ItemDataRole.DisplayRole):
         if orientation == Qt.Orientation.Horizontal:
             if role == Qt.ItemDataRole.DisplayRole:
-                return _column_names.get(self._columns[section], self._columns[section])
+                return field_display_names.get(self._columns[section], self._columns[section])
 
     def flags(self, index: QModelIndex) -> Qt.ItemFlag:
         column_name = self._columns[index.column()]
@@ -229,6 +178,9 @@ class LogWindow(QtWidgets.QDockWidget):
     stationHistoryModel: QsoTableModel = None
     active_call: str = None
 
+    edit_sheet_did_edit = False
+
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -243,8 +195,8 @@ class LogWindow(QtWidgets.QDockWidget):
 
         self.qsoTable.verticalHeader().setVisible(False)
         self.stationHistoryTable.verticalHeader().setVisible(False)
-        self.qsoTable.setItemDelegate(CustomItemDelegate(self))
-        self.stationHistoryTable.setItemDelegate(CustomItemDelegate(self))
+        self.qsoTable.setItemDelegate(QsoFieldDelegate(self))
+        self.stationHistoryTable.setItemDelegate(QsoFieldDelegate(self))
         self.qsoTable.setSortingEnabled(True)
 
         self.qsoTable.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
@@ -253,12 +205,16 @@ class LogWindow(QtWidgets.QDockWidget):
         self.qsoTable.horizontalHeader().sectionResized.connect(self.header_section_resized)
 
         delete_action = QAction("Delete QSO(s)", self.qsoTable)
-        delete_action.triggered.connect(self.delete_action)
+        delete_action.triggered.connect(self.action_delete)
         self.qsoTable.addAction(delete_action)
+
+        edit_action = QAction("Open Edit Sheet", self.qsoTable)
+        edit_action.triggered.connect(self.action_edit)
+        self.qsoTable.addAction(edit_action)
 
         self.stationHistoryTable.setContextMenuPolicy(Qt.ContextMenuPolicy.ActionsContextMenu)
         delete_action = QAction("Delete QSO(s)", self.stationHistoryTable)
-        delete_action.triggered.connect(self.delete_action)
+        delete_action.triggered.connect(self.action_delete)
         self.stationHistoryTable.addAction(delete_action)
 
         self.qsoModel.edited.connect(self.table_model_edit)
@@ -281,6 +237,9 @@ class LogWindow(QtWidgets.QDockWidget):
             self.save_settings()
 
         self.contest = contest
+
+        logger.debug(f"self contest id {self.contest.id}, cabrillo {self.contest.fk_contest_meta.cabrillo_name}")
+
         self.contest_plugin_class = contests_by_cabrillo_id[self.contest.fk_contest_meta.cabrillo_name]
 
         self.db_file_name = os.path.basename(fsutils.read_settings().get("current_database"))
@@ -294,10 +253,9 @@ class LogWindow(QtWidgets.QDockWidget):
 
         self.load_settings()
 
-
     def populate_qso_log(self) -> None:
         self.setWindowTitle(
-            f"QSO Log - {self.db_file_name} - ({self.contest.id}){self.contest.fk_contest_meta.name}"
+            f"QSO Log - {self.db_file_name} - ({self.contest.id}){self.contest.fk_contest_meta.display_name}"
             f"[{self.contest.start_date.date()}]"
             f" - {QsoLog.select().where(QsoLog.fk_contest == self.contest).count()}"
         )
@@ -305,19 +263,35 @@ class LogWindow(QtWidgets.QDockWidget):
         # TODO paging
         current_log = QsoLog.select().where(QsoLog.fk_contest == self.contest).order_by(QsoLog.time_on.desc())
         self.qsoModel.replaceDataset(current_log)
-
         if not self.qsoTable.model():
             sort_model = QSortFilterProxyModel(self)
             sort_model.setSourceModel(self.qsoModel)
+            sort_model.setSortRole(Qt.ItemDataRole.UserRole)
             self.qsoTable.setModel(sort_model)
 
     def event_qso_added(self, event: appevent.QsoAdded):
         self.populate_qso_log()
-        # TODO select and scroll to new qso (don't focus)
+
+        # scroll to new item if the table is sorted by timestamp
+        sorted_label = self.qsoTable.model().headerData(self.qsoTable.horizontalHeader().sortIndicatorSection(), Qt.Orientation.Horizontal)
+        if sorted_label == field_display_names.get('time_on', 'time_on'):
+            if self.qsoTable.horizontalHeader().sortIndicatorOrder() == Qt.SortOrder.DescendingOrder:
+                # on top
+                self.qsoTable.selectRow(0)
+                self.qsoTable.scrollTo(self.qsoTable.model().index(0, 0))
+            else:
+                # on botton
+                self.qsoTable.selectRow(self.qsoTable.model().rowCount()-1)
+                self.qsoTable.scrollTo(self.qsoTable.model().index(self.qsoTable.model().rowCount()-1, 0))
 
     def event_call_changed(self, event: appevent.CallChanged):
-        self.active_call = event.call
-        self.populate_matching_qsos(self.active_call)
+        # keep the previous call active after insert
+        if event.call != "" or self.active_call is None:
+            if len(event.call) < 3:
+                self.active_call = ''
+            else:
+                self.active_call = event.call
+            self.populate_matching_qsos(self.active_call)
 
     def event_contest_activated(self, event: appevent.ContestActivated):
         self.reset_table_for_contest(event.contest)
@@ -328,11 +302,11 @@ class LogWindow(QtWidgets.QDockWidget):
     def populate_matching_qsos(self, call: str) -> None:
         if not self.stationHistoryTable.model():
             self.stationHistoryTable.setModel(self.stationHistoryModel)
-
         if call == "":
             self.stationHistoryModel.replaceDataset([])
             return
 
+        # TODO handle slash prefixes and slash suffix (/M /P) appropriately
         # prioritize exact match
         history = QsoLog.select().where(QsoLog.fk_contest == self.contest).where(QsoLog.call == call)
         if len(history) == 0:
@@ -340,7 +314,7 @@ class LogWindow(QtWidgets.QDockWidget):
 
         self.stationHistoryModel.replaceDataset(history)
 
-    def delete_action(self):
+    def action_delete(self):
         table = self.qsoTable if self.qsoTable.hasFocus() else self.stationHistoryTable
 
         selection = table.selectedIndexes()
@@ -361,10 +335,38 @@ class LogWindow(QtWidgets.QDockWidget):
         for i in sorted(rows, reverse=True):
             table.model().removeRow(i)
 
+    def action_edit(self):
+        """open a edit sheet for the selected qso"""
+        selection = self.qsoTable.selectedIndexes()
+        rows = set([x.row() for x in selection])
+        if rows and len(rows) == 1:
+            index = self.qsoTable.model().mapToSource(selection[0]).row()
+            self.qso_to_edit = self.qsoModel.getDataset()[index]
+            if self.qso_to_edit:
+                edit_window = QsoEditWindow(self.qso_to_edit, parent=self.parent(), is_dockable=False, contest=self.contest)
+                edit_window.setFloating(True)
+                edit_window.show()
+                edit_window.model.edited.connect(self.edit_sheet_edit)
+                edit_window.closed.connect(self.edit_sheet_closed)
+
+    def edit_sheet_edit(self, qso_record_before: QsoLog, qso_record_after: QsoLog):
+        """ When edits are made, the edited value will potentially need to be reflected in the tables"""
+        appevent.emit(appevent.QsoUpdated(qso_record_before, qso_record_after))
+        self.edit_sheet_did_edit = True
+
+    def edit_sheet_closed(self):
+        """ When edits are made, the edited value will potentially need to be reflected in the tables"""
+        if self.edit_sheet_did_edit:
+            self.edit_sheet_did_edit = False
+            self.populate_matching_qsos(self.active_call)
+            self.populate_qso_log()
+
     def table_model_edit(self, qso_record_before: QsoLog, qso_record_after: QsoLog):
+        """ When edits are made, the edited value will potentially need to be reflected in the other table if they
+        are both showing the same record"""
         appevent.emit(appevent.QsoUpdated(qso_record_before, qso_record_after))
         # only need to potentially update the other table since the edits are reflected in memory on the edited table
-        if self.sender() == self.qsoModel:
+        if self.sender() == self.qsoModel and len(self.stationHistoryModel.getDataset()) > 0:
             self.populate_matching_qsos(self.active_call)
         else:
             self.populate_qso_log()
@@ -373,7 +375,7 @@ class LogWindow(QtWidgets.QDockWidget):
         for qso_record in qso_records:
             appevent.emit(appevent.QsoDeleted(qso_record))
         # only need to potentially update the other table since the row is removed reflected in memory
-        if self.sender() == self.qsoModel:
+        if self.sender() == self.qsoModel and len(self.stationHistoryModel.getDataset()) > 0:
             self.populate_matching_qsos(self.active_call)
         else:
             self.populate_qso_log()
@@ -387,6 +389,10 @@ class LogWindow(QtWidgets.QDockWidget):
         self.save_settings()
 
     def save_settings(self):
+        """settings are the column order and size.
+        The qt state is copied from the main qso table to the history table so that the table columns are identical
+        The qt state is persisted and reloaded whenever the contest is loaded
+        """
         self.stationHistoryTable.horizontalHeader().restoreState(self.qsoTable.horizontalHeader().saveState())
         self.stationHistoryTable.horizontalHeader().setSectionsMovable(False)
         self.stationHistoryTable.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Fixed)
@@ -395,6 +401,10 @@ class LogWindow(QtWidgets.QDockWidget):
             self.contest.merge_settings({"qso_table_column_state": bytes(column_state.toHex()).decode('ascii')})
 
     def load_settings(self):
+        """
+        sets the column order and size from saved state. history table mimics the main table and it's columns
+        are reset to non interactive
+        """
         state = self.contest.get_setting("qso_table_column_state")
         if state:
             self.qsoTable.horizontalHeader().restoreState(

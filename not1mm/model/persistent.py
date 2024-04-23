@@ -115,19 +115,18 @@ class QsoLog(BaseModel):
     station_callsign = CharField(20, index=True)
     call = CharField(20, index=True)
     time_off = DateTimeField(null=True)
-    rst_sent = CharField(10)
+    rst_sent = CharField(10) # can be rst, rs, db level (digi)
     rst_rcvd = CharField(10)
-    freq = IntegerField() # frequency in Megahertz
-    freq_rx = IntegerField(null=True) # if split frequency QSO, the logging station's receiving frequency in Megahertz
+    freq = IntegerField() # frequency (hz)
     band = CharField(10) # https://www.adif.org/314/ADIF_314.htm#Band_Enumeration
     mode = CharField(20) # https://www.adif.org/314/ADIF_314.htm#Mode_Enumeration
     submode = CharField(20, null=True) # https://www.adif.org/314/ADIF_314.htm#Submode_Enumeration
     name = CharField(null=True)
     comment = CharField(null=True)
     stx = IntegerField(null=True) # serial number transmitted
-    stx_string = CharField(null=True) # transmitted contest contents (if contest specific fields don't cover it)
-    srx = IntegerField(null=True)
-    srx_string = CharField(null=True)
+    stx_string = CharField(null=True) # transmitted contest exchange, use cabrillo format
+    srx = IntegerField(null=True) # serial number received
+    srx_string = CharField(null=True) # received contest exchange, use cabrillo format
     gridsquare = CharField(20, null=True)
     gridsquare_ext = CharField(20, null=True)
     qth = CharField(null=True)
@@ -154,11 +153,14 @@ class QsoLog(BaseModel):
     age = IntegerField(null=True)
     altitude = DoubleField(null=True)
     ant_path = CharField(2, null=True) # G(grayline), O(other), S(short path), L(long path)
+    ant_az = IntegerField(null=True)
+    ant_el = IntegerField(null=True)
     award_granted = CharField(null=True)
     award_submitted = CharField(null=True)
+    freq_rx = IntegerField(null=True) # if split frequency QSO, the logging station's receiving frequency (hz)
     band_rx = CharField(null=True)
     check = CharField(null=True)
-    class_lic = CharField(null=True)
+    class_contest = CharField(null=True)
     clublog_qso_upload_date = DateTimeField(null=True)
     clublog_qso_upload_status = CharField(null=True)
     contacted_op = CharField(null=True)
@@ -262,7 +264,8 @@ class QsoLog(BaseModel):
     is_original = BooleanField(null=True) # log generated while using this app
     hostname = CharField(null=True)
     is_run = BooleanField(null=True) # contest operator is in 'run' mode (calling cq)
-    fk_station = ForeignKeyField(Station)
+    transmitter_id = IntegerField(null=True) # contests with multi radios - can either be 0 or 1
+    fk_station = ForeignKeyField(Station, null=True) #imported logs from other apps won't have a station
     fk_contest = ForeignKeyField(Contest)
 
     @staticmethod

@@ -1,6 +1,10 @@
 import datetime
+
+import not1mm
 from .common import ParseError, WriteError, adif_field, convert_field, convert_freq_to_band
 from unidecode import unidecode
+
+from ... import version
 
 
 class ParseErrorIncData(ParseError):
@@ -148,9 +152,8 @@ class ADIWriter:
             else:
                 self.program_version = None
         else:
-            from hamutils import __version__ as hamutils_version
-            self.program_version = hamutils_version
-            self.program_id = 'hamutils'
+            self.program_version = version.__version__
+            self.program_id = 'qsource'
         self._compact = compact
         self._head_writed = False
         self._newline = '\r\n'.encode('ascii')

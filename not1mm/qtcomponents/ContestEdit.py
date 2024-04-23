@@ -1,5 +1,6 @@
 """New Contest Dialog"""
 import datetime
+import logging
 
 import typing
 from PyQt6 import uic, QtGui
@@ -12,6 +13,8 @@ from not1mm.model import Contest, ContestMeta, Station, QsoLog, DeletedQsoLog
 from not1mm.contest import contest_plugin_list, contests_by_cabrillo_id
 
 import not1mm.lib.event as appevent
+
+logger = logging.getLogger(__name__)
 
 class ContestEdit(QDialog):
     select_contest: QComboBox
@@ -220,6 +223,7 @@ class ContestEdit(QDialog):
         self.settings['active_contest_id'] = self.contest.id
         fsutils.write_settings({'active_contest_id': self.contest.id})
         self.populate_contest_select(self.contest)
+        logger.debug(f"self contest id {self.contest.id}, cabrillo {self.contest.fk_contest_meta.cabrillo_name}")
         appevent.emit(ContestActivated(self.contest))
 
     def delete_contest(self):

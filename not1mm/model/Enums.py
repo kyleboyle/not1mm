@@ -420,9 +420,11 @@ adif_enums = {
              ('AF', 'Africa'),
              ('OC', 'Oceana'),
              ('AS', 'Asia'),
-             ('AN', 'Antarctica'), ]
+             ('AN', 'Antarctica'), ],
+    'transmitter': ['0', '1']
 }
 
+# if a model field has a value set defined by an enum, this maps the field name to the enum name
 qso_field_enum_map = {
     'mode': 'mode',
     'submode': 'sub_mode',
@@ -446,11 +448,30 @@ qso_field_enum_map = {
     'qsl_sent_via': 'qsl_via',
     'qso_complete': 'qso_complete',
     'band': 'band',
-    'band_rx': 'band'
+    'band_rx': 'band',
+    'transmitter_id': 'transmitter',
 }
 
 adif_enums['sub_mode'] = []
+# models relationships between mode and submode
 adif_enums['sub_mode_by_parent_mode'] = {}
 for sub, mode in adif_enums['sub_mode_with_parent_mode']:
     adif_enums['sub_mode'].append(sub)
     adif_enums['sub_mode_by_parent_mode'].setdefault(mode, []).append(sub)
+
+cabrillo_modes = ['CW', 'PH', 'FM', 'RY', 'DG']
+
+# convert adif / model main mode value to cabrillo mode value
+def adif_mode_to_cabrillo(adif_mode):
+    if adif_mode == 'CW':
+        return 'CW'
+    elif adif_mode == 'FM':
+        return 'FM'
+    elif adif_mode in ['SSB', 'USB', 'LSB']:
+        return 'PH'
+    elif adif_mode in ['RTTY', 'RTTYM']:
+        return 'RY'
+    elif adif_mode in adif_enums['mode']:
+        return 'DG'
+    return ''
+

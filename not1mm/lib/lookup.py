@@ -24,8 +24,10 @@ class ExternalCallLookupService(QObject):
     class Result:
         call: str
         grid: str
+        first_name: str
         name: str
         nickname: str
+        profile_image: str
         source_result: dict
 
         def __init__(self, call):
@@ -118,6 +120,9 @@ class HamDBlookup(ExternalCallLookupService):
                     result.grid = callsign.get("grid")
                 if callsign.get("fname"):
                     result.name = callsign.get("fname")
+                    result.first_name = callsign.get("fname").split()[0]
+                if callsign.get('image'):
+                    result.profile_image = callsign.get('image')
                 if callsign.get("name"):
                     if not result.name:
                         result.name = callsign.get("name")
@@ -269,6 +274,7 @@ class QRZlookup(ExternalCallLookupService):
 
             result.name = result.source_result.get('name', None)
             if 'fname' in result.source_result:
+                result.first_name = result.source_result['fname'].split()[0]
                 if result.name:
                     result.name = result.source_result['fname'] + ' ' + result.name
                 else:
@@ -278,6 +284,7 @@ class QRZlookup(ExternalCallLookupService):
                 result.call = result.source_result['xref']
             result.grid = result.source_result.get('grid', None)
             result.nickname = result.source_result.get('nickname', None)
+            result.profile_image = result.source_result.get('image', None)
             appevent.emit(appevent.ExternalLookupResult(result))
 
 

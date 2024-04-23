@@ -21,10 +21,7 @@ WORKING_PATH = Path(os.path.dirname(os.path.abspath(__file__)))
 
 MODULE_PATH = WORKING_PATH
 
-
 APP_DATA_PATH = MODULE_PATH / "data"
-_app_paths = AppDataPaths(name="not1mm")
-_app_paths.setup()
 
 DATA_PATH = os.environ.get("XDG_DATA_HOME", str(Path.home() / ".local" / "share"))
 DATA_PATH += "/not1mm"
@@ -48,14 +45,13 @@ if platform.system() not in ["Windows", "Darwin"]:
         ...
 
 if platform.system() in ["Windows", "Darwin"]:
+    _app_paths = AppDataPaths(name="not1mm")
+    _app_paths.setup()
     LOG_FILE = _app_paths.get_log_file_path(name="appplication.log")
     _DATA_PATH = Path(_app_paths.app_data_path)
     USER_DATA_PATH = _DATA_PATH
     CONFIG_PATH = USER_DATA_PATH
     CONFIG_FILE = CONFIG_PATH / "not1mm.json"
-
-DARK_STYLESHEET = ""
-
 
 def openFileWithOS(file):
     """Open a file with the default program for that OS."""

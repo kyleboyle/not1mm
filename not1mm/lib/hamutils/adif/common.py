@@ -6,6 +6,7 @@ adif_field = {
     'address_intl': 'G',
     'age': 'N',
     'a_index': 'N',
+    'altitude': 'N',
     'ant_az': 'N',
     'ant_el': 'N',
     'ant_path': 'E',
@@ -30,6 +31,7 @@ adif_field = {
     'cqz': 'N',
     'credit_submitted': 'C',
     'credit_granted': 'C',
+    'darc_dok': 'E',
     'distance': 'N',
     'dxcc': 'E',
     'email': 'S',
@@ -44,7 +46,12 @@ adif_field = {
     'freq': 'N',
     'freq_rx': 'N',
     'gridsquare': 'S',
+    'gridsquare_ext': 'S',
     'guest_op': 'S',
+    'hamlogeu_qso_upload_date': 'D',
+    'hamlogeu_qso_upload_status': 'E',
+    'hamqth_qso_upload_date': 'D',
+    'hamqth_qso_upload_status': 'E',
     'hrdlog_qso_upload_date': 'D',
     'hrdlog_qso_upload_status': 'E',
     'iota': 'S',
@@ -62,15 +69,21 @@ adif_field = {
     'ms_shower': 'S',
     'my_antenna': 'S',
     'my_antenna_intl': 'I',
+    'my_altitude': 'N',
+    'my_ant_az': 'N',
+    'my_ant_el': 'N',
+    'my_arrl_sect': 'E',
     'my_city': 'S',
     'my_city_intl': 'I',
     'my_cnty': 'E',
     'my_country': 'S',
     'my_country_intl': 'I',
+    'my_county': 'E',
     'my_cq_zone': 'N',
     'my_dxcc': 'E',
     'my_fists': 'S',
     'my_gridsquare': 'S',
+    'my_gridsquare_ext': 'S',
     'my_iota': 'S',
     'my_iota_island_id': 'S',
     'my_itu_zone': 'N',
@@ -80,6 +93,7 @@ adif_field = {
     'my_name_intl': 'I',
     'my_postal_code': 'S',
     'my_postal_code_intl': 'I',
+    'my_pota_ref': 'S',
     'my_rig': 'S',
     'my_rig_intl': 'I',
     'my_sig': 'S',
@@ -92,6 +106,7 @@ adif_field = {
     'my_street_intl': 'I',
     'my_usaca_counties': 'S',
     'my_vucc_grids': 'S',
+    'my_wwff_ref': 'S',
     'name': 'S',
     'name_intl': 'I',
     'notes': 'M',
@@ -101,6 +116,7 @@ adif_field = {
     'operator': 'S',
     'owner_callsign': 'S',
     'pfx': 'S',
+    'pota_ref': 'S',
     'precedence': 'S',
     'prop_mode': 'E',
     'public_key': 'S',
@@ -121,6 +137,7 @@ adif_field = {
     'qso_random': 'B',
     'qth': 'S',
     'qth_intl': 'I',
+    'region': 'E',
     'rig': 'M',
     'rig_intl': 'G',
     'rst_rcvd': 'S',
@@ -152,7 +169,8 @@ adif_field = {
     'usaca_counties': 'S',
     've_prov': 'S',
     'vucc_grids': 'S',
-    'web': 'S'
+    'web': 'S',
+    'wwff_ref': 'S',
 }
 
 adif_utf_field = {
@@ -241,6 +259,8 @@ def convert_freq_to_band(freq):
         return '2mm'
     elif 241000 <= freq <= 250000:
         return '1mm'
+    elif 300000 <= freq <= 7500000:
+        return 'submm'
     return None
 
 

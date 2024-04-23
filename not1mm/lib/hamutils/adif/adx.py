@@ -1,7 +1,9 @@
 import datetime
 from unidecode import unidecode
 from xml.dom import minidom, Node
+
 from .common import ParseError, WriteError, convert_field, adif_utf_field, adif_rev_utf_field, adif_field
+from ... import version
 
 
 class ADXReader:
@@ -87,9 +89,8 @@ class ADXWriter:
             if program_version:
                 header.appendChild(self._create_node('PROGRAMVERSION', program_version))
         else:
-            from hamutils import __version__ as hamutils_version
             header.appendChild(self._create_node('PROGRAMID', 'hamutils'))
-            header.appendChild(self._create_node('PROGRAMVERSION', hamutils_version))
+            header.appendChild(self._create_node('PROGRAMVERSION', version.__version__))
 
         root.appendChild(header)
         self._records = self._doc.createElement('RECORDS')
@@ -151,7 +152,7 @@ class ADXWriter:
     def _create_node(self, name, data, data_type=None):
         name = name.upper()
         if name.startswith('APP_'):
-            app,prog,field = name.split('_')
+            app,prog,field = name.split('_', maxsplit=2)
             el = self._doc.createElement('APP')
             el.setAttribute('PROGRAMID', prog)
             el.setAttribute('FIELDNAME', field)

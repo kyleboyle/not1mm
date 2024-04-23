@@ -20,8 +20,16 @@ from pathlib import Path
 from shutil import copyfile
 from typing import Optional
 
-import hamutils.adif.common
 import qdarktheme
+
+from not1mm.cat import AbstractCat, RigState
+from not1mm.cat.flrig import CatFlrig
+from not1mm.cat.rigctld import CatRigctld
+from not1mm.qsoeditwindow import QsoEditWindow
+from not1mm.qtcomponents.AdifExport import AdifExport
+from not1mm.qtcomponents.CabrilloExport import CabrilloExport
+from .qtcomponents.AdifImport import AdifImport
+
 try:
     import sounddevice as sd
 except OSError as exception:
@@ -35,44 +43,42 @@ from PyQt6.QtGui import QFontDatabase, QKeyEvent
 from PyQt6.QtWidgets import QFileDialog, QDockWidget, QLineEdit, QLabel, QHBoxLayout, QMessageBox
 
 import not1mm.fsutils as fsutils
-from not1mm import model, contest
-from not1mm.bandmap import BandMapWindow
-from not1mm.callprofile import ExternalCallProfileWindow
-from not1mm.checkwindow import CheckWindow
-from not1mm.contest.AbstractContest import ContestFieldNextLine, ContestField, AbstractContest, DupeType
-from not1mm.lib import event as appevent, flags
-from not1mm.lib.about import About
-from not1mm.lib.bigcty import BigCty
-from not1mm.lib.cat_interface import CAT
-from not1mm.lib.cwinterface import CW
-from not1mm.lib.edit_macro import EditMacro
-from not1mm.lib.edit_opon import OpOn
-from not1mm.lib.event_model import StationActivated
-from not1mm.lib.ham_utility import (
+from . import model, contest
+from .bandmap import BandMapWindow
+from .callprofile import ExternalCallProfileWindow
+from .checkwindow import CheckWindow
+from .contest.AbstractContest import ContestFieldNextLine, ContestField, AbstractContest, DupeType
+from .lib import event as appevent, flags, hamutils
+from .lib.about import About
+from .lib.bigcty import BigCty
+from .lib.cwinterface import CW
+from .lib.edit_macro import EditMacro
+from .lib.edit_opon import OpOn
+from .lib.event_model import StationActivated
+from .lib.ham_utility import (
     bearing,
     bearing_with_latlon,
     distance,
     distance_with_latlon,
-    get_logged_band,
     getband,
     reciprocol,
     fakefreq, gridtolatlon, calculate_wpx_prefix,
 )
-from not1mm.lib.lookup import HamQTH, QRZlookup, ExternalCallLookupService
-from not1mm.lib.n1mm import N1MM
-from not1mm.lib.settings import Settings
-from not1mm.lib.super_check_partial import SCP
-from not1mm.lib.version import __version__
-from not1mm.lib.versiontest import VersionTest
-from not1mm.logwindow import LogWindow
-from not1mm.model import Contest, Station, QsoLog
-from not1mm.qtcomponents.ContestEdit import ContestEdit
-from not1mm.qtcomponents.ContestFieldEventFilter import ContestFieldEventFilter
-from not1mm.qtcomponents.DockWidget import DockWidget
-from not1mm.qtcomponents.EmacsCursorEventFilter import EmacsCursorEventFilter
-from not1mm.qtcomponents.QsoEntryField import QsoEntryField
-from not1mm.qtcomponents.StationSettings import StationSettings
-from not1mm.vfo import VfoWindow
+from .lib.lookup import HamQTH, QRZlookup, ExternalCallLookupService
+from .lib.n1mm import N1MM
+from .lib.settings import Settings
+from .lib.super_check_partial import SCP
+from .lib.version import __version__
+from .lib.versiontest import VersionTest
+from .logwindow import LogWindow
+from .model import Contest, Station, QsoLog
+from .qtcomponents.ContestEdit import ContestEdit
+from .qtcomponents.ContestFieldEventFilter import ContestFieldEventFilter
+from .qtcomponents.DockWidget import DockWidget
+from .qtcomponents.EmacsCursorEventFilter import EmacsCursorEventFilter
+from .qtcomponents.QsoEntryField import QsoEntryField
+from .qtcomponents.StationSettings import StationSettings
+from .vfo import VfoWindow
 
 qss = """
 QFrame#Band_Mode_Frame_CW QLabel, QFrame#Band_Mode_Frame_RTTY QLabel, QFrame#Band_Mode_Frame_SSB QLabel {
@@ -161,8 +167,8 @@ class MainWindow(QtWidgets.QMainWindow):
     configuration_dialog = None
     opon_dialog = None
 
-    radio_state = {}
-    rig_control = None
+    radio_state: RigState = RigState(error="not connected")
+    rig_control: AbstractCat = None
     worked_list = {}
     cw_entry_visible = False
     last_focus = None
@@ -178,16 +184,16 @@ class MainWindow(QtWidgets.QMainWindow):
     callsign_space_to_input: QLineEdit
     space_character_removal_queue = []
 
-    log_window: QDockWidget = None
-    check_window: QDockWidget = None
-    bandmap_window: QDockWidget = None
-    vfo_window: QDockWidget = None
+    log_window: DockWidget = None
+    check_window: DockWidget = None
+    bandmap_window: DockWidget = None
+    vfo_window: DockWidget = None
     profile_window: DockWidget = None
+    qso_edit_window: DockWidget = None
 
     n1mm: N1MM = None
 
     call_change_debounce_timer = False
-    rig_poll_timer = QtCore.QTimer()
     dx_entity: QLabel
     flag_label: QLabel
 
@@ -202,6 +208,7 @@ class MainWindow(QtWidgets.QMainWindow):
         appevent.register(appevent.ExternalLookupResult, self.event_external_call_lookup)
         appevent.register(appevent.ContestActivated, self.activate_contest)
         appevent.register(appevent.StationActivated, self.activate_station)
+        appevent.register(appevent.RadioState, self.event_radio_state)
 
         self.setCorner(Qt.Corner.TopRightCorner, Qt.DockWidgetArea.RightDockWidgetArea)
         self.setCorner(Qt.Corner.BottomRightCorner, Qt.DockWidgetArea.RightDockWidgetArea)
@@ -227,11 +234,13 @@ class MainWindow(QtWidgets.QMainWindow):
         self.actionBandmap.triggered.connect(self.launch_bandmap_window)
         self.actionCheck_Window.triggered.connect(self.launch_check_window)
         self.actionExternalProfile_Window.triggered.connect(self.launch_profile_image_window)
+        self.actionQsoedit_Window.triggered.connect(self.launch_qso_edit_window)
         self.actionVFO.triggered.connect(self.launch_vfo)
         self.actionRecalculate_Mults.triggered.connect(self.recalculate_mults)
 
         self.actionGenerate_Cabrillo.triggered.connect(self.generate_cabrillo)
         self.actionGenerate_ADIF.triggered.connect(self.generate_adif)
+        self.actionImport_ADIF.triggered.connect(self.action_import_adif)
 
         self.actionConfiguration_Settings.triggered.connect(
             self.edit_configuration_settings
@@ -475,10 +484,6 @@ class MainWindow(QtWidgets.QMainWindow):
                     "There is a newer version of not1mm available.\n"
                     "You can udate to the current version by using:\npip install -U not1mm"
                 )
-        self.radio_state_broadcast_time = datetime.datetime.now() + datetime.timedelta(seconds=2)
-
-        self.rig_poll_timer.timeout.connect(self.poll_radio)
-        self.rig_poll_timer.start(250)
 
         self.callsign_entry = QsoEntryField('callsign', 'Callsign', self.centralwidget)
         self.rst_sent_entry = QsoEntryField('rst_sent', 'RST Snt', self.centralwidget)
@@ -851,22 +856,17 @@ class MainWindow(QtWidgets.QMainWindow):
         self.hide_band_mode(self.contest.mode_category)
         if self.contest.mode_category == "CW":
             self.setmode("CW")
-            self.radio_state["mode"] = "CW"
-            if self.rig_control:
-                if self.rig_control.online:
-                    self.rig_control.set_mode("CW")
-            band = getband(str(self.radio_state.get("vfoa", "0.0")))
+            band = getband(str(self.radio_state.vfoa_hz or 0))
             self.set_band_indicator(band)
         elif self.contest.mode_category == "SSB":
             self.setmode("SSB")
-            if int(self.radio_state.get("vfoa", 0)) > 10000000:
-                self.radio_state["mode"] = "USB"
+            if self.radio_state.vfoa_hz or 0 > 10000000:
+                self.radio_state.mode = "USB"
             else:
-                self.radio_state["mode"] = "LSB"
-            band = getband(str(self.radio_state.get("vfoa", "0.0")))
+                self.radio_state.mode = "LSB"
+            band = getband(str(self.radio_state.vfoa_hz or 0))
             self.set_band_indicator(band)
-            if self.rig_control:
-                self.rig_control.set_mode(self.radio_state.get("mode"))
+
         self.set_window_title()
 
         if 'CW' in self.contest.mode_category:
@@ -999,6 +999,14 @@ class MainWindow(QtWidgets.QMainWindow):
             self.profile_window.closed.connect(self.handle_dock_closed)
         self.profile_window.show()
 
+    def launch_qso_edit_window(self) -> None:
+        if not self.qso_edit_window:
+            self.qso_edit_window = QsoEditWindow(None, contest=self.contest)
+            self.qso_edit_window.closed.connect(self.handle_dock_closed)
+        self.qso_edit_window.show()
+        self.qso_edit_window.setWindowState(Qt.WindowState.WindowActive)
+
+
     def launch_vfo(self) -> None:
         """Launch the VFO window"""
         if not self.vfo_window:
@@ -1010,6 +1018,9 @@ class MainWindow(QtWidgets.QMainWindow):
         if event and event.source and event.source == self.profile_window:
             self.removeDockWidget(self.profile_window)
             self.profile_window = None
+        if event and event.source and event.source == self.qso_edit_window:
+            self.removeDockWidget(self.qso_edit_window)
+            self.qso_edit_window = None
 
     def clear_band_indicators(self) -> None:
         """
@@ -1051,7 +1062,6 @@ class MainWindow(QtWidgets.QMainWindow):
         }
 
         fsutils.write_settings(window_state)
-        self.rig_poll_timer.stop()
         event.accept()
 
     def cwspeed_spinbox_changed(self) -> None:
@@ -1074,13 +1084,13 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.toggle_cw_entry()
                 return
         if event.key() == Qt.Key.Key_S and modifier == Qt.KeyboardModifier.ControlModifier:
-            freq = self.radio_state.get("vfoa")
+            freq = self.radio_state.vfoa_hz
             dx = self.callsign_entry.input_field.text()
             if len(dx) > 3 and freq and dx:
                 appevent.emit(appevent.SpotDx(self.station.get("Call", ""), dx, freq))
             return
         if event.key() == Qt.Key.Key_M and modifier == Qt.KeyboardModifier.ControlModifier:
-            freq = self.radio_state.get("vfoa")
+            freq = self.radio_state.vfoa_hz
             dx = self.callsign_entry.input_field.text()
             if len(dx) > 2 and freq and dx:
                 appevent.emit(appevent.MarkDx(self.station.get("Call", ""), dx, freq))
@@ -1152,7 +1162,7 @@ class MainWindow(QtWidgets.QMainWindow):
         Set window title based on current state.
         """
 
-        vfoa = self.radio_state.get("vfoa", "")
+        vfoa = self.radio_state.vfoa_hz
         if vfoa:
             try:
                 vfoa = int(vfoa) / 1000
@@ -1164,8 +1174,8 @@ class MainWindow(QtWidgets.QMainWindow):
         if self.contest:
             contest_name = self.contest.fk_contest_meta.display_name
         line = (
-            f"vfoa:{round(vfoa, 2)} "
-            f"mode:{self.radio_state.get('mode', '')} "
+            f"vfoa:{round(vfoa, 2):,g} ".replace(',', '.') +
+            f"mode:{self.radio_state.mode} "
             f"OP:{self.current_op} {contest_name} "
             f"- QSOurce v{__version__}"
         )
@@ -1256,15 +1266,14 @@ class MainWindow(QtWidgets.QMainWindow):
             setattr(self.contact, name, field.input_field.text())
         self.contact.station_callsign = self.contact.fk_station.callsign
         self.contact.call = self.callsign_entry.input_field.text().strip().upper()
-        self.contact.freq = int(self.radio_state.get("vfoa", 0.0))
-
-        # TODO - important for dexpediation - split mode
-        self.contact.freq_rx = int(self.radio_state.get("vfoa", 0.0))
-
+        self.contact.freq = int(self.radio_state.vfoa_hz)
         self.contact.band = hamutils.adif.common.convert_freq_to_band(self.contact.freq / 1000_000)
-        self.contact.band_rx = hamutils.adif.common.convert_freq_to_band(self.contact.freq_rx / 1000_000)
 
-        self.contact.mode = self.radio_state.get("mode", "").upper()
+        # TODO - important for dexpediation - split mode - set when radio state indicates split
+        #self.contact.freq_rx = int(self.radio_state.get("vfoa", 0.0))
+        #self.contact.band_rx = hamutils.adif.common.convert_freq_to_band(self.contact.freq_rx / 1000_000)
+
+        self.contact.mode = (self.radio_state.mode or "").upper()
         if self.contact.mode in ['USB', 'LSB']:
             self.contact.submode = self.contact.mode
             self.contact.mode = 'SSB'
@@ -1371,13 +1380,15 @@ class MainWindow(QtWidgets.QMainWindow):
         macro = macro.replace("#", next_serial)
         macro = macro.replace("{MYCALL}", self.station.get("Call", ""))
         macro = macro.replace("{HISCALL}", self.callsign_entry.input_field.text())
-        if self.radio_state.get("mode") == "CW":
+        if self.radio_state.mode == "CW":
             macro = macro.replace("{SNT}", self.rst_sent_entry.input_field.text().replace("9", "n"))
         else:
             macro = macro.replace("{SNT}", self.rst_sent_entry.input_field.text())
+
+        # TODO - get sent serial from field
         macro = macro.replace("{SENTNR}", self.other_1.text())
         macro = macro.replace(
-            "{EXCH}", self.contest_settings.get("SentExchange", "xxx")
+            "{EXCH}", self.contest.sent_exchange
         )
         return macro
 
@@ -1395,7 +1406,7 @@ class MainWindow(QtWidgets.QMainWindow):
         if sd is None:
             logger.warning("Sounddevice/portaudio not installed.")
             return
-        op_path = fsutils.USER_DATA_PATH / self.current_op
+        op_path = fsutils.USER_DATA_PATH / 'operator' / self.current_op
         if "[" in the_string:
             sub_string = the_string.strip("[]").lower()
             filename = f"{str(op_path)}/{sub_string}.wav"
@@ -1466,7 +1477,7 @@ class MainWindow(QtWidgets.QMainWindow):
         logger.debug("Function Key: %s", function_key.text())
         if self.n1mm:
             self.n1mm.radio_info["FunctionKeyCaption"] = function_key.text()
-        if self.radio_state.get("mode") in ["LSB", "USB", "SSB"]:
+        if self.radio_state.mode in ["LSB", "USB", "SSB"]:
             self.voice_string(self.process_macro(function_key.toolTip()))
             return
         if self.cw:
@@ -1570,6 +1581,10 @@ class MainWindow(QtWidgets.QMainWindow):
             self.set_dark_mode(False)
             self.actionDark_Mode.setChecked(False)
         app.processEvents()
+
+        if self.rig_control:
+            self.rig_control.close()
+
         self.rig_control = None
 
         if self.pref.get("useflrig", False):
@@ -1577,22 +1592,16 @@ class MainWindow(QtWidgets.QMainWindow):
                 "Using flrig: %s",
                 f"{self.pref.get('CAT_ip')} {self.pref.get('CAT_port')}",
             )
-            self.rig_control = CAT(
-                "flrig",
-                self.pref.get("CAT_ip", "127.0.0.1"),
-                int(self.pref.get("CAT_port", 12345)),
-            )
-
-        if self.pref.get("userigctld", False):
+            self.rig_control = CatFlrig(self.pref.get("CAT_ip", "127.0.0.1"),int(self.pref.get("CAT_port", 12345)))
+        elif self.pref.get("userigctld", False):
             logger.debug(
                 "Using rigctld: %s",
                 f"{self.pref.get('CAT_ip')} {self.pref.get('CAT_port')}",
             )
-            self.rig_control = CAT(
-                "rigctld",
-                self.pref.get("CAT_ip", "127.0.0.1"),
-                int(self.pref.get("CAT_port", 4532)),
-            )
+            self.rig_control = CatRigctld(self.pref.get("CAT_ip", "127.0.0.1"), int(self.pref.get("CAT_port", 4532)))
+
+        if self.rig_control:
+            self.rig_control.start_poll_loop()
 
         if self.pref.get("cwtype", 0) == 0:
             self.cw = None
@@ -1644,14 +1653,12 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def event_tune(self, event: appevent.Tune):
         if event.freq_hz:
-            self.radio_state["vfoa"] = event.freq_hz
             if self.rig_control:
                 self.rig_control.set_vfo(event.freq_hz)
         if event.dx and self.callsign_entry.input_field.text().strip() != event.dx:
             self.callsign_entry.input_field.setText(event.dx)
             self.callsign_changed()
             self.check_callsign_external(event.dx)
-
 
         self.callsign_entry.input_field.setFocus()
 
@@ -1665,8 +1672,8 @@ class MainWindow(QtWidgets.QMainWindow):
             self.contact.gridsquare = event.result.grid
             if self.pref.get('lookup_populate_name', None):
                 name_field = self.contest_fields.get('name', None)
-                if name_field and name_field.input_field.text() == '':
-                    name_field.input_field.setText(event.result.name)
+                #if name_field and name_field.input_field.text() == '':
+                name_field.input_field.setText(event.result.name.title())
 
             # TODO populate more fields from the external lookup
 
@@ -1849,15 +1856,13 @@ class MainWindow(QtWidgets.QMainWindow):
         vfo = int(vfo * 1000)
         band = getband(str(vfo))
         self.set_band_indicator(band)
-        self.radio_state["vfoa"] = vfo
-        self.radio_state["band"] = band
+        self.radio_state.vfoa_hz = vfo
         self.set_window_title()
         self.clearinputs()
         if self.rig_control:
             self.rig_control.set_vfo(vfo)
-            return
-
-        appevent.emit(appevent.RadioState(vfo, None, None, None))
+        else:
+            appevent.emit(appevent.RadioState(self.radio_state))
 
     def change_mode(self, mode: str) -> None:
         """
@@ -1880,11 +1885,10 @@ class MainWindow(QtWidgets.QMainWindow):
 
         if mode == "CW":
             self.setmode("CW")
-            self.radio_state["mode"] = "CW"
+            self.radio_state.mode = "CW"
             if self.rig_control:
-                if self.rig_control.online:
-                    self.rig_control.set_mode("CW")
-            band = getband(str(self.radio_state.get("vfoa", "0.0")))
+                self.rig_control.set_mode("CW")
+            band = getband(str(self.radio_state.vfoa_hz))
             self.set_band_indicator(band)
             self.set_window_title()
             self.clearinputs()
@@ -1892,27 +1896,25 @@ class MainWindow(QtWidgets.QMainWindow):
             return
         if mode == "RTTY":
             self.setmode("RTTY")
+            self.radio_state["mode"] = "RTTY"
             if self.rig_control:
-                if self.rig_control.online:
-                    self.rig_control.set_mode("RTTY")
-                else:
-                    self.radio_state["mode"] = "RTTY"
-            band = getband(str(self.radio_state.get("vfoa", "0.0")))
+                self.rig_control.set_mode("RTTY")
+            band = getband(str(self.radio_state.vfoa_hz))
             self.set_band_indicator(band)
             self.set_window_title()
             self.clearinputs()
             return
         if mode == "SSB":
             self.setmode("SSB")
-            if int(self.radio_state.get("vfoa", 0)) > 10000000:
-                self.radio_state["mode"] = "USB"
+            if int(self.radio_state.vfoa_hz) > 10000000:
+                self.radio_state.mode = "USB"
             else:
-                self.radio_state["mode"] = "LSB"
-            band = getband(str(self.radio_state.get("vfoa", "0.0")))
+                self.radio_state.mode = "LSB"
+            band = getband(str(self.radio_state.vfoa_hz))
             self.set_band_indicator(band)
             self.set_window_title()
             if self.rig_control:
-                self.rig_control.set_mode(self.radio_state.get("mode"))
+                self.rig_control.set_mode(self.radio_state.mode)
             self.clearinputs()
             self.read_cw_macros()
 
@@ -1988,8 +1990,8 @@ class MainWindow(QtWidgets.QMainWindow):
         if not dupe_type:
             return False
 
-        band = hamutils.adif.common.convert_freq_to_band(int(self.radio_state.get("vfoa", 0.0)) / 1000_000)
-        mode = self.radio_state.get("mode", "")
+        band = hamutils.adif.common.convert_freq_to_band(int(self.radio_state.vfoa_hz) / 1000_000)
+        mode = self.radio_state.mode
         if mode == 'USB' or mode == 'LSB':
             mode = 'SSB'
         logger.debug(f"Call: {call} Band: {band} Mode: {mode} Dupetype: {dupe_type}")
@@ -2090,11 +2092,11 @@ class MainWindow(QtWidgets.QMainWindow):
         """
 
         if self.current_op:
-            op_path = fsutils.USER_DATA_PATH / self.current_op
+            op_path = fsutils.USER_DATA_PATH / 'operator' / self.current_op
             logger.debug("op_path: %s", str(op_path))
             if op_path.is_dir() is False:
                 logger.debug("Creating Op Directory: %s", str(op_path))
-                os.mkdir(str(op_path))
+                op_path.mkdir(parents=True)
             if op_path.is_dir():
                 source_path = fsutils.APP_DATA_PATH / "phonetics"
                 logger.debug("source_path: %s", str(source_path))
@@ -2103,54 +2105,6 @@ class MainWindow(QtWidgets.QMainWindow):
                     if destination_file.is_file() is False:
                         logger.debug("Destination: %s", str(destination_file))
                         destination_file.write_bytes(child.read_bytes())
-
-    def poll_radio(self) -> None:
-        """
-        Poll radio for VFO, mode, bandwidth.
-        """
-        # TODO recover from disconnection
-        self.set_radio_icon(0)
-        if self.rig_control:
-            if self.rig_control.online is False:
-                self.set_radio_icon(1)
-                self.rig_control.reinit()
-            if self.rig_control.online:
-                self.set_radio_icon(2)
-                info_dirty = False
-                vfo = self.rig_control.get_vfo()
-                mode = self.rig_control.get_mode()
-                bw = self.rig_control.get_bw()
-
-                if mode == "CW":
-                    self.setmode(mode)
-                if mode == "LSB" or mode == "USB":
-                    self.setmode("SSB")
-                if mode == "RTTY":
-                    self.setmode("RTTY")
-
-                if vfo == "":
-                    return
-                if self.radio_state.get("vfoa") != vfo:
-                    info_dirty = True
-                    self.radio_state["vfoa"] = vfo
-                band = getband(str(vfo))
-                self.radio_state["band"] = band
-                self.set_band_indicator(band)
-
-                if self.radio_state.get("mode") != mode:
-                    info_dirty = True
-                    self.radio_state["mode"] = mode
-
-                if self.radio_state.get("bw") != bw:
-                    info_dirty = True
-                    self.radio_state["bw"] = bw
-
-                if datetime.datetime.now() > self.radio_state_broadcast_time or info_dirty:
-                    logger.debug("VFO: %s  MODE: %s BW: %s", vfo, mode, bw)
-                    self.set_window_title()
-                    appevent.emit(appevent.RadioState(vfo, None, mode, int(bw)))
-                    self.radio_state_broadcast_time = datetime.datetime.now() + datetime.timedelta(seconds=10)
-
 
     def edit_cw_macros(self) -> None:
         """
@@ -2164,7 +2118,7 @@ class MainWindow(QtWidgets.QMainWindow):
         -------
         None
         """
-        if self.radio_state.get("mode") == "CW":
+        if self.radio_state.mode == "CW":
             macro_file = "cwmacros.txt"
         else:
             macro_file = "ssbmacros.txt"
@@ -2187,7 +2141,7 @@ class MainWindow(QtWidgets.QMainWindow):
         temp directory this is running from... In theory.
         """
 
-        if self.radio_state.get("mode") == "CW":
+        if self.radio_state.mode == "CW":
             macro_file = "cwmacros.txt"
         else:
             macro_file = "ssbmacros.txt"
@@ -2248,38 +2202,28 @@ class MainWindow(QtWidgets.QMainWindow):
             self.F12.setToolTip(self.fkeys["F12"][1])
 
     def generate_adif(self) -> None:
-        """
-        Calls the contest ADIF file generator.
-
-        Parameters
-        ----------
-        None
-
-        Returns
-        -------
-        None
-        """
-
-        # https://www.adif.org/315/ADIF_315.htm
-        logger.debug("******ADIF*****")
-        self.contest.adif(self)
+        AdifExport(self.contest, parent=self).open()
 
     def generate_cabrillo(self) -> None:
-        """
-        Calls the contest Cabrillo file generator. Maybe.
+        CabrilloExport(self.contest, self.contest_plugin, self.station, parent=self).open()
 
-        Parameters
-        ----------
-        None
+    def action_import_adif(self):
+        AdifImport(self.contest, parent=self).show()
 
-        Returns
-        -------
-        None
-        """
-
-        logger.debug("******Cabrillo*****")
-        self.contest.cabrillo(self)
-
+    def event_radio_state(self, event: appevent.RadioState):
+        self.radio_state = event.state
+        self.set_radio_icon(0)
+        if self.radio_state.error or not self.radio_state.vfoa_hz:
+            self.set_radio_icon(1)
+        elif self.radio_state.vfoa_hz:
+            self.set_radio_icon(2)
+            if self.radio_state.mode == "CW" or self.radio_state.mode == 'RTTY':
+                self.setmode(self.radio_state.mode)
+            if self.radio_state.mode == "LSB" or self.radio_state.mode == "USB":
+                self.setmode("SSB")
+            band = getband(str(self.radio_state.vfoa_hz))
+            self.set_band_indicator(band)
+            self.set_window_title()
 
 def load_fonts_from_dir(directory: str) -> set:
     """

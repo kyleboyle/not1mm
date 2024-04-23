@@ -91,15 +91,16 @@ class ExternalCallProfileWindow(DockWidget):
         if e.result.call != self.call:
             # make sure the station in the external data is still the active qso callsign
             return
-        image_url = e.result.source_result.get('image', None)
-        if image_url:
-            logger.debug(f"fetching {e.result.call} image url {image_url}")
+        if e.result.profile_image:
+            logger.debug(f"fetching {e.result.call} image url {e.result.profile_image}")
             self.imageLabel.clear()
-            self.network_access_manager.get(QNetworkRequest(QUrl(image_url)))
+            self.network_access_manager.get(QNetworkRequest(QUrl(e.result.profile_image)))
             self.setWindowTitle(f"{e.result.call} Profile")
-            if 'qrz' in image_url:
+            if 'qrz' in e.result.profile_image:
                 self.setWindowTitle(f"{e.result.call} QRZ Profile")
                 self.imageLabel.set_external_url(f'https://www.qrz.com/db/{e.result.call}')
+            else:
+                self.setWindowTitle(f"{e.result.call} {QUrl(e.result.profile_image).host()} Profile")
 
     def event_call_changed(self, e: event.CallChanged):
         self.call = e.call

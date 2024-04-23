@@ -111,6 +111,7 @@ class BandMapWindow(QtWidgets.QDockWidget):
 
         uic.loadUi(fsutils.APP_DATA_PATH / "bandmap.ui", self)
         self.settings = self.get_settings()
+        self.clear_spot_olderSpinBox.setValue(self.settings.get("bandmap_spot_age_minutes", 2))
         self.agetime = self.clear_spot_olderSpinBox.value()
         self.clear_spot_olderSpinBox.valueChanged.connect(self.spot_aging_changed)
         self.clearButton.clicked.connect(self.clear_spots)
@@ -168,21 +169,21 @@ class BandMapWindow(QtWidgets.QDockWidget):
         self.connectButton.setStyleSheet("color: white;")
         self.connectButton.setText("Connecting")
         self.connected = True
+        self.clear_spot_olderSpinBox.setValue(self.settings.get("bandmap_spot_age_minutes", 2))
 
     def event_radio_state(self, event: appevent.RadioState):
         # TODO if multiple band maps, check to make sure this bandmap window is the one tracking the vfo
 
-        self.set_band(ham_utility.getband(str(event.vfoa_hz)) + "m", False)
+        self.set_band(ham_utility.getband(str(event.state.vfoa_hz or 0)) + "m", False)
         try:
-            if self.rx_freq != float(event.vfoa_hz) / 1000000:
-                self.rx_freq = float(event.vfoa_hz) / 1000000
+            if self.rx_freq != float(event.state.vfoa_hz or 0) / 1_000_000:
+                self.rx_freq = float(event.state.vfoa_hz or 0) / 1_000_000
                 self.tx_freq = self.rx_freq
                 self.center_on_rxfreq()
         except ValueError:
-            logger.debug(f"vfo value error {event.vfoa_hz}")
+            logger.debug(f"vfo value error {event.state.vfoa_hz}")
 
-
-        self.bandwidth = event.bandwith_hz if event.bandwith_hz is not None else 0
+        self.bandwidth = event.state.bandwidth_hz if event.state.bandwidth_hz is not None else 0
         step, _ = self.determine_step_digits()
         self.drawTXRXMarks(step)
 
@@ -507,24 +508,18 @@ class BandMapWindow(QtWidgets.QDockWidget):
                 _time = parts[-1]
                 comment = " ".join(parts[5:-1])
 
-                spot = {}
-                spot["ts"] = datetime.now(timezone.utc).isoformat(" ")[:19]
-                spot["callsign"] = dx
-                spot["spotter"] = spotter
-                spot["comment"] = comment
                 try:
-                    #spot["freq"] = float(freq) / 1000
-                    #self.spots.addspot(spot)
-                     self.save_spot(Spot(ts=datetime.utcnow(),
+                    spot = Spot(ts=datetime.utcnow(),
                          callsign=dx,
                          freq_hz=int(float(freq) * 1000),
                          mode="DX",
                          spotter=spotter,
                          comment=comment
-                         ))
+                         )
+                    self.save_spot(spot)
+                    logger.debug(spot)
                 except ValueError:
                     logger.debug(f"couldn't parse freq from datablock {data}")
-                logger.debug(f"{spot}")
                 return
             if self.callsignField.text().upper() in data:
                 self.connectButton.setStyleSheet("color: green;")
@@ -572,6 +567,7 @@ class BandMapWindow(QtWidgets.QDockWidget):
     def spot_aging_changed(self) -> None:
         """Called when spot aging spinbox is changed."""
         self.agetime = self.clear_spot_olderSpinBox.value()
+        fsutils.write_settings({"bandmap_spot_age_minutes": self.agetime})
 
     def showContextMenu(self) -> None:
         """doc string for the linter"""

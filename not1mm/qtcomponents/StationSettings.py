@@ -29,7 +29,6 @@ class StationSettings(QtWidgets.QDialog):
 
     def __init__(self, app_data_path, parent=None):
         super(StationSettings, self).__init__(parent)
-        self.setContentsMargins(20,20,20,20)
         uic.loadUi(app_data_path / 'StationSettings.ui', self)
         self.settings = fsutils.read_settings()
 

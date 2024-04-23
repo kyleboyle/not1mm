@@ -13,4 +13,3 @@ pyqtdarktheme >= 2.1.0
 levenshtein
 peewee
 feedparser
-hamutils

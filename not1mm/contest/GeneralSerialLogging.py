@@ -27,7 +27,7 @@ class GeneralSerialLogging(GeneralLogging):
 
     @staticmethod
     def get_cabrillo_name() -> str:
-        return 'GEN-LOG-SER'
+        return 'DXSerial'
 
     def get_dupe_type(self) -> DupeType:
         return DupeType.EACH_BAND_MODE
@@ -56,9 +56,9 @@ class GeneralSerialLogging(GeneralLogging):
         else:
             # get serial from DB
             newest_qso = self.contest_qso_select().order_by(QsoLog.time_on.desc()).get_or_none()
-            if newest_qso:
+            if newest_qso and newest_qso.stx:
                 return newest_qso.stx + 1
-        return str(int(self.contest.sent_exchange))
+        return str(int(self.contest.sent_exchange or 1))
 
     def intermediate_qso_update(self, qso: QsoLog, fields: Optional[list[str]]):
         if not qso.call and not qso.stx:
@@ -67,17 +67,9 @@ class GeneralSerialLogging(GeneralLogging):
         super().intermediate_qso_update(qso, fields)
 
     def pre_process_qso_log(self, qso: QsoLog):
+        qso.stx_string = str(qso.stx)
+        qso.srx_string = str(qso.srx)
         super().pre_process_qso_log(qso)
         self._previously_saved_serial = int(qso.stx)
 
-    def adif_headers(self):
-        pass
 
-    def adif_qso(self, qso: QsoLog):
-        pass
-
-    def cabrillo_headers(self):
-        pass
-
-    def cabrillo_qso(self, qso: QsoLog):
-        pass

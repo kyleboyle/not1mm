@@ -111,6 +111,7 @@ class CheckWindow(DockWidget):
         self.dxc_list(event.spots)
 
     def clear_lists(self) -> None:
+        # TODO show count from each source when a search isn't active
         self.populate_layout(self.masterLayout, [])
         self.populate_layout(self.qsoLayout, [])
         self.populate_layout(self.dxcLayout, [])

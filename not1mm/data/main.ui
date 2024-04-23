@@ -272,7 +272,7 @@
            <item>
             <widget class="QLabel" name="mode_ssb">
              <property name="text">
-              <string>SSB</string>
+              <string>PH</string>
              </property>
              <property name="alignment">
               <set>Qt::AlignCenter</set>
@@ -1247,6 +1247,7 @@
     <addaction name="actionEdit_Current_Contest"/>
     <addaction name="actionConfiguration_Settings"/>
     <addaction name="separator"/>
+    <addaction name="actionImport_ADIF"/>
     <addaction name="actionGenerate_ADIF"/>
     <addaction name="actionGenerate_Cabrillo"/>
     <addaction name="separator"/>
@@ -1281,6 +1282,7 @@
     <addaction name="actionBandmap"/>
     <addaction name="actionCheck_Window"/>
     <addaction name="actionExternalProfile_Window"/>
+    <addaction name="actionQsoedit_Window"/>
    </widget>
    <widget class="QMenu" name="menuOther">
     <property name="title">
@@ -1449,9 +1451,26 @@
     <bool>false</bool>
    </property>
   </action>
+  <action name="actionImport_ADIF">
+   <property name="text">
+    <string>Import ADIF</string>
+   </property>
+   <property name="shortcut">
+    <string/>
+   </property>
+   <property name="autoRepeat">
+    <bool>false</bool>
+   </property>
+   <property name="iconVisibleInMenu">
+    <bool>false</bool>
+   </property>
+   <property name="shortcutVisibleInContextMenu">
+    <bool>false</bool>
+   </property>
+  </action>
   <action name="actionGenerate_ADIF">
    <property name="text">
-    <string>Generate ADIF</string>
+    <string>Export ADIF</string>
    </property>
    <property name="shortcut">
     <string/>
@@ -1565,6 +1584,11 @@
   <action name="actionExternalProfile_Window">
    <property name="text">
     <string>Profile Image</string>
+   </property>
+  </action>
+  <action name="actionQsoedit_Window">
+   <property name="text">
+    <string>Qso Edit Sheet</string>
    </property>
   </action>
   <action name="actionVFO">

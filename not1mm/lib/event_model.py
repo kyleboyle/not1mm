@@ -1,6 +1,9 @@
 from dataclasses import dataclass
 
+import not1mm.cat.RigState
 from . import lookup
+from .. import cat
+from ..cat import RigState
 from ..model import Contest, Station, QsoLog
 
 
@@ -92,16 +95,10 @@ class GetActiveContestResponse(AppEvent):
 
 @dataclass
 class RadioState(AppEvent):
-    vfoa_hz: int
-    vfob_hz: int
-    mode: str
-    bandwith_hz: int
+    state: RigState
 
-    def __init__(self, vfoa_hz, vfob_hz, mode, bandwith_hz):
-        self.vfoa_hz = int(vfoa_hz)
-        self.vfob_hz = vfob_hz
-        self.mode = mode
-        self.bandwith_hz = bandwith_hz
+    def __init__(self, state: RigState):
+        self.state = state
 
 # TODO in memory database should be shared between components
 @dataclass

@@ -15,7 +15,7 @@ class GeneralLogging(AbstractContest):
 
     @staticmethod
     def get_cabrillo_name() -> str:
-        return 'GEN-LOG'
+        return 'DX'
 
     def get_dupe_type(self) -> DupeType:
         return DupeType.NONE
@@ -43,14 +43,5 @@ class GeneralLogging(AbstractContest):
     def pre_process_qso_log(self, qso: QsoLog):
         super().pre_process_qso_log(qso)
 
-    def adif_headers(self):
-        pass
 
-    def adif_qso(self, qso: QsoLog):
-        pass
 
-    def cabrillo_headers(self):
-        pass
-
-    def cabrillo_qso(self, qso: QsoLog):
-        pass
