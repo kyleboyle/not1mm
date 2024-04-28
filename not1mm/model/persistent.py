@@ -284,6 +284,14 @@ class QsoLog(BaseModel):
             result = result.where(QsoLog.fk_contest == contest)
         return result
 
+    @staticmethod
+    def get_name_from_previous_contact(call: str) -> str:
+        result = QsoLog.select(QsoLog.name).where(QsoLog.call == call)\
+            .where(QsoLog.name != None).order_by(QsoLog.time_on.desc()).get_or_none()
+        if result:
+            return result.name
+        return None
+
 class DeletedQsoLog(QsoLog):
     pass
 

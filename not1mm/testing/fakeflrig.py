@@ -74,6 +74,17 @@ def get_version():
     """return flrig version"""
     return "1.4.8"
 
+def get_info():
+    return f"""R:FakeRig
+T: R
+FA: 0
+M: USB
+L: {radio_state['bw']}
+U: n / a
+N: 0
+Vol: 0
+Mic: 0
+Rfg: 15"""
 
 print("Stupid server to fake an flrig CAT control server. binding to 0.0.0.0 : 12345")
 
@@ -95,6 +106,6 @@ with SimpleXMLRPCServer(
     server.register_function(set_ptt, name="rig.set_ptt")
     server.register_function(get_ptt, name="rig.get_ptt")
     server.register_function(get_power, name="rig.get_power")
-
+    server.register_function(get_info, name="rig.get_info")
     server.register_introspection_functions()
     server.serve_forever()

@@ -4,6 +4,7 @@ from typing import Optional
 
 @dataclass
 class RigState:
+    id: Optional[str] = None
     vfoa_hz: Optional[int] = None
     vfob_hz: Optional[int] = None
     bandwidth_hz: Optional[int] = None

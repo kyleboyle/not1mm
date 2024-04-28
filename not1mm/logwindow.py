@@ -204,13 +204,16 @@ class LogWindow(QtWidgets.QDockWidget):
         self.qsoTable.horizontalHeader().sectionMoved.connect(self.header_section_moved)
         self.qsoTable.horizontalHeader().sectionResized.connect(self.header_section_resized)
 
-        delete_action = QAction("Delete QSO(s)", self.qsoTable)
-        delete_action.triggered.connect(self.action_delete)
-        self.qsoTable.addAction(delete_action)
-
         edit_action = QAction("Open Edit Sheet", self.qsoTable)
         edit_action.triggered.connect(self.action_edit)
         self.qsoTable.addAction(edit_action)
+        sep = QAction("|", self.qsoTable)
+        sep.setSeparator(True)
+        self.qsoTable.addAction(sep)
+
+        delete_action = QAction("Delete QSO(s)", self.qsoTable)
+        delete_action.triggered.connect(self.action_delete)
+        self.qsoTable.addAction(delete_action)
 
         self.stationHistoryTable.setContextMenuPolicy(Qt.ContextMenuPolicy.ActionsContextMenu)
         delete_action = QAction("Delete QSO(s)", self.stationHistoryTable)
@@ -351,13 +354,12 @@ class LogWindow(QtWidgets.QDockWidget):
 
     def edit_sheet_edit(self, qso_record_before: QsoLog, qso_record_after: QsoLog):
         """ When edits are made, the edited value will potentially need to be reflected in the tables"""
+        qso_record_after.save()
         appevent.emit(appevent.QsoUpdated(qso_record_before, qso_record_after))
-        self.edit_sheet_did_edit = True
 
-    def edit_sheet_closed(self):
+    def edit_sheet_closed(self, event):
         """ When edits are made, the edited value will potentially need to be reflected in the tables"""
-        if self.edit_sheet_did_edit:
-            self.edit_sheet_did_edit = False
+        if event.source.model.did_make_changes:
             self.populate_matching_qsos(self.active_call)
             self.populate_qso_log()
 

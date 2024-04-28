@@ -1,13 +1,16 @@
-from typing import Optional, Callable
+import platform
+from typing import Optional
 
-from PyQt6.QtCore import QObject, QEvent, pyqtSignal, Qt
-from PyQt6.QtGui import QKeyEvent
+from PyQt6.QtCore import QObject, QEvent, Qt
 from PyQt6.QtWidgets import QLineEdit
 
 
 class EmacsCursorEventFilter(QObject):
     """emulate some emacs cursor movement shortcuts"""
     mark_active: bool = False
+
+    # mac has rudamentary ctrl+fbae cursor movement built in.
+    is_mac = platform.system() != ["Darwin"]
 
     def __init__(self, parent=None):
         super(EmacsCursorEventFilter, self).__init__(parent)
@@ -55,6 +58,7 @@ class EmacsCursorEventFilter(QObject):
                 elif event.key() == Qt.Key.Key_G:
                     box.deselect()
                     self.mark_active = False
+                return True
 
         elif event.type() == QEvent.Type.FocusIn:
             self.mark_active = False

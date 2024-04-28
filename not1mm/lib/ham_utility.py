@@ -20,21 +20,25 @@ def calculate_wpx_prefix(the_call: str) -> str:
     suffix_to_ignore = ["M", "MM", "P", "QRP", "A", "LH", "NLD"]
     result = None
     working_call = the_call.split("/")
-    if len(working_call) > 1:
-        result = min(working_call, key=len)
-        if not result.isnumeric():
-            if result not in suffix_to_ignore:
-                if any(chr.isdigit() for chr in result):
-                    return result
-                return result + "0"
+    try:
+        if len(working_call) > 1:
+            result = min(working_call, key=len)
+            if not result.isnumeric():
+                if result not in suffix_to_ignore:
+                    if any(chr.isdigit() for chr in result):
+                        return result
+                    return result + "0"
 
-    working_call = max(working_call, key=len)
-    last_digit = re.match(".+([0-9])[^0-9]*$", working_call)
-    position = last_digit.start(1)
-    prefix = working_call[: position + 1]
-    if not result:
-        return prefix
-    return prefix[:-1] + result
+        working_call = max(working_call, key=len)
+        last_digit = re.match(".+([0-9])[^0-9]*$", working_call)
+        position = last_digit.start(1)
+        prefix = working_call[: position + 1]
+        if not result:
+            return prefix
+        return prefix[:-1] + result
+    except:
+        logger.exception(f"could not get wpx prefix for {the_call}")
+    return ""
 
 
 def gridtolatlon(maiden):

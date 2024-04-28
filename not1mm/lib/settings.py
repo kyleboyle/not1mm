@@ -1,22 +1,34 @@
 """Settings Dialog Class"""
 
 import logging
+import platform
+
 from PyQt6 import QtWidgets, uic
 import sounddevice as sd
+from PyQt6.QtCore import pyqtSignal
+from PyQt6.QtWidgets import QTabWidget
 
+from not1mm import fsutils
 
 class Settings(QtWidgets.QDialog):
     """Settings dialog"""
+    updated = pyqtSignal()
+    tabWidget: QTabWidget
 
     def __init__(self, app_data_path, pref, parent=None):
         """initialize dialog"""
         super().__init__(parent)
         self.logger = logging.getLogger("settings")
         uic.loadUi(app_data_path / "configuration.ui", self)
-        self.buttonBox.accepted.connect(self.save_changes)
+        self.buttonBox.accepted.connect(self.save_pref_values)
         self.preference = pref
         self.devices = sd.query_devices()
         self.setup()
+        if platform.system() != ["Windows"]:
+            self.cat_enable_omnirig.setEnabled(False)
+
+    def show_tab(self, tab_name):
+        self.tabWidget.setCurrentWidget(getattr(self, tab_name))
 
     def setup(self):
         """setup dialog"""
@@ -27,19 +39,27 @@ class Settings(QtWidgets.QDialog):
         index = self.sounddevice.findText(value)
         if index != -1:
             self.sounddevice.setCurrentIndex(index)
-        self.useqrz_radioButton.setChecked(bool(self.preference.get("useqrz")))
-        # self.usehamdb_radioButton.setChecked(bool(self.preference.get("usehamdb")))
-        self.usehamqth_radioButton.setChecked(bool(self.preference.get("usehamqth")))
-        self.lookup_user_name_field.setText(
-            str(self.preference.get("lookupusername", ""))
-        )
-        self.lookup_password_field.setText(
-            str(self.preference.get("lookuppassword", ""))
-        )
-        self.rigcontrolip_field.setText(str(self.preference.get("CAT_ip", "")))
-        self.rigcontrolport_field.setText(str(self.preference.get("CAT_port", "")))
-        self.userigctld_radioButton.setChecked(bool(self.preference.get("userigctld")))
-        self.useflrig_radioButton.setChecked(bool(self.preference.get("useflrig")))
+
+        self.lookup_source_qrz.setChecked(bool(self.preference.get("lookup_source_qrz")))
+        self.lookup_source_hamdb.setChecked(bool(self.preference.get("lookup_source_hamdb")))
+        self.lookup_source_hamqth.setChecked(bool(self.preference.get("lookup_source_hamqth")))
+        self.lookup_user_name_field.setText(self.preference.get("lookup_username"))
+        self.lookup_password_field.setText(self.preference.get("lookup_password"))
+        self.lookup_populate_name.setChecked(self.preference.get("lookup_populate_name"))
+        self.lookup_name_prefer_qso_history_name.setChecked(self.preference.get("lookup_name_prefer_qso_history_name"))
+        self.lookup_firstname.setChecked(bool(self.preference.get("lookup_firstname")))
+        self.lookup_others.setChecked(bool(self.preference.get("lookup_others")))
+
+        self.cat_enable_flrig.setChecked(bool(self.preference.get("cat_enable_flrig")))
+        self.cat_flrig_ip.setText(self.preference.get("cat_flrig_ip"))
+        self.cat_flrig_port.setText(str(self.preference.get("cat_flrig_port")))
+
+        self.cat_enable_omnirig.setChecked(bool(self.preference.get("cat_enable_omnirig")))
+        self.cat_enable_rigctld.setChecked(bool(self.preference.get("cat_enable_rigctld")))
+        self.cat_rigctld_ip.setText(self.preference.get("cat_rigctld_ip"))
+        self.cat_rigctld_port.setText(str(self.preference.get("cat_rigctld_port")))
+        self.cat_manual_mode.setCurrentText(self.preference.get("cat_manual_mode"))
+        self.cat_manual_vfo.setText(str(self.preference.get("cat_manual_vfo")))
 
         self.cwip_field.setText(str(self.preference.get("cwip", "")))
         self.cwport_field.setText(str(self.preference.get("cwport", "")))
@@ -93,55 +113,70 @@ class Settings(QtWidgets.QDialog):
         self.activate_33cm.setChecked(bool("33cm" in self.preference.get("bands", [])))
         self.activate_23cm.setChecked(bool("23cm" in self.preference.get("bands", [])))
 
-    def save_changes(self):
-        """
-        Write preferences to json file.
-        """
-        self.preference["sounddevice"] = self.sounddevice.currentText()
-        self.preference["useqrz"] = self.useqrz_radioButton.isChecked()
-        # self.preference["usehamdb"] = self.usehamdb_radioButton.isChecked()
-        self.preference["usehamqth"] = self.usehamqth_radioButton.isChecked()
-        self.preference["lookupusername"] = self.lookup_user_name_field.text()
-        self.preference["lookuppassword"] = self.lookup_password_field.text()
-        self.preference["lookup_populate_name"] = self.lookup_populate_name.isChecked()
-        self.preference["lookup_name_prefer_qso_history_name"] = self.lookup_name_prefer_qso_history_name.isChecked()
+    def save_pref_values(self):
+        new_pref = {}
+        new_pref["sounddevice"] = self.sounddevice.currentText()
+        new_pref["lookup_source_qrz"] = self.lookup_source_qrz.isChecked()
+        new_pref["lookup_source_hamdb"] = self.lookup_source_hamdb.isChecked()
+        new_pref["lookup_source_hamqth"] = self.lookup_source_hamqth.isChecked()
+        new_pref["lookup_username"] = self.lookup_user_name_field.text()
+        new_pref["lookup_password"] = self.lookup_password_field.text()
+        new_pref["lookup_populate_name"] = self.lookup_populate_name.isChecked()
+        new_pref["lookup_name_prefer_qso_history_name"] = self.lookup_name_prefer_qso_history_name.isChecked()
+        new_pref["lookup_firstname"] = self.lookup_firstname.isChecked()
+        new_pref["lookup_others"] = self.lookup_others.isChecked()
 
-        self.preference["CAT_ip"] = self.rigcontrolip_field.text()
+        new_pref["cat_enable_flrig"] = self.cat_enable_flrig.isChecked()
+        new_pref["cat_flrig_ip"] = self.cat_flrig_ip.text()
         try:
-            self.preference["CAT_port"] = int(self.rigcontrolport_field.text())
+            new_pref["cat_flrig_port"] = int(self.cat_flrig_port.text())
         except ValueError:
             ...
-        self.preference["userigctld"] = self.userigctld_radioButton.isChecked()
-        self.preference["useflrig"] = self.useflrig_radioButton.isChecked()
-        self.preference["cwip"] = self.cwip_field.text()
+
+        new_pref["cat_enable_omnirig"] = self.cat_enable_omnirig.isChecked()
+
+        new_pref["cat_enable_rigctld"] = self.cat_enable_rigctld.isChecked()
+        new_pref["cat_rigctld_ip"] = self.cat_rigctld_ip.text()
         try:
-            self.preference["cwport"] = int(self.cwport_field.text())
+            new_pref["cat_rigctld_port"] = int(self.cat_rigctld_port.text())
         except ValueError:
             ...
-        self.preference["cwtype"] = 0
+
+        new_pref["cat_manual_mode"] = self.cat_manual_mode.currentText()
+        try:
+            new_pref["cat_manual_vfo"] = int(self.cat_manual_vfo.text())
+        except ValueError:
+            ...
+
+        new_pref["cwip"] = self.cwip_field.text()
+        try:
+            new_pref["cwport"] = int(self.cwport_field.text())
+        except ValueError:
+            ...
+        new_pref["cwtype"] = 0
         if self.usecwdaemon_radioButton.isChecked():
-            self.preference["cwtype"] = 1
+            new_pref["cwtype"] = 1
         if self.usepywinkeyer_radioButton.isChecked():
-            self.preference["cwtype"] = 2
+            new_pref["cwtype"] = 2
 
-        self.preference["send_n1mm_packets"] = self.send_n1mm_packets.isChecked()
+        new_pref["send_n1mm_packets"] = self.send_n1mm_packets.isChecked()
 
-        self.preference["send_n1mm_radio"] = self.send_n1mm_radio.isChecked()
-        self.preference["send_n1mm_contact"] = self.send_n1mm_contact.isChecked()
-        self.preference["send_n1mm_lookup"] = self.send_n1mm_lookup.isChecked()
-        self.preference["send_n1mm_score"] = self.send_n1mm_score.isChecked()
+        new_pref["send_n1mm_radio"] = self.send_n1mm_radio.isChecked()
+        new_pref["send_n1mm_contact"] = self.send_n1mm_contact.isChecked()
+        new_pref["send_n1mm_lookup"] = self.send_n1mm_lookup.isChecked()
+        new_pref["send_n1mm_score"] = self.send_n1mm_score.isChecked()
 
-        self.preference["n1mm_station_name"] = self.n1mm_station_name.text()
-        self.preference["n1mm_operator"] = self.n1mm_operator.text()
-        # self.preference["n1mm_ip"] = self.n1mm_ip.text()
-        self.preference["n1mm_radioport"] = self.n1mm_radioport.text()
-        self.preference["n1mm_contactport"] = self.n1mm_contactport.text()
-        self.preference["n1mm_lookupport"] = self.n1mm_lookupport.text()
-        self.preference["n1mm_scoreport"] = self.n1mm_scoreport.text()
-        self.preference["cluster_server"] = self.cluster_server_field.text()
-        self.preference["cluster_port"] = int(self.cluster_port_field.text())
-        self.preference["cluster_filter"] = self.cluster_filter.text()
-        self.preference["cluster_mode"] = self.cluster_mode.currentText()
+        new_pref["n1mm_station_name"] = self.n1mm_station_name.text()
+        new_pref["n1mm_operator"] = self.n1mm_operator.text()
+        # new_pref["n1mm_ip"] = self.n1mm_ip.text()
+        new_pref["n1mm_radioport"] = self.n1mm_radioport.text()
+        new_pref["n1mm_contactport"] = self.n1mm_contactport.text()
+        new_pref["n1mm_lookupport"] = self.n1mm_lookupport.text()
+        new_pref["n1mm_scoreport"] = self.n1mm_scoreport.text()
+        new_pref["cluster_server"] = self.cluster_server_field.text()
+        new_pref["cluster_port"] = int(self.cluster_port_field.text())
+        new_pref["cluster_filter"] = self.cluster_filter.text()
+        new_pref["cluster_mode"] = self.cluster_mode.currentText()
         bandlist = list()
         if self.activate_160m.isChecked():
             bandlist.append("160")
@@ -167,7 +202,9 @@ class Settings(QtWidgets.QDialog):
             bandlist.append("33cm")
         if self.activate_23cm.isChecked():
             bandlist.append("23cm")
-        self.preference["bands"] = bandlist
+        new_pref["bands"] = bandlist
+        fsutils.write_settings(new_pref)
+        self.updated.emit()
 
 
 

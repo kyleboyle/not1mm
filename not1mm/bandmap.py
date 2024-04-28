@@ -22,6 +22,7 @@ import not1mm.fsutils as fsutils
 import not1mm.lib.event as appevent
 from not1mm.lib import timeutils, ham_utility
 from not1mm.model.inmemory import *
+from not1mm.qtcomponents.DockWidget import DockWidget
 
 logger = logging.getLogger(__name__)
 
@@ -78,7 +79,7 @@ class Band:
                 return band_limits
         return None
 
-class BandMapWindow(QtWidgets.QDockWidget):
+class BandMapWindow(DockWidget):
     """The BandMapWindow class."""
 
     zoom = 5

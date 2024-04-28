@@ -4,21 +4,22 @@ from datetime import datetime, timedelta
 
 from PyQt6 import QtCore
 
-from not1mm.cat import RigState
-from not1mm.cat.RigState import RigState
-
 from not1mm.lib import event as appevent
-from . import RigState
+from .RigState import RigState
 
-# http://www.w1hkj.com/flrig-help/xmlrpc_server.html
+# TODO hamlib and omnirig
 
 logger = logging.getLogger("cat")
+
 
 class AbstractCat:
 
     rig_poll_timer: QtCore.QTimer
     previous_state: RigState = None
     radio_state_broadcast_time = datetime.now()
+
+    def get_id(self):
+        raise NotImplementedError()
 
     def get_state(self) -> RigState:
         raise NotImplementedError()

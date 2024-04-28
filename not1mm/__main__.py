@@ -22,8 +22,10 @@ from typing import Optional
 
 import qdarktheme
 
-from not1mm.cat import AbstractCat, RigState
+from not1mm.cat import AbstractCat
+from not1mm.cat.RigState import RigState
 from not1mm.cat.flrig import CatFlrig
+from not1mm.cat.manual import CatManual
 from not1mm.cat.rigctld import CatRigctld
 from not1mm.qsoeditwindow import QsoEditWindow
 from not1mm.qtcomponents.AdifExport import AdifExport
@@ -39,11 +41,11 @@ except OSError as exception:
 import soundfile as sf
 from PyQt6 import QtCore, QtGui, QtWidgets, uic
 from PyQt6.QtCore import QDir, Qt, QByteArray, QEvent, QTimer
-from PyQt6.QtGui import QFontDatabase, QKeyEvent
-from PyQt6.QtWidgets import QFileDialog, QDockWidget, QLineEdit, QLabel, QHBoxLayout, QMessageBox
+from PyQt6.QtGui import QFontDatabase, QKeyEvent, QAction, QCursor, QMouseEvent
+from PyQt6.QtWidgets import QFileDialog, QLineEdit, QLabel, QHBoxLayout, QMessageBox, QMenu
 
 import not1mm.fsutils as fsutils
-from . import model, contest
+from . import model, contest, cat
 from .bandmap import BandMapWindow
 from .callprofile import ExternalCallProfileWindow
 from .checkwindow import CheckWindow
@@ -109,44 +111,6 @@ logger = logging.getLogger("__main__")
 
 class MainWindow(QtWidgets.QMainWindow):
 
-    pref_ref = {
-        "sounddevice": "default",
-        "useqrz": False,
-        "lookupusername": "username",
-        "lookuppassword": "password",
-        "run_state": True,
-        "command_buttons": False,
-        "cw_macros": True,
-        "bands_modes": True,
-        "bands": ["160", "80", "40", "20", "15", "10"],
-        "send_n1mm_packets": False,
-        "n1mm_station_name": "20M CW Tent",
-        "n1mm_operator": "Bernie",
-        "n1mm_radioport": "127.0.0.1:12060",
-        "n1mm_contactport": "127.0.0.1:12060",
-        "n1mm_lookupport": "127.0.0.1:12060",
-        "n1mm_scoreport": "127.0.0.1:12060",
-        "usehamdb": False,
-        "usehamqth": False,
-        "cloudlog": False,
-        "cloudlogapi": "",
-        "cloudlogurl": "",
-        "CAT_ip": "127.0.0.1",
-        "userigctld": False,
-        "useflrig": False,
-        "cwip": "127.0.0.1",
-        "cwport": 6789,
-        "cwtype": 0,
-        "useserver": False,
-        "CAT_port": 4532,
-        "cluster_server": "dxc.nc7j.com",
-        "cluster_port": 7373,
-        "cluster_filter": "Set DX Filter Not Skimmer AND SpotterCont = NA",
-        "cluster_mode": "OPEN",
-    }
-
-    appstarted = False
-
     contest: Contest = None
     contest_plugin: AbstractContest = None
     contest_fields: dict[str:QsoEntryField] = {}
@@ -172,7 +136,8 @@ class MainWindow(QtWidgets.QMainWindow):
     worked_list = {}
     cw_entry_visible = False
     last_focus = None
-    oldtext = ""
+    cw_text_previous_value = ""
+    radio_icon: QLabel
 
     qso_row1: QHBoxLayout
     qso_row2: QHBoxLayout
@@ -189,7 +154,7 @@ class MainWindow(QtWidgets.QMainWindow):
     bandmap_window: DockWidget = None
     vfo_window: DockWidget = None
     profile_window: DockWidget = None
-    qso_edit_window: DockWidget = None
+    qso_edit_window: QsoEditWindow = None
 
     n1mm: N1MM = None
 
@@ -261,8 +226,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.actionUpdate_MASTER_SCP.triggered.connect(self.update_masterscp)
         self.actionQuit.triggered.connect(self.quit_app)
 
-        self.radioButton_run.clicked.connect(self.run_sp_buttons_clicked)
-        self.radioButton_sp.clicked.connect(self.run_sp_buttons_clicked)
+        self.pushButton_run.clicked.connect(self.run_button_clicked)
+        self.pushButton_sp.clicked.connect(self.sp_button_clicked)
         self.score.setText("0")
 
         icon_path = fsutils.APP_DATA_PATH
@@ -313,112 +278,44 @@ class MainWindow(QtWidgets.QMainWindow):
         self.F12.customContextMenuRequested.connect(lambda x: self.edit_macro(self.F12))
         self.F12.clicked.connect(lambda x: self.process_function_key(self.F12))
 
-        self.cw_band_160.mousePressEvent = lambda x: self.change_to_band_and_mode(
-            160, "CW"
-        )
-        self.cw_band_80.mousePressEvent = lambda x: self.change_to_band_and_mode(
-            80, "CW"
-        )
-        self.cw_band_40.mousePressEvent = lambda x: self.change_to_band_and_mode(
-            40, "CW"
-        )
-        self.cw_band_20.mousePressEvent = lambda x: self.change_to_band_and_mode(
-            20, "CW"
-        )
-        self.cw_band_15.mousePressEvent = lambda x: self.change_to_band_and_mode(
-            15, "CW"
-        )
-        self.cw_band_10.mousePressEvent = lambda x: self.change_to_band_and_mode(
-            10, "CW"
-        )
-        self.cw_band_6.mousePressEvent = lambda x: self.change_to_band_and_mode(6, "CW")
-        self.cw_band_2.mousePressEvent = lambda x: self.change_to_band_and_mode(2, "CW")
-        self.cw_band_125.mousePressEvent = lambda x: self.change_to_band_and_mode(
-            222, "CW"
-        )
-        self.cw_band_70cm.mousePressEvent = lambda x: self.change_to_band_and_mode(
-            432, "CW"
-        )
-        self.cw_band_33cm.mousePressEvent = lambda x: self.change_to_band_and_mode(
-            902, "CW"
-        )
-        self.cw_band_23cm.mousePressEvent = lambda x: self.change_to_band_and_mode(
-            1240, "CW"
-        )
+        self.cw_band_160.mousePressEvent = lambda x: self.change_to_band_and_mode(x, 160, "CW")
+        self.cw_band_80.mousePressEvent = lambda x: self.change_to_band_and_mode(x, 80, "CW")
+        self.cw_band_40.mousePressEvent = lambda x: self.change_to_band_and_mode(x, 40, "CW")
+        self.cw_band_20.mousePressEvent = lambda x: self.change_to_band_and_mode(x, 20, "CW")
+        self.cw_band_15.mousePressEvent = lambda x: self.change_to_band_and_mode(x, 15, "CW")
+        self.cw_band_10.mousePressEvent = lambda x: self.change_to_band_and_mode(x, 10, "CW")
+        self.cw_band_6.mousePressEvent = lambda x: self.change_to_band_and_mode(x, 6, "CW")
+        self.cw_band_2.mousePressEvent = lambda x: self.change_to_band_and_mode(x, 2, "CW")
+        self.cw_band_125.mousePressEvent = lambda x: self.change_to_band_and_mode(x, 222, "CW")
+        self.cw_band_70cm.mousePressEvent = lambda x: self.change_to_band_and_mode(x, 432, "CW")
+        self.cw_band_33cm.mousePressEvent = lambda x: self.change_to_band_and_mode(x, 902, "CW")
+        self.cw_band_23cm.mousePressEvent = lambda x: self.change_to_band_and_mode(x, 1240, "CW")
 
-        self.ssb_band_160.mousePressEvent = lambda x: self.change_to_band_and_mode(
-            160, "SSB"
-        )
-        self.ssb_band_80.mousePressEvent = lambda x: self.change_to_band_and_mode(
-            80, "SSB"
-        )
-        self.ssb_band_40.mousePressEvent = lambda x: self.change_to_band_and_mode(
-            40, "SSB"
-        )
-        self.ssb_band_20.mousePressEvent = lambda x: self.change_to_band_and_mode(
-            20, "SSB"
-        )
-        self.ssb_band_15.mousePressEvent = lambda x: self.change_to_band_and_mode(
-            15, "SSB"
-        )
-        self.ssb_band_10.mousePressEvent = lambda x: self.change_to_band_and_mode(
-            10, "SSB"
-        )
-        self.ssb_band_6.mousePressEvent = lambda x: self.change_to_band_and_mode(
-            6, "SSB"
-        )
-        self.ssb_band_2.mousePressEvent = lambda x: self.change_to_band_and_mode(
-            2, "SSB"
-        )
-        self.ssb_band_125.mousePressEvent = lambda x: self.change_to_band_and_mode(
-            222, "SSB"
-        )
-        self.ssb_band_70cm.mousePressEvent = lambda x: self.change_to_band_and_mode(
-            432, "SSB"
-        )
-        self.ssb_band_33cm.mousePressEvent = lambda x: self.change_to_band_and_mode(
-            902, "SSB"
-        )
-        self.ssb_band_23cm.mousePressEvent = lambda x: self.change_to_band_and_mode(
-            1240, "SSB"
-        )
+        self.ssb_band_160.mousePressEvent = lambda x: self.change_to_band_and_mode(x, 160, "SSB")
+        self.ssb_band_80.mousePressEvent = lambda x: self.change_to_band_and_mode(x, 80, "SSB")
+        self.ssb_band_40.mousePressEvent = lambda x: self.change_to_band_and_mode(x, 40, "SSB")
+        self.ssb_band_20.mousePressEvent = lambda x: self.change_to_band_and_mode(x, 20, "SSB")
+        self.ssb_band_15.mousePressEvent = lambda x: self.change_to_band_and_mode(x, 15, "SSB")
+        self.ssb_band_10.mousePressEvent = lambda x: self.change_to_band_and_mode(x, 10, "SSB")
+        self.ssb_band_6.mousePressEvent = lambda x: self.change_to_band_and_mode(x, 6, "SSB")
+        self.ssb_band_2.mousePressEvent = lambda x: self.change_to_band_and_mode(x, 2, "SSB")
+        self.ssb_band_125.mousePressEvent = lambda x: self.change_to_band_and_mode(x, 222, "SSB")
+        self.ssb_band_70cm.mousePressEvent = lambda x: self.change_to_band_and_mode(x, 432, "SSB")
+        self.ssb_band_33cm.mousePressEvent = lambda x: self.change_to_band_and_mode(x, 902, "SSB")
+        self.ssb_band_23cm.mousePressEvent = lambda x: self.change_to_band_and_mode(x, 1240, "SSB")
 
-        self.rtty_band_160.mousePressEvent = lambda x: self.change_to_band_and_mode(
-            160, "RTTY"
-        )
-        self.rtty_band_80.mousePressEvent = lambda x: self.change_to_band_and_mode(
-            80, "RTTY"
-        )
-        self.rtty_band_40.mousePressEvent = lambda x: self.change_to_band_and_mode(
-            40, "RTTY"
-        )
-        self.rtty_band_20.mousePressEvent = lambda x: self.change_to_band_and_mode(
-            20, "RTTY"
-        )
-        self.rtty_band_15.mousePressEvent = lambda x: self.change_to_band_and_mode(
-            15, "RTTY"
-        )
-        self.rtty_band_10.mousePressEvent = lambda x: self.change_to_band_and_mode(
-            10, "RTTY"
-        )
-        self.rtty_band_6.mousePressEvent = lambda x: self.change_to_band_and_mode(
-            6, "RTTY"
-        )
-        self.rtty_band_2.mousePressEvent = lambda x: self.change_to_band_and_mode(
-            2, "RTTY"
-        )
-        self.rtty_band_125.mousePressEvent = lambda x: self.change_to_band_and_mode(
-            222, "RTTY"
-        )
-        self.rtty_band_70cm.mousePressEvent = lambda x: self.change_to_band_and_mode(
-            432, "RTTY"
-        )
-        self.rtty_band_33cm.mousePressEvent = lambda x: self.change_to_band_and_mode(
-            902, "RTTY"
-        )
-        self.rtty_band_23cm.mousePressEvent = lambda x: self.change_to_band_and_mode(
-            1240, "RTTY"
-        )
+        self.rtty_band_160.mousePressEvent = lambda x: self.change_to_band_and_mode(x, 160, "RTTY")
+        self.rtty_band_80.mousePressEvent = lambda x: self.change_to_band_and_mode(x, 80, "RTTY")
+        self.rtty_band_40.mousePressEvent = lambda x: self.change_to_band_and_mode(x, 40, "RTTY")
+        self.rtty_band_20.mousePressEvent = lambda x: self.change_to_band_and_mode(x, 20, "RTTY")
+        self.rtty_band_15.mousePressEvent = lambda x: self.change_to_band_and_mode(x, 15, "RTTY")
+        self.rtty_band_10.mousePressEvent = lambda x: self.change_to_band_and_mode(x, 10, "RTTY")
+        self.rtty_band_6.mousePressEvent = lambda x: self.change_to_band_and_mode(x, 6, "RTTY")
+        self.rtty_band_2.mousePressEvent = lambda x: self.change_to_band_and_mode(x, 2, "RTTY")
+        self.rtty_band_125.mousePressEvent = lambda x: self.change_to_band_and_mode(x, 222, "RTTY")
+        self.rtty_band_70cm.mousePressEvent = lambda x: self.change_to_band_and_mode(x, 432, "RTTY")
+        self.rtty_band_33cm.mousePressEvent = lambda x: self.change_to_band_and_mode(x, 902, "RTTY")
+        self.rtty_band_23cm.mousePressEvent = lambda x: self.change_to_band_and_mode(x, 1240, "RTTY")
 
         self.band_indicators_cw = {
             "160": self.cw_band_160,
@@ -486,6 +383,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 )
 
         self.callsign_entry = QsoEntryField('callsign', 'Callsign', self.centralwidget)
+        self.callsign_entry.input_field.setProperty('field_config', ContestField(name="call", display_label="Callsign"))
         self.rst_sent_entry = QsoEntryField('rst_sent', 'RST Snt', self.centralwidget)
         self.rst_received_entry = QsoEntryField('rst_rcvd', 'Rcv RST', self.centralwidget)
         self.callsign_entry.input_field.setMaxLength(20)
@@ -511,6 +409,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.read_cw_macros()
         self.open_database()
 
+        self.centralwidget.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.centralwidget.customContextMenuRequested.connect(self.context_menu)
+
     def open_database(self):
         station_id = self.pref.get('active_station_id', None)
         if station_id:
@@ -530,6 +431,39 @@ class MainWindow(QtWidgets.QMainWindow):
             else:
                 appevent.emit(appevent.ContestActivated(self.contest))
 
+    def context_menu(self):
+        cat_name = 'flrig'
+        if self.pref.get("cat_enable_rigctld", False):
+            cat_name = 'rigctld'
+        elif self.pref.get("cat_enable_omnirig", False):
+            cat_name = 'omnirig'
+        elif self.pref.get("cat_enable_hamlib", False):
+            cat_name = 'hamlib'
+
+        menu = QMenu(self)
+        bands = menu.addAction("Edit Bands")
+        radio_parent = menu.addMenu("Active Radio")
+        radio_manual = radio_parent.addAction("Manual Radio")
+        radio_manual.setCheckable(True)
+        radio_cat = radio_parent.addAction(cat_name)
+        radio_cat.setCheckable(True)
+        radio_manual.setChecked(self.pref.get("cat_enable_manual", False))
+        radio_cat.setChecked(not self.pref.get("cat_enable_manual", False))
+        if self.pref.get("cat_enable_manual", False):
+            radio_cat.triggered.connect(self.toggle_manual_rig)
+        else:
+            radio_manual.triggered.connect(self.toggle_manual_rig)
+
+        bands.triggered.connect(lambda: self.edit_configuration_settings(show_tab='bands_tab'))
+
+        menu.exec(QCursor.pos())
+
+    def toggle_manual_rig(self):
+        self.pref['cat_enable_manual'] = not self.pref.get("cat_enable_manual", False)
+        fsutils.write_settings({'cat_enable_manual': self.pref['cat_enable_manual']})
+        self.setup_rig_control()
+
+
     def activate_station(self, event: StationActivated):
         self.station = event.station
         self.current_op = self.station.callsign
@@ -539,7 +473,6 @@ class MainWindow(QtWidgets.QMainWindow):
             self.edit_contest()
 
     def handle_input_focus(self, source: QLineEdit) -> None:
-        """handle events from input fields"""
         if (source == self.rst_received_entry.input_field or source == self.rst_sent_entry.input_field) and (source.text() == '59' or source.text() == '599'):
             source.setSelection(1, 1)
         else:
@@ -558,10 +491,19 @@ class MainWindow(QtWidgets.QMainWindow):
         """check for "space does tab" fields and if the space bar is pressed then execute a focus to next field"""
         if event.type() == QEvent.Type.KeyPress and event.key() == Qt.Key.Key_Space and event.modifiers() == Qt.KeyboardModifier.NoModifier:
             conf: ContestField = source.property('field_config')
+            # the call field has special space behaviour elsewhere
             if conf and conf.name != 'call' and conf and conf.space_tabs:
                 # the text currently does not have the space character in it
                 self.handle_space_tab(conf.name, source)
-
+        if event.type() == QEvent.Type.FocusOut and self.qso_edit_window and self.contact:
+            conf: ContestField = source.property('field_config')
+            if conf:
+                qso_value = self.contest_fields[conf.name].input_field.text()
+                if conf.name == 'call':
+                    qso_value = qso_value.strip().upper()
+                if getattr(self.contact, conf.name) != qso_value:
+                    setattr(self.contact, conf.name, qso_value)
+                    self.qso_edit_window.set_qso(self.contact)
 
     def set_radio_icon(self, state: int) -> None:
         """
@@ -572,7 +514,6 @@ class MainWindow(QtWidgets.QMainWindow):
         state : int
         The state of the CAT icon. 0 = grey, 1 = red, 2 = green
         """
-
         displaystate = [self.radio_grey, self.radio_red, self.radio_green]
         try:
             self.radio_icon.setPixmap(displaystate[state])
@@ -598,15 +539,15 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def handle_cw_text_change(self) -> None:
         newtext = self.cw_entry.text()
-        if len(newtext) < len(self.oldtext):
+        if len(newtext) < len(self.cw_text_previous_value):
             # self.send_backspace()
-            self.oldtext = newtext
+            self.cw_text_previous_value = newtext
             return
         if self.cw is not None:
-            self.cw.sendcw(newtext[len(self.oldtext):])
-        self.oldtext = newtext
+            self.cw.sendcw(newtext[len(self.cw_text_previous_value):])
+        self.cw_text_previous_value = newtext
 
-    def change_to_band_and_mode(self, band: int, mode: str) -> None:
+    def change_to_band_and_mode(self, event: QMouseEvent, band: int, mode: str) -> None:
         """
         Gets a sane frequency for the chosen band and mode.
         Then changes to that,
@@ -616,10 +557,16 @@ class MainWindow(QtWidgets.QMainWindow):
         band : int
         mode : str
         """
-        if mode in ["CW", "SSB", "RTTY"]:
-            freq = fakefreq(str(band), mode)
-            self.change_freq(freq)
-            self.change_mode(mode)
+        if event.button() == Qt.MouseButton.LeftButton:
+            # TODO if an active  qso is in progress, do we abort?
+            if self.contact.time_on:
+                self.show_message_box("QSO in progress! Wipe it or Save it before switching bands.")
+            elif mode in ["CW", "SSB", "RTTY"]:
+                freq = fakefreq(str(band), mode)
+                self.change_freq(freq)
+                self.change_mode(mode)
+        else:
+            super().mousePressEvent(event)
 
     def quit_app(self) -> None:
         app.quit()
@@ -673,25 +620,15 @@ class MainWindow(QtWidgets.QMainWindow):
             return
         self.show_message_box("MASTER.SCP could not be updated.")
 
-    def edit_configuration_settings(self) -> None:
+    def edit_configuration_settings(self, show_tab:str = None) -> None:
         """
         Configuration Settings was clicked
         """
-
         self.configuration_dialog = Settings(fsutils.APP_DATA_PATH, self.pref)
-        self.configuration_dialog.usehamdb_radioButton.hide()
         self.configuration_dialog.show()
-        self.configuration_dialog.accepted.connect(self.edit_configuration_return)
-
-    def edit_configuration_return(self) -> None:
-        """
-        Returns here when configuration dialog closed with okay.
-        """
-
-        self.configuration_dialog.save_changes()
-        self.write_preference()
-        # logger.debug("%s", f"{self.pref}")
-        self.readpreferences()
+        if show_tab:
+            self.configuration_dialog.show_tab(show_tab)
+        self.configuration_dialog.updated.connect(self.readpreferences)
 
     def prompt_open_database_file(self) -> None:
         current_file = self.pref.get("current_database", None)
@@ -748,7 +685,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.contact = QsoLog()
         self.contact.fk_contest = self.contest
         self.contact.fk_station = self.station
-        # TODO if the user "pins" qso information, merge that into default qso values here
 
         self.contact.station_callsign = self.station.callsign
         self.contact.my_arrl_sect = self.station.arrl_sect
@@ -788,6 +724,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.contact.my_sota_ref = self.station.sota_ref
         self.contact.my_sig = self.station.sig
         self.contact.my_sig_info = self.station.sig_info
+
+        for field_name, value in self.contest.get_setting("pinned_fields", {}).items():
+            setattr(self.contact, field_name, value)
 
         self.contest_plugin.intermediate_qso_update(self.contact, None)
 
@@ -860,7 +799,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.set_band_indicator(band)
         elif self.contest.mode_category == "SSB":
             self.setmode("SSB")
-            if self.radio_state.vfoa_hz or 0 > 10000000:
+            if (self.radio_state.vfoa_hz or 0) > 10000000:
                 self.radio_state.mode = "USB"
             else:
                 self.radio_state.mode = "LSB"
@@ -874,9 +813,10 @@ class MainWindow(QtWidgets.QMainWindow):
         else:
             self.cw_speed.hide()
 
-        self.set_blank_qso()
         self.clearinputs()
         self.callsign_entry.input_field.setFocus()
+        if self.qso_edit_window:
+            self.qso_edit_window.set_qso(self.contact)
 
     def check_for_new_cty(self) -> None:
         """
@@ -1002,10 +942,14 @@ class MainWindow(QtWidgets.QMainWindow):
     def launch_qso_edit_window(self) -> None:
         if not self.qso_edit_window:
             self.qso_edit_window = QsoEditWindow(None, contest=self.contest)
+            self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, self.qso_edit_window)
+            self.qso_edit_window.setFloating(True)
             self.qso_edit_window.closed.connect(self.handle_dock_closed)
+            self.qso_edit_window.setWindowTitle("QSO In Progress")
+            self.qso_edit_window.model.edited.connect(self.edit_window_data_change)
+            self.qso_edit_window.set_qso(self.contact)
         self.qso_edit_window.show()
         self.qso_edit_window.setWindowState(Qt.WindowState.WindowActive)
-
 
     def launch_vfo(self) -> None:
         """Launch the VFO window"""
@@ -1041,7 +985,6 @@ class MainWindow(QtWidgets.QMainWindow):
         band: str
         band to set indicator for
         """
-
         if band and self.current_mode:
             self.clear_band_indicators()
             indicator = self.all_mode_indicators[self.current_mode].get(band, None)
@@ -1058,6 +1001,7 @@ class MainWindow(QtWidgets.QMainWindow):
             "window_check_enable": self.check_window and self.check_window.isVisible(),
             "window_log_enable": self.log_window and self.log_window.isVisible(),
             "window_profile_enable": self.profile_window and self.profile_window.isVisible(),
+            "window_qsoedit_enable": self.qso_edit_window and self.qso_edit_window.isVisible(),
             "window_vfo_enable": self.vfo_window and self.vfo_window.isVisible()
         }
 
@@ -1221,6 +1165,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.callsign_entry.input_field.setFocus()
 
         appevent.emit(appevent.CallChanged(''))
+        if self.qso_edit_window:
+            self.qso_edit_window.set_qso(self.contact)
 
     def callsign_editing_finished(self) -> None:
         """
@@ -1232,17 +1178,56 @@ class MainWindow(QtWidgets.QMainWindow):
         callsign_value = self.callsign_entry.input_field.text().strip().upper()
         if not callsign_value:
             return
-        if not self.contact.time_on:
-            self.contact.time_on = datetime.datetime.now()
         logger.debug(f'callsign field exit value {callsign_value}')
         self.check_callsign(callsign_value)
         if self.is_dupe_call(callsign_value):
             self.dupe_indicator.show()
         else:
             self.dupe_indicator.hide()
+        self.pre_populate_contact()
 
         self.check_callsign_external(callsign_value)
         # TODO could do prefill from previous station contact here
+
+    def pre_populate_contact(self, notify=True):
+        if self.contact.time_on is not None:
+            return
+        if len(self.callsign_entry.input_field.text()) < 3:
+            return
+
+        self.contact.time_on = datetime.datetime.now()
+
+        self.contact.station_callsign = self.contact.fk_station.callsign
+        self.contact.call = self.callsign_entry.input_field.text().strip().upper()
+        self.contact.freq = self.radio_state.vfoa_hz
+        self.contact.band = hamutils.adif.common.convert_freq_to_band((self.contact.freq or 0) / 1000_000)
+
+        # TODO - important for dexpediation - split mode - set when radio state indicates split
+        # self.contact.freq_rx = int(self.radio_state.get("vfoa", 0.0))
+        # self.contact.band_rx = hamutils.adif.common.convert_freq_to_band(self.contact.freq_rx / 1000_000)
+
+        self.contact.mode = (self.radio_state.mode or "").upper()
+        if self.contact.mode in ['USB', 'LSB']:
+            self.contact.submode = self.contact.mode
+            self.contact.mode = 'SSB'
+        if self.contact.prefix:
+            self.contact.wpx_prefix = calculate_wpx_prefix(self.contact.call)
+        self.contact.is_run = self.pushButton_run.isChecked()
+        self.contact.operator = self.current_op
+        self.contact.hostname = platform.node()[:255]
+        self.contact.is_original = True
+
+        if self.pref['lookup_name_prefer_qso_history_name']:
+            name_from_log = QsoLog.get_name_from_previous_contact(self.contact.call)
+            if name_from_log:
+                self.contact.name = name_from_log
+                if 'name' in self.contest_fields:
+                    self.contest_fields['name'].input_field.setText(self.contact.name)
+
+        if notify:
+            self.contest_plugin.intermediate_qso_update(self.contact, None)
+            if self.qso_edit_window:
+                self.qso_edit_window.set_qso(self.contact)
 
     def save_contact(self) -> None:
         """
@@ -1258,34 +1243,18 @@ class MainWindow(QtWidgets.QMainWindow):
             return
         if not any(char.isalpha() for char in self.callsign_entry.input_field.text()):
             return
-        if not self.contact.time_on:
-            self.contact.time_on = datetime.datetime.now()
+        self.pre_populate_contact(notify=False)
+
         self.contact.time_off = datetime.datetime.now()
 
         for name, field in self.contest_fields.items():
             setattr(self.contact, name, field.input_field.text())
-        self.contact.station_callsign = self.contact.fk_station.callsign
-        self.contact.call = self.callsign_entry.input_field.text().strip().upper()
-        self.contact.freq = int(self.radio_state.vfoa_hz)
-        self.contact.band = hamutils.adif.common.convert_freq_to_band(self.contact.freq / 1000_000)
 
-        # TODO - important for dexpediation - split mode - set when radio state indicates split
-        #self.contact.freq_rx = int(self.radio_state.get("vfoa", 0.0))
-        #self.contact.band_rx = hamutils.adif.common.convert_freq_to_band(self.contact.freq_rx / 1000_000)
+        self.contact.call = self.contact.call.strip().upper()
 
-        self.contact.mode = (self.radio_state.mode or "").upper()
-        if self.contact.mode in ['USB', 'LSB']:
-            self.contact.submode = self.contact.mode
-            self.contact.mode = 'SSB'
-        if self.contact.prefix:
-            self.contact.wpx_prefix = calculate_wpx_prefix(self.contact.call)
-        self.contact.is_run = self.radioButton_run.isChecked()
-        self.contact.operator = self.current_op
-        self.contact.hostname = platform.node()[:255]
-        self.contact.is_original = True
-        self.contact.qso_complete = 'Y'
-        if self.contact.gridsquare:
-            self.contact.lat, self.contact.lon = gridtolatlon(self.contact.gridsquare)
+        self.contact.is_run = self.pushButton_run.isChecked()
+        if not self.contact.qso_complete:
+            self.contact.qso_complete = 'Y'
 
         self.contact.points = self.contest_plugin.points_for_qso(self.contact)
         # TODO verify correct adif format for contest_id
@@ -1299,8 +1268,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.contact.id = uuid.uuid4()
         try:
             self.contact.save(force_insert=True)
-            self.clearinputs()
+            self.save_pinned_fields(self.contact)
             appevent.emit(appevent.QsoAdded(self.contact))
+            self.clearinputs()
         except Exception as e:
             logger.exception("error saving qso record")
             dlg = QMessageBox(self)
@@ -1313,6 +1283,13 @@ class MainWindow(QtWidgets.QMainWindow):
         station_dialog = StationSettings(fsutils.APP_DATA_PATH, parent=self)
         station_dialog.open()
 
+    def save_pinned_fields(self, qso: QsoLog):
+        if not qso and not qso.id:
+            return
+        pinned_fields: dict = self.contest.get_setting("pinned_fields", {})
+        for field_name in pinned_fields.keys():
+            pinned_fields[field_name] = getattr(qso, field_name)
+        self.contest.merge_settings({'pinned_fields': pinned_fields})
 
     def set_dark_mode(self, enabled):
         qdarktheme.setup_theme(theme="dark" if enabled else "light", corner_shape="sharp",
@@ -1372,23 +1349,21 @@ class MainWindow(QtWidgets.QMainWindow):
         Processed macro.
         """
 
-        result = self.database.get_serial()
-        next_serial = str(result.get("serial_nr", "1"))
-        if next_serial == "None":
-            next_serial = "1"
+        next_serial = str(self.contact.stx or "1")
         macro = macro.upper()
         macro = macro.replace("#", next_serial)
-        macro = macro.replace("{MYCALL}", self.station.get("Call", ""))
+        macro = macro.replace("{MYCALL}", self.station.callsign)
         macro = macro.replace("{HISCALL}", self.callsign_entry.input_field.text())
         if self.radio_state.mode == "CW":
             macro = macro.replace("{SNT}", self.rst_sent_entry.input_field.text().replace("9", "n"))
         else:
             macro = macro.replace("{SNT}", self.rst_sent_entry.input_field.text())
 
-        # TODO - get sent serial from field
-        macro = macro.replace("{SENTNR}", self.other_1.text())
+        for field_name, field in self.contest_fields.items():
+            macro.replace(f"{{{field_name}}}", field.input_field.text())
+
         macro = macro.replace(
-            "{EXCH}", self.contest.sent_exchange
+            "{EXCH}", self.contact.stx_string
         )
         return macro
 
@@ -1447,7 +1422,6 @@ class MainWindow(QtWidgets.QMainWindow):
         """
         Turn on ptt for rig.
         """
-
         logger.debug("PTT On")
         if self.rig_control:
             self.leftdot.setPixmap(self.greendot)
@@ -1473,7 +1447,6 @@ class MainWindow(QtWidgets.QMainWindow):
         function_key : QPushButton
         Function key to process.
         """
-
         logger.debug("Function Key: %s", function_key.text())
         if self.n1mm:
             self.n1mm.radio_info["FunctionKeyCaption"] = function_key.text()
@@ -1483,37 +1456,30 @@ class MainWindow(QtWidgets.QMainWindow):
         if self.cw:
             self.cw.sendcw(self.process_macro(function_key.toolTip()))
 
-    def run_sp_buttons_clicked(self) -> None:
+    def run_button_clicked(self) -> None:
+        self.run_sp_buttons_clicked(True)
+
+    def sp_button_clicked(self) -> None:
+        self.run_sp_buttons_clicked(False)
+
+    def run_sp_buttons_clicked(self, is_run) -> None:
         """
         Handle Run/S&P mode changes.
-
-        Parameters
-        ----------
-        None
-
-        Returns
-        -------
-        None
         """
-        self.pref["run_state"] = self.radioButton_run.isChecked()
-        fsutils.write_settings({"run_state": self.radioButton_run.isChecked()})
+        self.pushButton_run.setChecked(is_run)
+        self.pushButton_sp.setChecked(not is_run)
+
+        self.pref["run_state"] = is_run
+        fsutils.write_settings({"run_state": is_run})
         self.read_cw_macros()
         if self.n1mm:
             self.n1mm.set_operator(self.current_op, self.pref.get("run_state", False))
 
+
     def write_preference(self) -> None:
         """
         Write preferences to file.
-
-        Parameters
-        ----------
-        None
-
-        Returns
-        -------
-        None
         """
-
         logger.debug("writepreferences")
         try:
             with open(fsutils.CONFIG_FILE, "wt", encoding="utf-8") as file_descriptor:
@@ -1529,35 +1495,31 @@ class MainWindow(QtWidgets.QMainWindow):
         logger.debug("readpreferences")
         try:
             if os.path.exists(fsutils.CONFIG_FILE):
-                with open(
-                        fsutils.CONFIG_FILE, "rt", encoding="utf-8"
-                ) as file_descriptor:
-                    self.pref = loads(file_descriptor.read())
-                    logger.info("%s", self.pref)
+                self.pref = fsutils.read_settings()
             else:
                 logger.info("No preference file. Writing preference.")
                 with open(
                         fsutils.CONFIG_FILE, "wt", encoding="utf-8"
                 ) as file_descriptor:
-                    self.pref = self.pref_ref.copy()
-                    file_descriptor.write(dumps(self.pref, indent=4))
-                    logger.info("%s", self.pref)
+                    from . import pref_ref
+                    self.pref = pref_ref
+                    fsutils.write_settings(pref_ref)
         except IOError as exception:
             logger.critical("Error: %s", exception)
 
         self.look_up = None
         try:
-            if self.pref.get("useqrz"):
-                self.look_up = QRZlookup(self.pref.get("lookupusername"), self.pref.get("lookuppassword"))
-            elif self.pref.get("usehamqth"):
-                self.look_up = HamQTH(self.pref.get("lookupusername"), self.pref.get("lookuppassword"))
+            if self.pref.get("lookup_source_qrz"):
+                self.look_up = QRZlookup(self.pref.get("lookup_username"), self.pref.get("lookup_password"))
+            elif self.pref.get("lookup_source_hamqth"):
+                self.look_up = HamQTH(self.pref.get("lookup_username"), self.pref.get("lookup_password"))
         except Exception:
             logger.exception("Could not initialize external lookup service")
 
         if self.pref.get("run_state"):
-            self.radioButton_run.setChecked(True)
+            self.pushButton_run.setChecked(True)
         else:
-            self.radioButton_sp.setChecked(True)
+            self.pushButton_sp.setChecked(True)
 
         if self.pref.get("command_buttons"):
             self.actionCommand_Buttons.setChecked(True)
@@ -1582,26 +1544,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.actionDark_Mode.setChecked(False)
         app.processEvents()
 
-        if self.rig_control:
-            self.rig_control.close()
-
-        self.rig_control = None
-
-        if self.pref.get("useflrig", False):
-            logger.debug(
-                "Using flrig: %s",
-                f"{self.pref.get('CAT_ip')} {self.pref.get('CAT_port')}",
-            )
-            self.rig_control = CatFlrig(self.pref.get("CAT_ip", "127.0.0.1"),int(self.pref.get("CAT_port", 12345)))
-        elif self.pref.get("userigctld", False):
-            logger.debug(
-                "Using rigctld: %s",
-                f"{self.pref.get('CAT_ip')} {self.pref.get('CAT_port')}",
-            )
-            self.rig_control = CatRigctld(self.pref.get("CAT_ip", "127.0.0.1"), int(self.pref.get("CAT_port", 4532)))
-
-        if self.rig_control:
-            self.rig_control.start_poll_loop()
+        self.setup_rig_control()
 
         if self.pref.get("cwtype", 0) == 0:
             self.cw = None
@@ -1651,6 +1594,29 @@ class MainWindow(QtWidgets.QMainWindow):
                 if band_to_show in _indicator:
                     _indicator[band_to_show].show()
 
+    def setup_rig_control(self):
+        if self.rig_control:
+            self.rig_control.close()
+        self.rig_control = None
+
+        if self.pref.get('cat_enable_manual', False):
+            self.rig_control = CatManual()
+        elif self.pref.get("cat_enable_flrig", False):
+            logger.debug(
+                "Using flrig: %s",
+                f"{self.pref.get('cat_flrig_ip')} {self.pref.get('cat_flrig_port')}",
+            )
+            self.rig_control = CatFlrig(self.pref.get("cat_flrig_ip", "127.0.0.1"), int(self.pref.get("cat_flrig_port", 12345)))
+        elif self.pref.get("cat_enable_rigctld", False):
+            logger.debug(
+                "Using rigctld: %s",
+                f"{self.pref.get('cat_rigctld_ip')} {self.pref.get('cat_rigctld_port')}",
+            )
+            self.rig_control = CatRigctld(self.pref.get("cat_rigctld_ip", "127.0.0.1"), int(self.pref.get("cat_rigctld_port", 4532)))
+
+        if self.rig_control:
+            self.rig_control.start_poll_loop()
+
     def event_tune(self, event: appevent.Tune):
         if event.freq_hz:
             if self.rig_control:
@@ -1658,6 +1624,7 @@ class MainWindow(QtWidgets.QMainWindow):
         if event.dx and self.callsign_entry.input_field.text().strip() != event.dx:
             self.callsign_entry.input_field.setText(event.dx)
             self.callsign_changed()
+            self.pre_populate_contact()
             self.check_callsign_external(event.dx)
 
         self.callsign_entry.input_field.setFocus()
@@ -1670,14 +1637,40 @@ class MainWindow(QtWidgets.QMainWindow):
         if event.result.call == current_call:
             # Get the grid square and calculate the distance and heading.
             self.contact.gridsquare = event.result.grid
-            if self.pref.get('lookup_populate_name', None):
+            if self.contact.gridsquare:
+                self.contact.lat, self.contact.lon = gridtolatlon(self.contact.gridsquare)
+
+            # auto-fill name from external source
+            if (not self.pref.get('lookup_name_prefer_qso_history_name', False) or not self.contact.name) \
+                and self.pref.get('lookup_populate_name', None):
                 name_field = self.contest_fields.get('name', None)
-                #if name_field and name_field.input_field.text() == '':
-                name_field.input_field.setText(event.result.name.title())
+                if self.pref.get('lookup_populate_name', None):
+                    if self.pref.get('lookup_firstname', None):
+                        self.contact.name = event.result.first_name.title()
+                    else:
+                        self.contact.name = event.result.name.title()
+                    name_field.input_field.setText(self.contact.name)
 
-            # TODO populate more fields from the external lookup
-
-            self.contest_plugin.intermediate_qso_update(self.contact, ['gridsquare', 'name'])
+            if self.pref.get('lookup_others', None):
+                # populate more fields from the external lookup
+                # qrz - addr1, addr2, state, county, qslmgr, email, url
+                if event.result.source_result.get('url'):
+                    self.contact.web = event.result.source_result.get('url')
+                if event.result.source_result.get('email'):
+                    self.contact.email = event.result.source_result.get('email')
+                if event.result.source_result.get('qslmgr'):
+                    self.contact.qslvia = event.result.source_result.get('qslmgr')
+                if event.result.source_result.get('county'):
+                    self.contact.county = event.result.source_result.get('county')
+                if event.result.source_result.get('state'):
+                    self.contact.state = event.result.source_result.get('state')
+                if event.result.source_result.get('addr1'):
+                    self.contact.address = event.result.source_result.get('addr1')
+                if event.result.source_result.get('addr2'):
+                    if self.contact.address:
+                        self.contact.address = self.contact.address + ', ' + event.result.source_result.get('addr2')
+                    else:
+                        self.contact.address = event.result.source_result.get('addr2')
 
             if self.station.gridsquare:
                 heading = bearing(self.station.gridsquare, event.result.grid)
@@ -1686,6 +1679,10 @@ class MainWindow(QtWidgets.QMainWindow):
                     f"{event.result.grid} Hdg {heading}° LP {reciprocol(heading)}° / "
                     f"{int(kilometers * 0.621371)}mi {kilometers}km"
                 )
+                self.contact.distance = kilometers
+            self.contest_plugin.intermediate_qso_update(self.contact, ['gridsquare', 'name', 'distance'])
+            if self.qso_edit_window:
+                self.qso_edit_window.set_qso(self.contact)
 
     def dark_mode_state_changed(self) -> None:
         self.pref["darkmode"] = self.actionDark_Mode.isChecked()
@@ -1696,16 +1693,14 @@ class MainWindow(QtWidgets.QMainWindow):
         """
         Menu item to show/hide macro buttons.
         """
-
         self.pref["cw_macros"] = self.actionCW_Macros.isChecked()
-        self.write_preference()
+        fsutils.write_settings({"cw_macros": self.actionCW_Macros.isChecked()})
         self.show_CW_macros()
 
     def show_CW_macros(self) -> None:
         """
         Show/Hide the macro buttons.
         """
-
         if self.pref.get("cw_macros"):
             self.Button_Row1.show()
             self.Button_Row2.show()
@@ -1717,7 +1712,6 @@ class MainWindow(QtWidgets.QMainWindow):
         """
         Menu item to show/hide command buttons
         """
-
         self.pref["command_buttons"] = self.actionCommand_Buttons.isChecked()
         fsutils.write_settings({"command_buttons": self.actionCommand_Buttons.isChecked()})
         self.show_command_buttons()
@@ -1805,7 +1799,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.dupe_indicator.show()
             else:
                 self.dupe_indicator.hide()
-
+            self.pre_populate_contact()
             self.check_callsign_external(text)
             # space-to-tab
             self.handle_space_tab('call', self.callsign_entry.input_field)
@@ -1833,7 +1827,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.focusNextChild()
         else:
             field_input.deselect()
-            # the text currently does not contain the space because the keypress event is fired befor the change
+            # the text currently does not contain the space because the keypress event is fired before the change
             self.space_character_removal_queue.append((field_input, field_input.text()))
             self.focusNextChild()
 
@@ -1858,7 +1852,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.set_band_indicator(band)
         self.radio_state.vfoa_hz = vfo
         self.set_window_title()
-        self.clearinputs()
+        #self.clearinputs()
         if self.rig_control:
             self.rig_control.set_vfo(vfo)
         else:
@@ -1896,7 +1890,7 @@ class MainWindow(QtWidgets.QMainWindow):
             return
         if mode == "RTTY":
             self.setmode("RTTY")
-            self.radio_state["mode"] = "RTTY"
+            self.radio_state.mode = "RTTY"
             if self.rig_control:
                 self.rig_control.set_mode("RTTY")
             band = getband(str(self.radio_state.vfoa_hz))
@@ -1929,11 +1923,13 @@ class MainWindow(QtWidgets.QMainWindow):
         callsign : str
         Callsign to check.
         """
-        self.contact.call = callsign
         result = self.bigcty.find_call_match(callsign)
         logger.debug(f"cty lookup result {result}")
         if result:
             entity = result.get("entity", "")
+            if entity == self.contact.country:
+                logger.debug(f"aborting cty update, have already populated for {entity}")
+                return
             cq = result.get("cq", "")
             itu = result.get("itu", "")
             continent = result.get("continent")
@@ -1990,7 +1986,7 @@ class MainWindow(QtWidgets.QMainWindow):
         if not dupe_type:
             return False
 
-        band = hamutils.adif.common.convert_freq_to_band(int(self.radio_state.vfoa_hz) / 1000_000)
+        band = hamutils.adif.common.convert_freq_to_band((self.radio_state.vfoa_hz or 0) / 1000_000)
         mode = self.radio_state.mode
         if mode == 'USB' or mode == 'LSB':
             mode = 'SSB'
@@ -2213,17 +2209,38 @@ class MainWindow(QtWidgets.QMainWindow):
     def event_radio_state(self, event: appevent.RadioState):
         self.radio_state = event.state
         self.set_radio_icon(0)
+        self.set_radio_icon_tooltip()
         if self.radio_state.error or not self.radio_state.vfoa_hz:
             self.set_radio_icon(1)
         elif self.radio_state.vfoa_hz:
             self.set_radio_icon(2)
             if self.radio_state.mode == "CW" or self.radio_state.mode == 'RTTY':
                 self.setmode(self.radio_state.mode)
-            if self.radio_state.mode == "LSB" or self.radio_state.mode == "USB":
+            if self.radio_state.mode == "LSB" or self.radio_state.mode == "USB" or self.radio_state.mode == 'SSB':
                 self.setmode("SSB")
             band = getband(str(self.radio_state.vfoa_hz))
             self.set_band_indicator(band)
             self.set_window_title()
+
+    def set_radio_icon_tooltip(self):
+        if self.radio_state.vfoa_hz is None:
+            return
+        self.radio_icon.setToolTip(f"<table><tr><td>vfo a</td><td>{self.radio_state.vfoa_hz:,}</td></tr>"
+                                   f"<tr><td>mode</td><td>{self.radio_state.mode}</td></tr>"
+                                   f"<tr><td>vfo b</td><td>{self.radio_state.vfob_hz}</td></tr>"
+                                   f"<tr><td>bandwidth</td><td>{self.radio_state.bandwidth_hz}</td></tr>"
+                                   f"<tr><td>power</td><td>{self.radio_state.power}</td></tr></table>"
+                                   )
+
+
+    def edit_window_data_change(self, qso_before, qso_after, field_name, value):
+        # update entry fields with new values from the qso edit window
+        if field_name in self.contest_fields:
+            # make sure the input field stays in sync with the qso object
+            new_value = getattr(self.contact, field_name)
+            if self.contest_fields[field_name].input_field.text() != new_value:
+                self.contest_fields[field_name].input_field.setText(new_value)
+
 
 def load_fonts_from_dir(directory: str) -> set:
     """
@@ -2306,6 +2323,8 @@ def run() -> None:
         window.launch_profile_image_window()
     if window.pref.get("window_vfo_enable", None):
         window.launch_vfo()
+    if window.pref.get("window_qsoedit_enable", None):
+        window.launch_qso_edit_window()
 
     if 'window_state' in window.pref:
         window.restoreState(QByteArray.fromHex(bytes(window.pref["window_state"], 'ascii')), 1)

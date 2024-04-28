@@ -19,10 +19,11 @@ from PyQt6.QtWidgets import QDockWidget
 
 import not1mm.fsutils as fsutils
 from not1mm.lib import event
+from not1mm.qtcomponents.DockWidget import DockWidget
 
 logger = logging.getLogger(__name__)
 
-class VfoWindow(QDockWidget):
+class VfoWindow(DockWidget):
     """The VFO window."""
 
     pref = {}

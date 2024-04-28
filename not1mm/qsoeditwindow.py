@@ -4,13 +4,17 @@ import pickle
 import typing
 
 from PyQt6 import uic, QtWidgets, QtCore
-from PyQt6.QtCore import Qt, QAbstractItemModel, QModelIndex, QMimeData, pyqtSignal
+from PyQt6.QtCore import Qt, QAbstractItemModel, QModelIndex, QMimeData, pyqtSignal, QTimer
+from PyQt6.QtGui import QIcon
+from qdarktheme._icon.icon_engine import SvgIconEngine
+from qdarktheme._icon.svg import Svg
 
 from not1mm import fsutils
 from not1mm.contest import contests_by_cabrillo_id
 from not1mm.model import QsoLog, Contest
 from not1mm.qtcomponents.DockWidget import DockWidget
 from not1mm.qtcomponents.QsoFieldDelegate import QsoFieldDelegate, handle_set_data, get_table_data, field_display_names
+from not1mm.qtcomponents.SvgIcon import SvgIcon
 
 logger = logging.getLogger(__name__)
 
@@ -62,10 +66,17 @@ class SheetModel(QAbstractItemModel):
     child_to_parent: dict[str, str]
     category_list: list[str]
 
-    edited = pyqtSignal(QsoLog, QsoLog)
+    edited = pyqtSignal(QsoLog, QsoLog, str, object)
+    did_make_changes = False
+    pinned_fields = set()
+
+    def __init__(self, parent):
+        QAbstractItemModel.__init__(self, parent)
 
     def set_qso(self, qso: QsoLog):
+
         self.beginResetModel()
+        self.did_make_changes = False
         self.qso = qso
         self.endResetModel()
 
@@ -82,9 +93,6 @@ class SheetModel(QAbstractItemModel):
                 logger.warning(f"qso field {name} not included in any category by default, adding to Internal")
                 self.child_to_parent[name] = 'Internal'
                 self.structure[self.category_list.index('Internal')][1].append(name)
-
-    def __init__(self, parent):
-        QAbstractItemModel.__init__(self, parent)
 
     def headerData(self, section: int, orientation: Qt.Orientation,
                    role: int = Qt.ItemDataRole.DisplayRole) -> typing.Any:
@@ -118,7 +126,7 @@ class SheetModel(QAbstractItemModel):
         return 2
 
     def rowCount(self, parent_index: QModelIndex = None) -> int:
-        if parent_index.isValid():
+        if parent_index and parent_index.isValid():
             if parent_index.internalPointer() in self.child_to_parent:
                 # children fields have no children rows
                 return 0
@@ -140,10 +148,15 @@ class SheetModel(QAbstractItemModel):
                 elif self.qso and index.column() == 1:
                     # field value use common code
                     return get_table_data(self.qso, field_name, role)
-        elif index.parent().row() >= 0 and self.qso and index.column() == 1 \
-            and (role == Qt.ItemDataRole.DisplayRole or role == Qt.ItemDataRole.EditRole or role == Qt.ItemDataRole.FontRole):
-            field_name = index.internalPointer()
-            return get_table_data(self.qso, field_name, role)
+        elif index.parent().row() >= 0 and self.qso and index.column() == 1:
+            # handle value columm
+            if role == Qt.ItemDataRole.DisplayRole or role == Qt.ItemDataRole.EditRole or role == Qt.ItemDataRole.FontRole:
+                # return common value cell data
+                field_name = index.internalPointer()
+                return get_table_data(self.qso, field_name, role)
+            elif role == Qt.ItemDataRole.DecorationRole and index.internalPointer() in self.pinned_fields:
+                return SvgIcon('pin_full_rounded', rotate=25).get_icon()
+
 
     def setData(self, index: QtCore.QModelIndex, value: typing.Any, role: Qt.ItemDataRole = None) -> bool:
         record_before = copy.deepcopy(self.qso)
@@ -151,15 +164,21 @@ class SheetModel(QAbstractItemModel):
         try:
             result = handle_set_data(self.qso, field_name, value)
             if result:
-                self.qso.save()
                 self.dataChanged.emit(index, index)
-                self.edited.emit(record_before, self.qso)
+                self.edited.emit(record_before, self.qso, field_name, value)
+                self.did_make_changes = True
                 return True
-
         except Exception as e:
             logger.exception("Problem saving qso log")
             _show_info_message_box(str(e))
         return False
+
+    def set_pin_state(self, index: QtCore.QModelIndex, is_pinned: bool):
+        if is_pinned:
+            self.pinned_fields.add(index.internalPointer())
+        else:
+            self.pinned_fields.remove(index.internalPointer())
+        self.dataChanged.emit(index, index)
 
     def flags(self, index: QtCore.QModelIndex) -> Qt.ItemFlag:
         if index.column() in [0]:
@@ -267,13 +286,15 @@ class QsoEditWindow(DockWidget):
     model: SheetModel
     contest: Contest
 
-    def __init__(self, qso: typing.Optional[QsoLog], parent=None, is_dockable=True, contest=None):
+    def __init__(self, qso: typing.Optional[QsoLog], parent=None, is_in_progress=True, contest=None):
         super().__init__(parent)
         self.contest = contest
 
         uic.loadUi(fsutils.APP_DATA_PATH / "qso_edit_sheet.ui", self)
 
-        if not is_dockable:
+        if not is_in_progress:
+            # if the edit sheet is not the 'in progress' qso, force it to be floating only and not integrated into the
+            # docking widgets
             self.setFloating(True)
             self.setAllowedAreas(Qt.DockWidgetArea.NoDockWidgetArea)
 
@@ -293,34 +314,97 @@ class QsoEditWindow(DockWidget):
 
         self.set_contest(contest)
         self.set_qso(qso)
-
+        self.table_qso.header().setSectionsMovable(False)
         self.model.rowsMoved.connect(self.save_settings)
+
+        if is_in_progress:
+            self.table_qso.setContextMenuPolicy(Qt.ContextMenuPolicy.ActionsContextMenu)
+            self.action_setup()
 
     def on_clicked(self, index):
         if not index.parent().isValid():
             self.table_qso.setExpanded(index, not self.table_qso.isExpanded(index))
             if self.table_qso.isExpanded(index):
-                self.table_qso.header().setSectionResizeMode(0, QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
+                QTimer.singleShot(0, lambda: self.table_qso.header().setSectionResizeMode(0,
+                                             QtWidgets.QHeaderView.ResizeMode.ResizeToContents))
+
+    def action_setup(self):
+        pin = self.table_qso.addAction(SvgIcon('pin_full_rounded').get_icon(), "Pin Field")
+        unpin = self.table_qso.addAction("Remove Field Pin")
+        sep = self.table_qso.addAction("|")
+        sep.setSeparator(True)
+        unpin_all = self.table_qso.addAction("Unpin All")
+        pin.triggered.connect(self.action_pin)
+        unpin.triggered.connect(self.action_unpin)
+        unpin_all.triggered.connect(self.action_unpin_all)
+
+    def action_pin(self):
+        indexes = self.table_qso.selectedIndexes()
+        for column in indexes:
+            if column.parent().row() != -1 and column.column() == 1:
+                field_name = column.internalPointer()
+                if field_name:
+                    pinned_settings = self.contest.get_setting('pinned_fields', {})
+                    if field_name not in pinned_settings:
+                        pinned_settings[field_name] = None
+                        self.contest.merge_settings({'pinned_fields': pinned_settings})
+                        self.model.set_pin_state(column, True)
+
+    def action_unpin(self):
+        indexes = self.table_qso.selectedIndexes()
+        for column in indexes:
+            if column.parent().row() != -1 and column.column() == 1:
+                field_name = column.internalPointer()
+                if field_name:
+                    pinned_settings: list = self.contest.get_setting('pinned_fields', {})
+                    if field_name in pinned_settings:
+                        del pinned_settings[field_name]
+                        self.contest.merge_settings({'pinned_fields': pinned_settings})
+                        self.model.set_pin_state(column, False)
+
+    def action_unpin_all(self):
+        message_box = QtWidgets.QMessageBox()
+        message_box.setIcon(QtWidgets.QMessageBox.Icon.Question)
+        message_box.setText(f"Unpin Fields")
+        message_box.setInformativeText(f"Are you sure you would like to unpin all field values?")
+        message_box.setWindowTitle("Confirm Unpin")
+        message_box.setStandardButtons(
+            QtWidgets.QMessageBox.StandardButton.Ok | QtWidgets.QMessageBox.StandardButton.Cancel)
+        result = message_box.exec()
+        if result != QtWidgets.QMessageBox.StandardButton.Ok:
+            return
+        self.contest.merge_settings({'pinned_fields': {}})
+        self.model.pinned_fields = set(self.contest.get_setting("pinned_fields", {}))
+        self.set_qso(self.model.qso)
 
     def set_contest(self, contest: Contest):
         if contest is not None:
             self.reset_layout_for_contest(contest)
 
     def set_qso(self, qso: QsoLog):
-        if qso is not None:
-            self.model.set_qso(qso)
+        scroll_pos = self.table_qso.verticalScrollBar().value()
+        # cache category expanded state to restore after dataset reset
+        expanded_state = [self.table_qso.isExpanded(self.model.index(row, 0, QModelIndex()))
+                          for row in range(self.model.rowCount())]
+        main_index = self.model.category_list.index('Main')
+
+        self.model.set_qso(qso) # can be None
+
+        for i in range(len(self.model.category_list)):
+            self.table_qso.setFirstColumnSpanned(i, QModelIndex(), True)
+
+        if not any(expanded_state):
+            self.table_qso.setExpanded(self.table_qso.model().index(main_index, 0, QModelIndex()), True)
         else:
-            self.model.set_qso(None)
-
-        self.table_qso.resizeColumnToContents(0)
-        self.table_qso.header().setSectionsMovable(False)
-
-        self.table_qso.setExpanded(self.table_qso.model().index(0, 0, QModelIndex()), True)
+            for row, is_expanded in enumerate(expanded_state):
+                self.table_qso.setExpanded(self.table_qso.model().index(row, 0, QModelIndex()), is_expanded)
+            QTimer.singleShot(0, lambda: self.table_qso.scroll(0, scroll_pos))
+            QTimer.singleShot(0, lambda: self.table_qso.header().setSectionResizeMode(0, QtWidgets.QHeaderView.ResizeMode.ResizeToContents))
 
     def reset_layout_for_contest(self, contest: Contest) -> None:
         if not contest:
             return
-
+        # Contests will have different fields that they are using. make sure those fields appear in the main section
         self.contest = contest
         plugin_class = contests_by_cabrillo_id[self.contest.fk_contest_meta.cabrillo_name]
         # restore row order from previous session
@@ -339,11 +423,9 @@ class QsoEditWindow(DockWidget):
                 for f in contest_fields:
                     if f in c[1]:
                         c[1].remove(f)
-
+        self.model.pinned_fields = set(self.contest.get_setting("pinned_fields", {}).keys())
         self.model.set_row_structure(field_structure)
 
-        for i in range(len(field_structure)):
-            self.table_qso.setFirstColumnSpanned(i, QModelIndex(), True)
 
     def save_settings(self):
         if self.model and self.model.structure:

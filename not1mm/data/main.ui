@@ -598,17 +598,11 @@
         </item>
         <item>
          <layout class="QVBoxLayout" name="main_dialog" stretch="0,0,0,0,0,0,0">
-          <property name="spacing">
-           <number>0</number>
-          </property>
           <property name="leftMargin">
            <number>2</number>
           </property>
           <item>
-           <layout class="QHBoxLayout" name="qso_row1" stretch="2">
-            <property name="spacing">
-             <number>-1</number>
-            </property>
+           <layout class="QHBoxLayout" name="qso_row1">
             <item>
              <widget class="QFrame" name="callsignfieldplaceholder">
               <layout class="QVBoxLayout" name="input_call">
@@ -677,9 +671,6 @@
           </item>
           <item>
            <layout class="QHBoxLayout" name="qso_row2">
-            <property name="spacing">
-             <number>6</number>
-            </property>
             <property name="sizeConstraint">
              <enum>QLayout::SetDefaultConstraint</enum>
             </property>
@@ -796,28 +787,40 @@
              </widget>
             </item>
             <item>
-             <widget class="QRadioButton" name="radioButton_run">
+             <widget class="QPushButton" name="pushButton_run">
               <property name="focusPolicy">
                <enum>Qt::NoFocus</enum>
               </property>
               <property name="accessibleName">
                <string>Run Mode</string>
               </property>
+              <property name="styleSheet">
+               <string notr="true">QPushButton:checked {font-weight: bold;}</string>
+              </property>
               <property name="text">
                <string>Run</string>
+              </property>
+              <property name="checkable">
+               <bool>true</bool>
               </property>
              </widget>
             </item>
             <item>
-             <widget class="QRadioButton" name="radioButton_sp">
+             <widget class="QPushButton" name="pushButton_sp">
               <property name="focusPolicy">
                <enum>Qt::NoFocus</enum>
               </property>
               <property name="accessibleName">
                <string>Search and Pounce</string>
               </property>
+              <property name="styleSheet">
+               <string notr="true">QPushButton:checked {font-weight: bold;}</string>
+              </property>
               <property name="text">
                <string>S&amp;&amp;P</string>
+              </property>
+              <property name="checkable">
+               <bool>true</bool>
               </property>
              </widget>
             </item>

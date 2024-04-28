@@ -23,6 +23,9 @@ class ContestFieldEventFilter(QObject):
             #self.field_signal.emit(source, event)
             event.accept()
             self.callback(source, event)
+        if event.type() == QEvent.Type.FocusOut and isinstance(source, QLineEdit):
+            event.accept()
+            self.callback(source, event)
         return super(ContestFieldEventFilter, self).eventFilter(source, event)
 
 

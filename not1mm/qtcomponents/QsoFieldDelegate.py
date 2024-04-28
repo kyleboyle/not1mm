@@ -1,4 +1,3 @@
-import copy
 import json
 import logging
 import typing
@@ -24,7 +23,9 @@ field_display_names = {
     'time_on': 'timestamp',
     '_flag': '',
     'srx': 'serial_rcv',
+    'srx_string': 'exch_rcv',
     'stx': 'serial_snt',
+    'stx_string': 'exch_snt',
     'force_init': 'eme_initial'
 }
 
@@ -100,20 +101,26 @@ class QsoFieldDelegate(QStyledItemDelegate):
         return generic
 
 def handle_set_data(qso: QsoLog, field_name: str, value ) -> bool:
+    if value == '':
+        value = None
     if isinstance(value, QDateTime):
         value = value.toPyDateTime()
     if getattr(qso, field_name) == value:
         logger.warning(f"abort edit qso record for {qso.id}, {field_name} = {value}, value is not different")
         return False
-    logger.warning(f"update db qso record for {qso.id}, {field_name} = {value}")
+    logger.info(f"update qso record for {qso.id}, {field_name} = {value}")
     if field_name == 'freq':
         band = hamutils.adif.common.convert_freq_to_band(int(value) / 1000_000)
         if not band:
-            raise Exception(f"Frequency " + f'{value:,}'.replace(',', '.') + " does not fall within a band")
+            raise Exception(f"Frequency {value} does not fall within a band")
         qso.band = band
-    if field_name == 'freq_rx':
+        value = int(value)
+    elif field_name == 'freq_rx':
         qso.band_rx = hamutils.adif.common.convert_freq_to_band(int(value) / 1000_000)
-    #TODO re-generate other dependent fields
+        value = int(value)
+    elif field_name == 'call':
+        value = value.strip().upper()
+    #TODO re-generate other dependent fields?
 
     if isinstance(qso._meta.fields.get(field_name), FloatField):
         try:
@@ -148,8 +155,6 @@ def get_table_data(qso: typing.Optional[QsoLog], field_name: str, role: Qt.ItemD
         val = getattr(qso, field_name)
         if isinstance(val, datetime):
             return QDateTime(val.date(), val.time())
-        if field_name == 'rst_sent' or field_name == 'rst_received':
-            return int(val)
         if field_name == 'mode':
             return EnumEditor(val, Enums.adif_enums['mode'])
         elif field_name == 'submode':

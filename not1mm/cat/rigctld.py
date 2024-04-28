@@ -2,7 +2,7 @@ import logging
 import socket
 from typing import Optional
 
-from not1mm.cat import AbstractCat, RigState
+from . import AbstractCat, RigState
 
 logger = logging.getLogger(__name__)
 
@@ -14,6 +14,9 @@ class CatRigctld(AbstractCat):
         self.host = host
         self.port = port
         self.online = False
+
+    def get_id(self):
+        return 'rigctld'
 
     def connect(self):
         self.close()
@@ -33,13 +36,27 @@ class CatRigctld(AbstractCat):
             self.rigctrlsocket.close()
             self.rigctrlsocket = None
 
+    def get_info(self):
+        if not self.online:
+            self.connect()
+        if not self.online:
+            return None
+        try:
+            self.rigctrlsocket.send(b"get_info\n")
+            ret = self.rigctrlsocket.recv(2024).decode().strip()
+            logger.debug(f"inventory from rigctld: {ret}")
+        except:
+            logger.exception("rigctld couldn't get inventory")
+        finally:
+            self.close()
+
     def get_state(self) -> RigState:
         if not self.online:
             self.connect()
             if not self.online:
                 return RigState(error='connection error')
         try:
-            state = RigState()
+            state = RigState(id=self.get_id())
             self.rigctrlsocket.send(b"f\n")
             vfo = self.rigctrlsocket.recv(1024).decode().strip()
             if "RPRT -" not in vfo:
