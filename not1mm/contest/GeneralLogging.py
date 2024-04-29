@@ -18,7 +18,7 @@ class GeneralLogging(AbstractContest):
         return 'DX'
 
     def get_dupe_type(self) -> DupeType:
-        return DupeType.EACH_BAND
+        return DupeType.NONE
 
     @staticmethod
     def get_preferred_column_order() -> list[str]:

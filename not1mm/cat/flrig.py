@@ -2,6 +2,8 @@ import http
 import logging
 import xmlrpc.client
 
+from PyQt6.QtCore import QMutex, QMutexLocker
+
 from . import AbstractCat, RigState
 
 logger = logging.getLogger(__name__)
@@ -12,9 +14,9 @@ class CatFlrig(AbstractCat):
 
     failure_count = 0
 
-    retry_interval = 250
-
     def __init__(self, host, port):
+        super().__init__()
+        self.mutex = QMutex()
         self.server = None
         self.host = host
         self.port = port
@@ -45,6 +47,7 @@ class CatFlrig(AbstractCat):
             self.online = False
 
     def get_info(self):
+        locker = QMutexLocker(self.mutex)
         if not self.online:
             self.connect()
 
@@ -61,21 +64,15 @@ class CatFlrig(AbstractCat):
                 return None
 
     def get_state(self):
-
+        locker = QMutexLocker(self.mutex)
         if not self.online:
             self.connect()
             if not self.online:
-                if self.failure_count == 10:
-                    self.rig_poll_timer.stop()
-                    self.rig_poll_timer.start(self.retry_interval * 20)
-                if self.failure_count == 30:
-                    self.rig_poll_timer.stop()
-                    self.rig_poll_timer.start(self.retry_interval * 40)
                 self.failure_count += 1
+                if self.failure_count == 10 or self.failure_count == 30:
+                    self.fail_backoff()
                 return RigState(error='Rig unreachable')
-            if self.failure_count > 0:
-                self.rig_poll_timer.stop()
-                self.rig_poll_timer.start(self.retry_interval)
+            self.reset_backoff()
             self.failure_count = 0
         try:
             state = RigState(id=self.get_id())
@@ -98,9 +95,10 @@ class CatFlrig(AbstractCat):
             return RigState(error='Rig unreachable ' + str(exception))
 
     def set_vfo(self, freq: int) -> bool:
+        locker = QMutexLocker(self.mutex)
         try:
-            self.online = True
-            return self.server.rig.set_frequency(float(freq))
+            if self.online:
+                return self.server.rig.set_frequency(float(freq))
         except (
                 ConnectionRefusedError,
                 xmlrpc.client.Fault,
@@ -111,9 +109,10 @@ class CatFlrig(AbstractCat):
         return False
 
     def set_mode(self, mode: str) -> bool:
+        locker = QMutexLocker(self.mutex)
         try:
-            self.online = True
-            return self.server.rig.set_mode(mode)
+            if self.online:
+                return self.server.rig.set_mode(mode)
         except (
                 ConnectionRefusedError,
                 xmlrpc.client.Fault,
@@ -124,9 +123,10 @@ class CatFlrig(AbstractCat):
         return False
 
     def set_power(self, watts) -> bool:
+        locker = QMutexLocker(self.mutex)
         try:
-            self.online = True
-            return self.server.rig.set_power(watts)
+            if self.online:
+                return self.server.rig.set_power(watts)
         except (
                 ConnectionRefusedError,
                 xmlrpc.client.Fault,
@@ -137,9 +137,10 @@ class CatFlrig(AbstractCat):
             return False
 
     def set_ptt(self, is_on: bool) -> bool:
+        locker = QMutexLocker(self.mutex)
         try:
-            self.online = True
-            return self.server.rig.set_ptt(1 if is_on else 0)
+            if self.online:
+                return self.server.rig.set_ptt(1 if is_on else 0)
         except (
                 ConnectionRefusedError,
                 xmlrpc.client.Fault,

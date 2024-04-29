@@ -461,6 +461,13 @@ class MainWindow(QtWidgets.QMainWindow):
     def toggle_manual_rig(self):
         self.pref['cat_enable_manual'] = not self.pref.get("cat_enable_manual", False)
         fsutils.write_settings({'cat_enable_manual': self.pref['cat_enable_manual']})
+        logger.info("removing pins for radio-based fields to reduce likelihood of incorrect entry")
+        pinned_fields: dict = self.contest.get_setting("pinned_fields", {})
+        if 'freq' in pinned_fields:
+            del pinned_fields['freq']
+        if 'mode' in pinned_fields:
+            del pinned_fields['mode']
+        self.contest.merge_settings({'pinned_fields': pinned_fields})
         self.setup_rig_control()
 
 
@@ -1125,9 +1132,6 @@ class MainWindow(QtWidgets.QMainWindow):
         )
         self.setWindowTitle(line)
 
-    def send_worked_list(self) -> None:
-        appevent.emit(appevent.WorkedList(self.worked_list))
-
     def clearinputs(self) -> None:
         """
         Clears the text input fields and sets focus to callsign field.
@@ -1362,9 +1366,8 @@ class MainWindow(QtWidgets.QMainWindow):
         for field_name, field in self.contest_fields.items():
             macro.replace(f"{{{field_name}}}", field.input_field.text())
 
-        macro = macro.replace(
-            "{EXCH}", self.contact.stx_string
-        )
+        macro = macro.replace("{EXCH}", self.contact.stx_string or '')
+
         return macro
 
     def voice_string(self, the_string: str) -> None:
@@ -1381,30 +1384,39 @@ class MainWindow(QtWidgets.QMainWindow):
         if sd is None:
             logger.warning("Sounddevice/portaudio not installed.")
             return
+
+        # TODO check to make sure the sound device setting is valid. if not, default to
+        # first in list. If user is on a laptop it is likely that sound devices change
         op_path = fsutils.USER_DATA_PATH / 'operator' / self.current_op
         if "[" in the_string:
             sub_string = the_string.strip("[]").lower()
             filename = f"{str(op_path)}/{sub_string}.wav"
             if Path(filename).is_file():
                 logger.debug("Voicing: %s", filename)
-                data, _fs = sf.read(filename, dtype="float32")
-                self.ptt_on()
                 try:
+                    data, _fs = sf.read(filename, dtype="float32")
+                    self.ptt_on()
+
                     sd.default.device = self.pref.get("sounddevice", "default")
                     sd.default.samplerate = 44100.0
                     sd.play(data, blocking=False)
                     # _status = sd.wait()
                     # https://snyk.io/advisor/python/sounddevice/functions/sounddevice.PortAudioError
-                except sd.PortAudioError as err:
-                    logger.warning("%s", f"{err}")
+                except Exception as err:
+                    self.show_message_box(f"Couldn't play audio {filename}: {err}")
+                    logger.exception("Could play audio")
 
                 self.ptt_off()
             return
         self.ptt_on()
         for letter in the_string.lower():
-            if letter in "abcdefghijklmnopqrstuvwxyz 1234567890":
+            if letter in "abcdefghijklmnopqrstuvwxyz 1234567890/":
+
                 if letter == " ":
                     letter = "space"
+                if letter == '/':
+                    letter = "stroke"
+
                 filename = f"{str(op_path)}/{letter}.wav"
                 if Path(filename).is_file():
                     logger.debug("Voicing: %s", filename)
@@ -1414,8 +1426,9 @@ class MainWindow(QtWidgets.QMainWindow):
                         sd.default.samplerate = 44100.0
                         sd.play(data, blocking=False)
                         logger.debug("%s", f"{sd.wait()}")
-                    except sd.PortAudioError as err:
-                        logger.warning("%s", f"{err}")
+                    except Exception as err:
+                        self.show_message_box(f"Couldn't play audio {filename}: {err}")
+                        logger.exception("Could play audio")
         self.ptt_off()
 
     def ptt_on(self) -> None:
@@ -1426,7 +1439,7 @@ class MainWindow(QtWidgets.QMainWindow):
         if self.rig_control:
             self.leftdot.setPixmap(self.greendot)
             app.processEvents()
-            self.rig_control.ptt_on()
+            self.rig_control.set_ptt(True)
 
     def ptt_off(self) -> None:
         """
@@ -1436,7 +1449,7 @@ class MainWindow(QtWidgets.QMainWindow):
         if self.rig_control:
             self.leftdot.setPixmap(self.reddot)
             app.processEvents()
-            self.rig_control.ptt_off()
+            self.rig_control.set_ptt(False)
 
     def process_function_key(self, function_key) -> None:
         """

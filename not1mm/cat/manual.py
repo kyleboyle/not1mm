@@ -14,6 +14,7 @@ class CatManual(AbstractCat):
     count = 0
 
     def __init__(self):
+        super().__init__()
         self.settings = fsutils.read_settings()
         event.register(event.QsoAdded, self.event_qso_added)
 

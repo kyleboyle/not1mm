@@ -2,6 +2,8 @@ import logging
 import socket
 from typing import Optional
 
+from PyQt6.QtCore import QMutex, QMutexLocker
+
 from . import AbstractCat, RigState
 
 logger = logging.getLogger(__name__)
@@ -10,6 +12,8 @@ class CatRigctld(AbstractCat):
     rigctrlsocket: Optional[socket.socket]
 
     def __init__(self, host: str, port: int) -> None:
+        super().__init__()
+        self.mutex = QMutex()
         self.rigctrlsocket = None
         self.host = host
         self.port = port
@@ -37,6 +41,7 @@ class CatRigctld(AbstractCat):
             self.rigctrlsocket = None
 
     def get_info(self):
+        locker = QMutexLocker(self.mutex)
         if not self.online:
             self.connect()
         if not self.online:
@@ -51,6 +56,7 @@ class CatRigctld(AbstractCat):
             self.close()
 
     def get_state(self) -> RigState:
+        locker = QMutexLocker(self.mutex)
         if not self.online:
             self.connect()
             if not self.online:
@@ -83,6 +89,7 @@ class CatRigctld(AbstractCat):
 
     def set_vfo(self, freq: int) -> bool:
         """sets the radios vfo"""
+        locker = QMutexLocker(self.mutex)
         if self.rigctrlsocket:
             try:
                 self.rigctrlsocket.send(bytes(f"F {freq}\n", "utf-8"))
@@ -97,6 +104,7 @@ class CatRigctld(AbstractCat):
 
     def set_mode(self, mode: str) -> bool:
         """sets the radios mode"""
+        locker = QMutexLocker(self.mutex)
         if self.rigctrlsocket:
             try:
                 self.rigctrlsocket.send(bytes(f"M {mode} 0\n", "utf-8"))
@@ -110,7 +118,9 @@ class CatRigctld(AbstractCat):
         return False
 
     def set_power(self, watts) -> bool:
-        if watts.isnumeric() and int(watts) >= 1 and int(watts) <= 100:
+        locker = QMutexLocker(self.mutex)
+
+        if watts >= 1 and watts <= 100:
             rig_cmd = bytes(f"L RFPOWER {str(float(watts) / 100)}\n", "utf-8")
             try:
                 self.rigctrlsocket.send(rig_cmd)
@@ -123,6 +133,7 @@ class CatRigctld(AbstractCat):
 
     def set_ptt(self, is_on) -> bool:
         """Toggle PTT state on"""
+        locker = QMutexLocker(self.mutex)
 
         # T, set_ptt 'PTT'
         # Set 'PTT'.

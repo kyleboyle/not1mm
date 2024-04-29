@@ -390,7 +390,8 @@ class BandMapWindow(DockWidget):
         step, _digits = self.determine_step_digits()
 
         result: list[Spot] = Spot.select().where(Spot.freq_hz.between(
-            self.currentBand.start * 1_000_000, self.currentBand.end * 1_000_000))
+            self.currentBand.start * 1_000_000, self.currentBand.end * 1_000_000))\
+            .order_by(Spot.freq_hz.desc()).limit(200)
         #logger.debug(f"{len(result)} spots in range {self.currentBand.start} - {self.currentBand.end}")
 
         if result:
