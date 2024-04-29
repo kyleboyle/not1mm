@@ -13,4 +13,4 @@ class RigState:
     error: Optional[str] = None
     is_vfob_active: Optional[bool] = False
     is_split: Optional[bool] = False
-    is_ppt: Optional[bool] = False
+    is_ptt: Optional[bool] = False

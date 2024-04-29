@@ -10,6 +10,7 @@ class CatManual(AbstractCat):
     vfo: int = None
     mode: str = None
     power: int = None
+    ptt = False
     settings: dict
     count = 0
 
@@ -41,6 +42,7 @@ class CatManual(AbstractCat):
         state.power = self.power
         state.id = "Manual"
         state.rig_name = "Manual"
+        state.is_ptt = self.ptt
         return state
 
     def get_id(self):
@@ -59,4 +61,5 @@ class CatManual(AbstractCat):
         return True
 
     def set_ptt(self, is_on: bool) -> bool:
+        self.ptt = is_on
         return True

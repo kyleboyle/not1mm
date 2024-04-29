@@ -78,7 +78,7 @@ class CatFlrig(AbstractCat):
             state = RigState(id=self.get_id())
             state.vfoa_hz = int(self.server.rig.get_vfo())
             state.mode = self.server.rig.get_mode()
-            state.is_ppt = self.server.rig.get_ptt() == '1'
+            state.is_ptt = self.server.rig.get_ptt() == '1'
             state.power = self.server.rig.get_power()
             try:
                 state.bandwidth_hz = int(self.server.rig.get_bw()[0])

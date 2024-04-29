@@ -77,7 +77,7 @@ class CatRigctld(AbstractCat):
             state.power = int(float(self.rigctrlsocket.recv(1024).decode().strip()) * 100)
 
             self.rigctrlsocket.send(b"t\n")
-            state.is_ppt = self.rigctrlsocket.recv(1024).decode().strip == 1
+            state.is_ptt = self.rigctrlsocket.recv(1024).decode().strip == 1
             return state
         except IndexError as exception:
             logger.debug("%s", f"{exception}")

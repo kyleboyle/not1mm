@@ -30,14 +30,10 @@ from not1mm.cat.rigctld import CatRigctld
 from not1mm.qsoeditwindow import QsoEditWindow
 from not1mm.qtcomponents.AdifExport import AdifExport
 from not1mm.qtcomponents.CabrilloExport import CabrilloExport
+from not1mm.qtcomponents.VoiceAudio import VoiceAudio
 from .qtcomponents.AdifImport import AdifImport
 
-try:
-    import sounddevice as sd
-except OSError as exception:
-    print(exception)
-    print("portaudio is not installed")
-    sd = None
+
 import soundfile as sf
 from PyQt6 import QtCore, QtGui, QtWidgets, uic
 from PyQt6.QtCore import QDir, Qt, QByteArray, QEvent, QTimer
@@ -109,6 +105,8 @@ QFrame#Button_Row1 QPushButton, QFrame#Button_Row2 QPushButton {
 """
 logger = logging.getLogger("__main__")
 
+_ESCAPE_DOUBLE_TAP_TIME_MS = 200
+
 class MainWindow(QtWidgets.QMainWindow):
 
     contest: Contest = None
@@ -162,6 +160,10 @@ class MainWindow(QtWidgets.QMainWindow):
     dx_entity: QLabel
     flag_label: QLabel
 
+    audio_thread: VoiceAudio = None
+
+    last_escape_datetime: datetime.datetime = None
+
     bigcty = BigCty(fsutils.APP_DATA_PATH / 'cty.json')
 
     def __init__(self, *args, **kwargs):
@@ -182,8 +184,6 @@ class MainWindow(QtWidgets.QMainWindow):
         uic.loadUi(data_path, self)
 
         self.cw_entry.hide()
-        self.leftdot.hide()
-        self.rightdot.hide()
         self.mscp = SCP(fsutils.APP_DATA_PATH)
 
         self.dupe_indicator.hide()
@@ -231,14 +231,11 @@ class MainWindow(QtWidgets.QMainWindow):
         self.score.setText("0")
 
         icon_path = fsutils.APP_DATA_PATH
-        self.greendot = QtGui.QPixmap(str(icon_path / "greendot.png"))
-        self.reddot = QtGui.QPixmap(str(icon_path / "reddot.png"))
-        self.leftdot.setPixmap(self.greendot)
-        self.rightdot.setPixmap(self.reddot)
 
         self.radio_grey = QtGui.QPixmap(str(icon_path / "radio_grey.png"))
         self.radio_red = QtGui.QPixmap(str(icon_path / "radio_red.png"))
         self.radio_green = QtGui.QPixmap(str(icon_path / "radio_green.png"))
+        self.radio_ptt = QtGui.QPixmap(str(icon_path / "radio_ptt.png"))
         self.radio_icon.setPixmap(self.radio_grey)
 
         self.F1.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.CustomContextMenu)
@@ -521,7 +518,7 @@ class MainWindow(QtWidgets.QMainWindow):
         state : int
         The state of the CAT icon. 0 = grey, 1 = red, 2 = green
         """
-        displaystate = [self.radio_grey, self.radio_red, self.radio_green]
+        displaystate = [self.radio_grey, self.radio_red, self.radio_green, self.radio_ptt]
         try:
             self.radio_icon.setPixmap(displaystate[state])
         except (IndexError, TypeError) as err:
@@ -1051,14 +1048,22 @@ class MainWindow(QtWidgets.QMainWindow):
             if dx:
                 appevent.emit(appevent.FindDx(dx))
             return
-        if event.key() == Qt.Key.Key_Escape and modifier != Qt.KeyboardModifier.ControlModifier:  # pylint: disable=no-member
-            self.clearinputs()
+        if event.key() == Qt.Key.Key_Escape and modifier != Qt.KeyboardModifier.ControlModifier:
+            now = datetime.datetime.utcnow()
+            if not self.last_escape_datetime or now - self.last_escape_datetime > datetime.timedelta(milliseconds=_ESCAPE_DOUBLE_TAP_TIME_MS):
+                # single escape press
+                if self.cw is not None:
+                    if self.cw.servertype == 1:
+                        self.cw.sendcw("\x1b4")
+                        return
+                if self.audio_thread:
+                    self.audio_thread.stop_sound()
+                self.callsign_entry.input_field.setFocus()
+                self.last_escape_datetime = now
+            else:
+                # escape double tap
+                self.clearinputs()
             return
-        if event.key() == Qt.Key.Key_Escape and modifier == Qt.KeyboardModifier.ControlModifier:
-            if self.cw is not None:
-                if self.cw.servertype == 1:
-                    self.cw.sendcw("\x1b4")
-                    return
         if event.key() == Qt.Key.Key_Up:
             appevent.emit(appevent.BandmapSpotPrev())
             return
@@ -1371,85 +1376,13 @@ class MainWindow(QtWidgets.QMainWindow):
         return macro
 
     def voice_string(self, the_string: str) -> None:
-        """
-        voices string using nato phonetics.
+        self.audio_thread = VoiceAudio(the_string, self.current_op, self.rig_control)
+        self.audio_thread.finished.connect(self.audio_finished)
+        self.audio_thread.start()
 
-        Parameters
-        ----------
-        the_string : str
-        String to voicify.
-        """
-
-        logger.debug("Voicing: %s", the_string)
-        if sd is None:
-            logger.warning("Sounddevice/portaudio not installed.")
-            return
-
-        # TODO check to make sure the sound device setting is valid. if not, default to
-        # first in list. If user is on a laptop it is likely that sound devices change
-        op_path = fsutils.USER_DATA_PATH / 'operator' / self.current_op
-        if "[" in the_string:
-            sub_string = the_string.strip("[]").lower()
-            filename = f"{str(op_path)}/{sub_string}.wav"
-            if Path(filename).is_file():
-                logger.debug("Voicing: %s", filename)
-                try:
-                    data, _fs = sf.read(filename, dtype="float32")
-                    self.ptt_on()
-
-                    sd.default.device = self.pref.get("sounddevice", "default")
-                    sd.default.samplerate = 44100.0
-                    sd.play(data, blocking=False)
-                    # _status = sd.wait()
-                    # https://snyk.io/advisor/python/sounddevice/functions/sounddevice.PortAudioError
-                except Exception as err:
-                    self.show_message_box(f"Couldn't play audio {filename}: {err}")
-                    logger.exception("Could play audio")
-
-                self.ptt_off()
-            return
-        self.ptt_on()
-        for letter in the_string.lower():
-            if letter in "abcdefghijklmnopqrstuvwxyz 1234567890/":
-
-                if letter == " ":
-                    letter = "space"
-                if letter == '/':
-                    letter = "stroke"
-
-                filename = f"{str(op_path)}/{letter}.wav"
-                if Path(filename).is_file():
-                    logger.debug("Voicing: %s", filename)
-                    data, _fs = sf.read(filename, dtype="float32")
-                    try:
-                        sd.default.device = self.pref.get("sounddevice", "default")
-                        sd.default.samplerate = 44100.0
-                        sd.play(data, blocking=False)
-                        logger.debug("%s", f"{sd.wait()}")
-                    except Exception as err:
-                        self.show_message_box(f"Couldn't play audio {filename}: {err}")
-                        logger.exception("Could play audio")
-        self.ptt_off()
-
-    def ptt_on(self) -> None:
-        """
-        Turn on ptt for rig.
-        """
-        logger.debug("PTT On")
-        if self.rig_control:
-            self.leftdot.setPixmap(self.greendot)
-            app.processEvents()
-            self.rig_control.set_ptt(True)
-
-    def ptt_off(self) -> None:
-        """
-        Turn off ptt for rig.
-        """
-        logger.debug("PTT Off")
-        if self.rig_control:
-            self.leftdot.setPixmap(self.reddot)
-            app.processEvents()
-            self.rig_control.set_ptt(False)
+    def audio_finished(self):
+        self.audio_thread.deleteLater()
+        self.audio_thread = None
 
     def process_function_key(self, function_key) -> None:
         """
@@ -2234,11 +2167,14 @@ class MainWindow(QtWidgets.QMainWindow):
             band = getband(str(self.radio_state.vfoa_hz))
             self.set_band_indicator(band)
             self.set_window_title()
+            if self.radio_state.is_ptt:
+                self.set_radio_icon(3)
 
     def set_radio_icon_tooltip(self):
         if self.radio_state.vfoa_hz is None:
             return
-        self.radio_icon.setToolTip(f"<table><tr><td>vfo a</td><td>{self.radio_state.vfoa_hz:,}</td></tr>"
+        self.radio_icon.setToolTip(f"<table><tr><td>rig</td><td>{self.radio_state.id}</td></tr>"
+                                   f"<tr><td>vfo a</td><td>{self.radio_state.vfoa_hz:,}</td></tr>"
                                    f"<tr><td>mode</td><td>{self.radio_state.mode}</td></tr>"
                                    f"<tr><td>vfo b</td><td>{self.radio_state.vfob_hz}</td></tr>"
                                    f"<tr><td>bandwidth</td><td>{self.radio_state.bandwidth_hz}</td></tr>"

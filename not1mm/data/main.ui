@@ -730,20 +730,6 @@
              </spacer>
             </item>
             <item>
-             <widget class="QLabel" name="leftdot">
-              <property name="text">
-               <string/>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QLabel" name="rightdot">
-              <property name="text">
-               <string/>
-              </property>
-             </widget>
-            </item>
-            <item>
              <widget class="QSpinBox" name="cw_speed">
               <property name="sizePolicy">
                <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
