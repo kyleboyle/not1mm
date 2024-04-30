@@ -49,7 +49,6 @@ class AbstractCat(QThread):
 
     def run(self) -> None:
         self.rig_poll_timer.timeout.connect(self._poll_radio)
-        #self.finished.connect(self.deleteLater)
         self.rig_poll_timer.start(self.poll_interval_ms)
 
         loop = QEventLoop()
@@ -57,6 +56,7 @@ class AbstractCat(QThread):
 
     def close(self):
         self.quit()
+        self.wait(400)
 
     def start_poll_loop(self) -> None:
         self.start()

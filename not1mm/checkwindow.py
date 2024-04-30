@@ -7,19 +7,21 @@ Check Window
 
 import logging
 import os
+from datetime import datetime, timedelta
 from json import loads
 
 import Levenshtein
 from PyQt6 import uic
 from PyQt6.QtCore import QThread
 from PyQt6.QtGui import QMouseEvent
-from PyQt6.QtWidgets import QLabel, QVBoxLayout, QWidget
+from PyQt6.QtWidgets import QLabel, QVBoxLayout, QWidget, QGraphicsOpacityEffect
 
 import not1mm.fsutils as fsutils
 import not1mm.lib.event as appevent
 
 from not1mm.lib.super_check_partial import SCP
 from not1mm.model import QsoLog
+from not1mm.model.inmemory import Spot
 from not1mm.qtcomponents.DockWidget import DockWidget
 
 logger = logging.getLogger(__name__)
@@ -34,8 +36,6 @@ class ScpWorker(QThread):
         self.scp = scp
 
     def run(self):
-        # TODO the sorting may be slightly wrong in some circumstances.
-        # eg: call ve9kz shows ve9bk before ve9kk
         self.result = self.scp.super_check(self.call)
         self.result = filter(lambda x: '#' not in x, self.result)
 
@@ -58,11 +58,13 @@ class CheckWindow(DockWidget):
 
     call: str = None
 
+    last_callsign_count_datetime: datetime = None
+    callsign_count: int = None
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         appevent.register(appevent.CallChanged, self.event_call_change)
-        appevent.register(appevent.CheckSpots, self.event_check_spots)
 
         self.load_pref()
 
@@ -106,15 +108,30 @@ class CheckWindow(DockWidget):
             if len(self.call) <= 12:
                 self.master_list(self.call)
             self.qsolog_list(self.call)
-
-    def event_check_spots(self, event: appevent.CheckSpots):
-        self.dxc_list(event.spots)
+            self.dxc_list(Spot.get_like_calls(event.call))
 
     def clear_lists(self) -> None:
-        # TODO show count from each source when a search isn't active
         self.populate_layout(self.masterLayout, [])
+        self.show_count(self.masterLayout, len(self.scp.scp or []))
         self.populate_layout(self.qsoLayout, [])
+        self.show_count(self.qsoLayout, self._get_callsign_count())
         self.populate_layout(self.dxcLayout, [])
+
+    def _get_callsign_count(self):
+        now = datetime.utcnow()
+        if not self.last_callsign_count_datetime or not self.callsign_count \
+            or now - self.last_callsign_count_datetime > timedelta(seconds=10):
+            self.callsign_count = QsoLog.select(QsoLog.call.distinct()).count()
+        self.last_callsign_count_datetime = datetime.utcnow()
+        return self.callsign_count
+
+    def show_count(self, layout, count):
+        label = QLabel(str(count))
+        label.setGraphicsEffect(QGraphicsOpacityEffect())
+        label.graphicsEffect().setOpacity(0.5)
+        label.setStyleSheet("QLabel {font-size: 10pt; font-family: 'Roboto Mono'; font-style: italic;}")
+        layout.addWidget(label)
+        layout.addStretch(0)
 
     def master_list(self, call: str) -> None:
         """
@@ -124,10 +141,6 @@ class CheckWindow(DockWidget):
         ----------
         call : str
         Call to get matches for
-
-        Returns
-        -------
-        None
         """
 
         # The super check call is what takes up most of the runtime
@@ -190,7 +203,6 @@ class CheckWindow(DockWidget):
                     #call_items.append((Levenshtein.hamming(call, self.call), label_text, call))
                     call_items.append((diff_score, label_text, call))
 
-        # TODO still some work to do on diffs. eg VE9KB doesnt show well
         call_items = sorted(call_items, key=lambda x: x[0])
         for i in reversed(range(layout.count())):
             if layout.itemAt(i).widget():
@@ -200,10 +212,11 @@ class CheckWindow(DockWidget):
 
         for _, label_text, call in call_items:
             label = CallLabel(label_text, call=call)
-            label.setStyleSheet("QLabel {font-size: 0.8em; letter-spacing: 0.15em; font-family: 'Roboto Mono';}")
+            label.setStyleSheet("QLabel {/*font-size: 11pt; */letter-spacing: 0.15em; font-family: 'Roboto Mono';}")
             layout.addWidget(label)
-        # top aligns
-        layout.addStretch(0)
+        if len(call_items):
+            # top aligns
+            layout.addStretch(0)
 
 class CallLabel(QLabel):
     call: str = None

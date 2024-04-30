@@ -464,9 +464,10 @@ class MainWindow(QtWidgets.QMainWindow):
             del pinned_fields['freq']
         if 'mode' in pinned_fields:
             del pinned_fields['mode']
+        if 'submode' in pinned_fields:
+            del pinned_fields['submode']
         self.contest.merge_settings({'pinned_fields': pinned_fields})
         self.setup_rig_control()
-
 
     def activate_station(self, event: StationActivated):
         self.station = event.station
@@ -628,6 +629,7 @@ class MainWindow(QtWidgets.QMainWindow):
         """
         Configuration Settings was clicked
         """
+        self.callsign_entry.input_field.setFocus()
         self.configuration_dialog = Settings(fsutils.APP_DATA_PATH, self.pref)
         self.configuration_dialog.show()
         if show_tab:
@@ -1277,7 +1279,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.contact.id = uuid.uuid4()
         try:
             self.contact.save(force_insert=True)
-            self.save_pinned_fields(self.contact)
+            self.save_pinned_field_values(self.contact)
             appevent.emit(appevent.QsoAdded(self.contact))
             self.clearinputs()
         except Exception as e:
@@ -1292,7 +1294,7 @@ class MainWindow(QtWidgets.QMainWindow):
         station_dialog = StationSettings(fsutils.APP_DATA_PATH, parent=self)
         station_dialog.open()
 
-    def save_pinned_fields(self, qso: QsoLog):
+    def save_pinned_field_values(self, qso: QsoLog):
         if not qso and not qso.id:
             return
         pinned_fields: dict = self.contest.get_setting("pinned_fields", {})
@@ -1313,6 +1315,8 @@ class MainWindow(QtWidgets.QMainWindow):
         if self.bandmap_window:
             self.bandmap_window.get_settings()
             self.bandmap_window.update()
+        if self.log_window:
+            QTimer.singleShot(0, self.log_window.load_settings)
 
 
     def edit_macro(self, function_key) -> None:
@@ -1488,10 +1492,8 @@ class MainWindow(QtWidgets.QMainWindow):
         else:
             self.set_dark_mode(False)
             self.actionDark_Mode.setChecked(False)
-        app.processEvents()
 
         self.setup_rig_control()
-
         if self.pref.get("cwtype", 0) == 0:
             self.cw = None
         else:
@@ -2283,7 +2285,6 @@ def run() -> None:
     signal.signal(signal.SIGINT, lambda sig, frame: window.close())
 
     window.show()
-
 
     sys.exit(app.exec())
 

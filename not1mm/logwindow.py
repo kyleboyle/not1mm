@@ -22,6 +22,7 @@ from .lib import event as appevent
 from .lib import flags
 from .model import QsoLog, Contest, DeletedQsoLog
 from .qsoeditwindow import QsoEditWindow
+from .qtcomponents.DockWidget import DockWidget
 from .qtcomponents.QsoFieldDelegate import QsoFieldDelegate, handle_set_data, get_table_data, field_display_names
 
 logger = logging.getLogger(__name__)
@@ -165,7 +166,7 @@ class QsoTableModel(QAbstractTableModel):
         return result
 
 
-class LogWindow(QtWidgets.QDockWidget):
+class LogWindow(DockWidget):
 
     db_file_name: str = None
     edit_contact_dialog = None
@@ -388,7 +389,10 @@ class LogWindow(QtWidgets.QDockWidget):
 
     def header_section_resized(self, logical_index: int, old_size: int, new_size: int):
         # replicate changes to station history table
-        self.save_settings()
+        # changing dark mode will reset the column widths back and forth so make sure the user
+        # is actively resizing the columns
+        if self.qsoTable.hasFocus():
+            self.save_settings()
 
     def save_settings(self):
         """settings are the column order and size.

@@ -100,14 +100,6 @@ class RadioState(AppEvent):
     def __init__(self, state: RigState):
         self.state = state
 
-# TODO in memory database should be shared between components
-@dataclass
-class CheckSpots(AppEvent):
-    spots: list[object]
-
-    def __init__(self, spots: list[object]):
-        self.spots = spots
-
 @dataclass
 class ExternalLookupResult(AppEvent):
     result: lookup.ExternalCallLookupService.Result

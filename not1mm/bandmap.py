@@ -101,7 +101,6 @@ class BandMapWindow(DockWidget):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        appevent.register(appevent.CallChanged, self.event_call_changed)
         appevent.register(appevent.GetActiveContestResponse, self.event_contest_status)
         appevent.register(appevent.FindDx, self.event_find_dx)
         appevent.register(appevent.MarkDx, self.event_mark_dx)
@@ -225,13 +224,6 @@ class BandMapWindow(DockWidget):
             & (Spot.freq_hz.between(self.currentBand.start * 1_000_000, self.currentBand.end * 1_000_000))).get()
         if spot:
             appevent.emit(appevent.Tune(spot.freq_hz,  spot.callsign))
-
-    def event_call_changed(self, event: appevent.CallChanged):
-        result = None
-        if event.call:
-            # can be empty
-            result = Spot.get_like_calls(event.call)
-        appevent.emit(appevent.CheckSpots(result))
 
     def event_contest_status(self, event: appevent.GetActiveContestResponse):
         # pre-fill the cluster login station name for convenience
