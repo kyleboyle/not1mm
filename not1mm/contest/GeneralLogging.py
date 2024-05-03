@@ -6,8 +6,8 @@ class GeneralLogging(AbstractContest):
     _fields = [
         ContestField(name='rst_sent', display_label='RST Snd', space_tabs=True, stretch_factor=1, max_chars=3),
         ContestField(name='rst_rcvd', display_label='RST Rcv', space_tabs=True, stretch_factor=1, max_chars=3),
-        ContestField(name='name', display_label='Name', stretch_factor=4, callsign_space_to_here=True),
-        ContestField(name='comment', display_label='Comment', stretch_factor=4),
+        #ContestField(name='name', display_label='Name', stretch_factor=4, callsign_space_to_here=True),
+        #ContestField(name='comment', display_label='Comment', stretch_factor=4),
     ]
 
     def __init__(self, contest: Contest):

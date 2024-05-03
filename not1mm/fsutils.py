@@ -63,6 +63,7 @@ def openFileWithOS(file):
         subprocess.Popen(["xdg-open", file])
         # os.system(f"xdg-open {fsutils.USER_DATA_PATH / macro_file}")
 
+
 def read_settings() -> dict:
     if os.path.exists(CONFIG_FILE):
         with open(CONFIG_FILE, "rt", encoding="utf-8") as file_descriptor:

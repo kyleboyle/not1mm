@@ -33,15 +33,13 @@ from not1mm.qtcomponents.CabrilloExport import CabrilloExport
 from not1mm.qtcomponents.VoiceAudio import VoiceAudio
 from .qtcomponents.AdifImport import AdifImport
 
-
-import soundfile as sf
 from PyQt6 import QtCore, QtGui, QtWidgets, uic
 from PyQt6.QtCore import QDir, Qt, QByteArray, QEvent, QTimer
-from PyQt6.QtGui import QFontDatabase, QKeyEvent, QAction, QCursor, QMouseEvent
+from PyQt6.QtGui import QFontDatabase, QKeyEvent, QCursor, QMouseEvent
 from PyQt6.QtWidgets import QFileDialog, QLineEdit, QLabel, QHBoxLayout, QMessageBox, QMenu
 
 import not1mm.fsutils as fsutils
-from . import model, contest, cat
+from . import model, contest
 from .bandmap import BandMapWindow
 from .callprofile import ExternalCallProfileWindow
 from .checkwindow import CheckWindow
@@ -64,7 +62,7 @@ from .lib.ham_utility import (
 )
 from .lib.lookup import HamQTH, QRZlookup, ExternalCallLookupService
 from .lib.n1mm import N1MM
-from .lib.settings import Settings
+from not1mm.qtcomponents.settings import Settings
 from .lib.super_check_partial import SCP
 from .lib.version import __version__
 from .lib.versiontest import VersionTest
@@ -139,6 +137,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
     qso_row1: QHBoxLayout
     qso_row2: QHBoxLayout
+    qso_row3: QHBoxLayout
     callsign_entry: QsoEntryField
     rst_sent_entry: QsoEntryField
     rst_received_entry: QsoEntryField
@@ -421,11 +420,10 @@ class MainWindow(QtWidgets.QMainWindow):
             fsutils.write_settings({"active_station_id": None})
             self.edit_station_settings()
         else:
-            appevent.emit(appevent.StationActivated(self.station))
             if not self.contest:
                 fsutils.write_settings({"active_contest_id": None})
-                self.edit_contest()
-            else:
+            appevent.emit(appevent.StationActivated(self.station))
+            if self.contest:
                 appevent.emit(appevent.ContestActivated(self.contest))
 
     def context_menu(self):
@@ -683,6 +681,7 @@ class MainWindow(QtWidgets.QMainWindow):
         contest_dialog.open()
 
     def activate_contest(self, event: appevent.ContestActivated) -> None:
+        self.pref['active_contest_id'] = event.contest.id
         self.contest = event.contest
         self.contest_plugin = contest.contests_by_cabrillo_id[self.contest.fk_contest_meta.cabrillo_name](self.contest)
         self.load_contest()
@@ -740,7 +739,7 @@ class MainWindow(QtWidgets.QMainWindow):
         assert self.contest
         assert self.contest_plugin
         # clear out previous contest
-        for layout in [self.qso_row1, self.qso_row2]:
+        for layout in [self.qso_row1, self.qso_row2, self.qso_row3]:
             for i in reversed(range(layout.count())):
                 widgetToRemove = layout.itemAt(i).widget()
                 # remove it from the layout list
@@ -750,15 +749,31 @@ class MainWindow(QtWidgets.QMainWindow):
                 if widgetToRemove not in [self.callsign_entry, self.rst_sent_entry, self.rst_received_entry]:
                     widgetToRemove.deleteLater()
 
-        # define and populate input fields for contest fields
+        # merge entry field list from contest plugin with any additional customized fields defined by the user
+        qso_fields = list(self.contest_plugin.get_qso_fields())
+        is_callspace_space_target_defined = any([x.callsign_space_to_here for x in qso_fields])
+        user_tab_order = []
+        for user_field in self.contest.get_setting('user_fields', []):
+            if user_field['name'] == '[NextLine]':
+                qso_fields.append(ContestFieldNextLine())
+            else:
+                qso_fields.append(ContestField(name=user_field['name'], display_label=user_field['display_label'],
+                                               space_tabs=user_field['space_tabs'], stretch_factor=user_field['stretch_factor'],
+                                               max_chars=user_field['max_chars'], callsign_space_to_here=not is_callspace_space_target_defined))
+
+                user_tab_order.append(user_field['name'])
+                is_callspace_space_target_defined = True
+
+        # define and populate input widgets for contest fields
         # callsign is always first.
         self.qso_row1.addWidget(self.callsign_entry, 4)
         row = self.qso_row1
         self.contest_fields = {'call': self.callsign_entry}
         self.callsign_space_to_input = None
-        for f in self.contest_plugin.get_qso_fields():
+
+        for f in qso_fields:
             if f.__class__ == ContestFieldNextLine:
-                row = self.qso_row2
+                row = self.qso_row2 if row == self.qso_row1 else self.qso_row3
                 continue
 
             field: QsoEntryField
@@ -791,7 +806,8 @@ class MainWindow(QtWidgets.QMainWindow):
             tab_order.remove(x)
 
         tab_order.insert(0, 'call')
-        for i in range(1,len(tab_order)):
+        tab_order.extend(user_tab_order)
+        for i in range(1, len(tab_order)):
             current = self.contest_fields[tab_order[i-1]].input_field
             focus_next = self.contest_fields[tab_order[i]].input_field
             current.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
@@ -999,7 +1015,8 @@ class MainWindow(QtWidgets.QMainWindow):
                 indicator.setStyleSheet("QLabel {color:white; background-color : green;}")
 
     def closeEvent(self, event) -> None:
-
+        if self.rig_control:
+            self.rig_control.close()
         window_state = {
             "window_state": bytes(self.saveState(1).toHex()).decode('ascii'),
             "window_geo": bytes(self.saveGeometry().toHex()).decode('ascii'),
@@ -1130,7 +1147,7 @@ class MainWindow(QtWidgets.QMainWindow):
             vfoa = 0.0
         contest_name = ""
         if self.contest:
-            contest_name = self.contest.fk_contest_meta.display_name
+            contest_name = self.contest.get_display_name()
         line = (
             f"vfoa:{round(vfoa, 2):,g} ".replace(',', '.') +
             f"mode:{self.radio_state.mode} "
@@ -1438,7 +1455,7 @@ class MainWindow(QtWidgets.QMainWindow):
         except IOError as exception:
             logger.critical("writepreferences: %s", exception)
 
-    def readpreferences(self) -> None:
+    def readpreferences(self, updated_fields = None) -> None:
         """
         Restore preferences if they exist, otherwise create some sane defaults.
         """
@@ -1456,6 +1473,10 @@ class MainWindow(QtWidgets.QMainWindow):
                     fsutils.write_settings(pref_ref)
         except IOError as exception:
             logger.critical("Error: %s", exception)
+
+        if updated_fields is not None and 'contest_fields' in updated_fields:
+            self.contest = Contest.get_by_id(self.contest._pk)
+            self.load_contest()
 
         self.look_up = None
         try:

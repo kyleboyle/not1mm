@@ -259,7 +259,7 @@ class LogWindow(DockWidget):
 
     def populate_qso_log(self) -> None:
         self.setWindowTitle(
-            f"QSO Log - {self.db_file_name} - ({self.contest.id}){self.contest.fk_contest_meta.display_name}"
+            f"QSO Log - {self.db_file_name} - {self.contest.label or ''} ({self.contest.id}){self.contest.fk_contest_meta.display_name}"
             f"[{self.contest.start_date.date()}]"
             f" - {QsoLog.select().where(QsoLog.fk_contest == self.contest).count()}"
         )

@@ -83,6 +83,7 @@ class ContestMeta(BaseModel):
 class Contest(BaseModel):
     fk_contest_meta = ForeignKeyField(ContestMeta)
     start_date = DateTimeField()
+    label = CharField(null=True)
     deleted = CharField(default=False)
     fk_station = ForeignKeyField(Station)
     assisted_category = CharField(30, null=True)
@@ -100,6 +101,11 @@ class Contest(BaseModel):
     time_category = CharField(30, null=True)
     transmitter_category = CharField(30, null=True)
     settings = JSONField(default={})
+
+    def get_display_name(self):
+        if self.label:
+            return self.label
+        return f"{self.fk_contest_meta.display_name} {self.start_date.date()}"
 
     def merge_settings(self, to_merge: dict[str: Any]):
         self.settings.update(to_merge)

@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>518</width>
-    <height>723</height>
+    <width>597</width>
+    <height>807</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -17,63 +17,13 @@
    <bool>false</bool>
   </property>
   <layout class="QGridLayout" name="gridLayout">
-   <item row="19" column="2" colspan="2">
-    <widget class="QLineEdit" name="operators">
-     <property name="accessibleName">
-      <string>Operators</string>
-     </property>
-     <property name="accessibleDescription">
-      <string>operators in contest.</string>
-     </property>
-     <property name="styleSheet">
-      <string notr="true">text-transform: uppercase;</string>
-     </property>
-    </widget>
-   </item>
-   <item row="5" column="2">
-    <widget class="QComboBox" name="fk_station"/>
-   </item>
-   <item row="17" column="3" rowspan="2">
-    <widget class="QLabel" name="label_15">
-     <property name="text">
-      <string>Exclude RST</string>
-     </property>
-    </widget>
-   </item>
-   <item row="10" column="0">
-    <widget class="QLabel" name="label_5">
-     <property name="text">
-      <string>Band</string>
-     </property>
-     <property name="alignment">
-      <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-     </property>
-    </widget>
-   </item>
-   <item row="20" column="2" colspan="2">
-    <widget class="QPlainTextEdit" name="soapbox">
-     <property name="accessibleName">
-      <string>Soap Box</string>
-     </property>
-     <property name="accessibleDescription">
-      <string>The soap box</string>
-     </property>
-    </widget>
-   </item>
-   <item row="6" column="0">
-    <widget class="QLabel" name="label_3">
-     <property name="text">
-      <string>Start UTC</string>
-     </property>
-     <property name="alignment">
-      <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-     </property>
-    </widget>
-   </item>
-   <item row="1" column="0" colspan="4">
+   <item row="1" column="0" colspan="3">
     <layout class="QHBoxLayout" name="horizontalLayout">
      <item>
       <widget class="QPushButton" name="button_delete">
+       <property name="focusPolicy">
+        <enum>Qt::ClickFocus</enum>
+       </property>
        <property name="text">
         <string>Delete</string>
        </property>
@@ -123,434 +73,7 @@
      </item>
     </layout>
    </item>
-   <item row="16" column="2" colspan="2">
-    <widget class="QComboBox" name="transmitter_category">
-     <property name="accessibleName">
-      <string>Transmitter</string>
-     </property>
-     <property name="accessibleDescription">
-      <string>Transmitter category.</string>
-     </property>
-     <item>
-      <property name="text">
-       <string>ONE</string>
-      </property>
-     </item>
-     <item>
-      <property name="text">
-       <string>TWO</string>
-      </property>
-     </item>
-     <item>
-      <property name="text">
-       <string>LIMITED</string>
-      </property>
-     </item>
-     <item>
-      <property name="text">
-       <string>UNLIMITED</string>
-      </property>
-     </item>
-     <item>
-      <property name="text">
-       <string>SWL</string>
-      </property>
-     </item>
-    </widget>
-   </item>
-   <item row="5" column="0">
-    <widget class="QLabel" name="label">
-     <property name="text">
-      <string>My Station / Call</string>
-     </property>
-     <property name="alignment">
-      <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-     </property>
-    </widget>
-   </item>
-   <item row="15" column="0">
-    <widget class="QLabel" name="label_10">
-     <property name="text">
-      <string>Assisted</string>
-     </property>
-     <property name="alignment">
-      <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-     </property>
-    </widget>
-   </item>
-   <item row="0" column="2" colspan="2">
-    <widget class="QComboBox" name="select_contest"/>
-   </item>
-   <item row="13" column="2" colspan="2">
-    <widget class="QComboBox" name="overlay_category">
-     <property name="accessibleName">
-      <string>Overlay category</string>
-     </property>
-     <property name="accessibleDescription">
-      <string>Overlay category</string>
-     </property>
-     <item>
-      <property name="text">
-       <string>N/A</string>
-      </property>
-     </item>
-     <item>
-      <property name="text">
-       <string>CLASSIC</string>
-      </property>
-     </item>
-     <item>
-      <property name="text">
-       <string>NOVICE-TECH</string>
-      </property>
-     </item>
-     <item>
-      <property name="text">
-       <string>OVER-50</string>
-      </property>
-     </item>
-     <item>
-      <property name="text">
-       <string>ROOKIE</string>
-      </property>
-     </item>
-     <item>
-      <property name="text">
-       <string>TB-WIRES</string>
-      </property>
-     </item>
-     <item>
-      <property name="text">
-       <string>YOUTH</string>
-      </property>
-     </item>
-     <item>
-      <property name="text">
-       <string>YL</string>
-      </property>
-     </item>
-    </widget>
-   </item>
-   <item row="15" column="2" colspan="2">
-    <widget class="QComboBox" name="assisted_category">
-     <property name="accessibleName">
-      <string>Assisted</string>
-     </property>
-     <property name="accessibleDescription">
-      <string>Assisted category.</string>
-     </property>
-     <item>
-      <property name="text">
-       <string>ASSISTED</string>
-      </property>
-     </item>
-     <item>
-      <property name="text">
-       <string>NON-ASSISTED</string>
-      </property>
-     </item>
-    </widget>
-   </item>
-   <item row="9" column="2" colspan="2">
-    <widget class="QComboBox" name="operator_category">
-     <property name="accessibleName">
-      <string>Operator Category</string>
-     </property>
-     <property name="accessibleDescription">
-      <string>Operator category.</string>
-     </property>
-     <item>
-      <property name="text">
-       <string>SINGLE-OP</string>
-      </property>
-     </item>
-     <item>
-      <property name="text">
-       <string>MULTI-OP</string>
-      </property>
-     </item>
-     <item>
-      <property name="text">
-       <string>CHECKLOG</string>
-      </property>
-     </item>
-    </widget>
-   </item>
-   <item row="17" column="0" rowspan="2">
-    <widget class="QLabel" name="label_12">
-     <property name="text">
-      <string>Sent Exchange</string>
-     </property>
-     <property name="alignment">
-      <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-     </property>
-     <property name="buddy">
-      <cstring>For serial numbers, include 001 where the serial should be place in the exchage. It will be automatically increased and displayed for each QSO.</cstring>
-     </property>
-    </widget>
-   </item>
-   <item row="9" column="0">
-    <widget class="QLabel" name="label_4">
-     <property name="text">
-      <string>Operator</string>
-     </property>
-     <property name="alignment">
-      <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-     </property>
-    </widget>
-   </item>
-   <item row="6" column="2">
-    <widget class="QDateTimeEdit" name="start_date">
-     <property name="accessibleName">
-      <string>Start of contest Date and U T C Time</string>
-     </property>
-     <property name="time">
-      <time>
-       <hour>4</hour>
-       <minute>0</minute>
-       <second>0</second>
-      </time>
-     </property>
-     <property name="maximumDateTime">
-      <datetime>
-       <hour>3</hour>
-       <minute>59</minute>
-       <second>59</second>
-       <year>10000</year>
-       <month>1</month>
-       <day>1</day>
-      </datetime>
-     </property>
-     <property name="currentSection">
-      <enum>QDateTimeEdit::YearSection</enum>
-     </property>
-     <property name="displayFormat">
-      <string>yyyy-MM-dd HH:mm:ss</string>
-     </property>
-     <property name="timeSpec">
-      <enum>Qt::UTC</enum>
-     </property>
-    </widget>
-   </item>
-   <item row="14" column="2" colspan="2">
-    <widget class="QComboBox" name="station_category">
-     <property name="accessibleName">
-      <string>Station type</string>
-     </property>
-     <property name="accessibleDescription">
-      <string>Station type.</string>
-     </property>
-     <item>
-      <property name="text">
-       <string>DISTRIBUTED</string>
-      </property>
-     </item>
-     <item>
-      <property name="text">
-       <string>EXPEDITION</string>
-      </property>
-     </item>
-     <item>
-      <property name="text">
-       <string>FIXED</string>
-      </property>
-     </item>
-     <item>
-      <property name="text">
-       <string>HQ</string>
-      </property>
-     </item>
-     <item>
-      <property name="text">
-       <string>MOBILE</string>
-      </property>
-     </item>
-     <item>
-      <property name="text">
-       <string>PORTABLE</string>
-      </property>
-     </item>
-     <item>
-      <property name="text">
-       <string>ROVER</string>
-      </property>
-     </item>
-     <item>
-      <property name="text">
-       <string>ROVER-LIMITED</string>
-      </property>
-     </item>
-     <item>
-      <property name="text">
-       <string>ROVER-UNLIMITED</string>
-      </property>
-     </item>
-     <item>
-      <property name="text">
-       <string>SCHOOL</string>
-      </property>
-     </item>
-    </widget>
-   </item>
-   <item row="0" column="0">
-    <widget class="QLabel" name="label_16">
-     <property name="text">
-      <string>Select Contest</string>
-     </property>
-     <property name="alignment">
-      <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-     </property>
-    </widget>
-   </item>
-   <item row="13" column="0">
-    <widget class="QLabel" name="label_8">
-     <property name="text">
-      <string>Overlay</string>
-     </property>
-     <property name="alignment">
-      <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-     </property>
-    </widget>
-   </item>
-   <item row="8" column="0" colspan="4">
-    <widget class="Line" name="line">
-     <property name="minimumSize">
-      <size>
-       <width>0</width>
-       <height>0</height>
-      </size>
-     </property>
-     <property name="orientation">
-      <enum>Qt::Horizontal</enum>
-     </property>
-    </widget>
-   </item>
-   <item row="11" column="2" colspan="2">
-    <widget class="QComboBox" name="power_category">
-     <property name="accessibleName">
-      <string>Power Category</string>
-     </property>
-     <property name="accessibleDescription">
-      <string>Power category</string>
-     </property>
-     <item>
-      <property name="text">
-       <string>HIGH</string>
-      </property>
-     </item>
-     <item>
-      <property name="text">
-       <string>LOW</string>
-      </property>
-     </item>
-     <item>
-      <property name="text">
-       <string>QRP</string>
-      </property>
-     </item>
-    </widget>
-   </item>
-   <item row="12" column="2" colspan="2">
-    <widget class="QComboBox" name="mode_category">
-     <property name="accessibleName">
-      <string>Operating mode</string>
-     </property>
-     <property name="accessibleDescription">
-      <string>Mode category</string>
-     </property>
-     <item>
-      <property name="text">
-       <string>CW</string>
-      </property>
-     </item>
-     <item>
-      <property name="text">
-       <string>SSB</string>
-      </property>
-     </item>
-     <item>
-      <property name="text">
-       <string>RTTY</string>
-      </property>
-     </item>
-     <item>
-      <property name="text">
-       <string>PSK</string>
-      </property>
-     </item>
-     <item>
-      <property name="text">
-       <string>SSB+CW</string>
-      </property>
-     </item>
-     <item>
-      <property name="text">
-       <string>DIGITAL</string>
-      </property>
-     </item>
-     <item>
-      <property name="text">
-       <string>SSB+CW+DIGITAL</string>
-      </property>
-     </item>
-     <item>
-      <property name="text">
-       <string>FM</string>
-      </property>
-     </item>
-    </widget>
-   </item>
-   <item row="14" column="0">
-    <widget class="QLabel" name="label_9">
-     <property name="text">
-      <string>Station</string>
-     </property>
-     <property name="alignment">
-      <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-     </property>
-    </widget>
-   </item>
-   <item row="19" column="0">
-    <widget class="QLabel" name="label_13">
-     <property name="text">
-      <string>Operators</string>
-     </property>
-     <property name="alignment">
-      <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-     </property>
-    </widget>
-   </item>
-   <item row="20" column="0">
-    <widget class="QLabel" name="label_14">
-     <property name="text">
-      <string>Soapbox</string>
-     </property>
-     <property name="alignment">
-      <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-     </property>
-    </widget>
-   </item>
-   <item row="2" column="0" colspan="4">
-    <widget class="Line" name="line_2">
-     <property name="orientation">
-      <enum>Qt::Horizontal</enum>
-     </property>
-    </widget>
-   </item>
-   <item row="17" column="2" rowspan="2">
-    <widget class="QLineEdit" name="sent_exchange">
-     <property name="accessibleName">
-      <string>Sent exchange</string>
-     </property>
-     <property name="accessibleDescription">
-      <string>sent exchange, excluding r s t.</string>
-     </property>
-     <property name="styleSheet">
-      <string notr="true">text-transform: uppercase;</string>
-     </property>
-    </widget>
-   </item>
-   <item row="4" column="2" colspan="2">
+   <item row="4" column="1" colspan="2">
     <widget class="QComboBox" name="fk_contest">
      <property name="focusPolicy">
       <enum>Qt::StrongFocus</enum>
@@ -713,155 +236,18 @@
      </item>
     </widget>
    </item>
-   <item row="11" column="0">
-    <widget class="QLabel" name="label_6">
-     <property name="text">
-      <string>Power</string>
+   <item row="5" column="2">
+    <spacer name="horizontalSpacer">
+     <property name="orientation">
+      <enum>Qt::Horizontal</enum>
      </property>
-     <property name="alignment">
-      <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+     <property name="sizeHint" stdset="0">
+      <size>
+       <width>40</width>
+       <height>20</height>
+      </size>
      </property>
-    </widget>
-   </item>
-   <item row="10" column="2" colspan="2">
-    <widget class="QComboBox" name="band_category">
-     <property name="accessibleName">
-      <string>Band Category</string>
-     </property>
-     <property name="accessibleDescription">
-      <string>Band category.</string>
-     </property>
-     <item>
-      <property name="text">
-       <string>ALL</string>
-      </property>
-     </item>
-     <item>
-      <property name="text">
-       <string>160M</string>
-      </property>
-     </item>
-     <item>
-      <property name="text">
-       <string>80M</string>
-      </property>
-     </item>
-     <item>
-      <property name="text">
-       <string>40M</string>
-      </property>
-     </item>
-     <item>
-      <property name="text">
-       <string>20M</string>
-      </property>
-     </item>
-     <item>
-      <property name="text">
-       <string>15M</string>
-      </property>
-     </item>
-     <item>
-      <property name="text">
-       <string>10M</string>
-      </property>
-     </item>
-     <item>
-      <property name="text">
-       <string>6M</string>
-      </property>
-     </item>
-     <item>
-      <property name="text">
-       <string>2M</string>
-      </property>
-     </item>
-     <item>
-      <property name="text">
-       <string>222</string>
-      </property>
-     </item>
-     <item>
-      <property name="text">
-       <string>432</string>
-      </property>
-     </item>
-     <item>
-      <property name="text">
-       <string>902</string>
-      </property>
-     </item>
-     <item>
-      <property name="text">
-       <string>1.2G</string>
-      </property>
-     </item>
-     <item>
-      <property name="text">
-       <string>2.3G</string>
-      </property>
-     </item>
-     <item>
-      <property name="text">
-       <string>3.4G</string>
-      </property>
-     </item>
-     <item>
-      <property name="text">
-       <string>5.7G</string>
-      </property>
-     </item>
-     <item>
-      <property name="text">
-       <string>10G</string>
-      </property>
-     </item>
-     <item>
-      <property name="text">
-       <string>24G</string>
-      </property>
-     </item>
-     <item>
-      <property name="text">
-       <string>47G</string>
-      </property>
-     </item>
-     <item>
-      <property name="text">
-       <string>75G</string>
-      </property>
-     </item>
-     <item>
-      <property name="text">
-       <string>119G</string>
-      </property>
-     </item>
-     <item>
-      <property name="text">
-       <string>142G</string>
-      </property>
-     </item>
-     <item>
-      <property name="text">
-       <string>241G</string>
-      </property>
-     </item>
-     <item>
-      <property name="text">
-       <string>LIGHT</string>
-      </property>
-     </item>
-     <item>
-      <property name="text">
-       <string>VHF-3-BAND</string>
-      </property>
-     </item>
-     <item>
-      <property name="text">
-       <string>VHF-FM-ONLY</string>
-      </property>
-     </item>
-    </widget>
+    </spacer>
    </item>
    <item row="4" column="0">
     <widget class="QLabel" name="label_2">
@@ -873,19 +259,706 @@
      </property>
     </widget>
    </item>
-   <item row="21" column="0" colspan="4">
+   <item row="2" column="0" colspan="3">
+    <widget class="Line" name="line_2">
+     <property name="orientation">
+      <enum>Qt::Horizontal</enum>
+     </property>
+    </widget>
+   </item>
+   <item row="8" column="0" colspan="3">
+    <widget class="QTabWidget" name="tabWidget">
+     <property name="currentIndex">
+      <number>0</number>
+     </property>
+     <widget class="QWidget" name="cabrillo_tab">
+      <attribute name="title">
+       <string>Cabrillo Setup</string>
+      </attribute>
+      <layout class="QGridLayout" name="gridLayout">
+       <item row="0" column="0">
+        <widget class="QLabel" name="label_4">
+         <property name="text">
+          <string>Operator</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+         </property>
+        </widget>
+       </item>
+       <item row="3" column="0">
+        <widget class="QLabel" name="label_7">
+         <property name="text">
+          <string>Mode</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="0">
+        <widget class="QLabel" name="label_6">
+         <property name="text">
+          <string>Power</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="0">
+        <widget class="QLabel" name="label_5">
+         <property name="text">
+          <string>Band</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+         </property>
+        </widget>
+       </item>
+       <item row="6" column="1" colspan="2">
+        <widget class="QComboBox" name="assisted_category">
+         <property name="focusPolicy">
+          <enum>Qt::StrongFocus</enum>
+         </property>
+         <property name="accessibleName">
+          <string>Assisted</string>
+         </property>
+         <property name="accessibleDescription">
+          <string>Assisted category.</string>
+         </property>
+         <item>
+          <property name="text">
+           <string>ASSISTED</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>NON-ASSISTED</string>
+          </property>
+         </item>
+        </widget>
+       </item>
+       <item row="4" column="0">
+        <widget class="QLabel" name="label_8">
+         <property name="text">
+          <string>Overlay</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+         </property>
+        </widget>
+       </item>
+       <item row="8" column="1">
+        <widget class="QLineEdit" name="sent_exchange">
+         <property name="accessibleName">
+          <string>Sent exchange</string>
+         </property>
+         <property name="accessibleDescription">
+          <string>sent exchange, excluding r s t.</string>
+         </property>
+         <property name="styleSheet">
+          <string notr="true">text-transform: uppercase;</string>
+         </property>
+        </widget>
+       </item>
+       <item row="8" column="2">
+        <widget class="QLabel" name="label_15">
+         <property name="text">
+          <string>Exclude RST</string>
+         </property>
+        </widget>
+       </item>
+       <item row="9" column="1">
+        <widget class="QLineEdit" name="operators">
+         <property name="accessibleName">
+          <string>Operators</string>
+         </property>
+         <property name="accessibleDescription">
+          <string>operators in contest.</string>
+         </property>
+         <property name="styleSheet">
+          <string notr="true">text-transform: uppercase;</string>
+         </property>
+        </widget>
+       </item>
+       <item row="7" column="1" colspan="2">
+        <widget class="QComboBox" name="transmitter_category">
+         <property name="focusPolicy">
+          <enum>Qt::StrongFocus</enum>
+         </property>
+         <property name="accessibleName">
+          <string>Transmitter</string>
+         </property>
+         <property name="accessibleDescription">
+          <string>Transmitter category.</string>
+         </property>
+         <item>
+          <property name="text">
+           <string>ONE</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>TWO</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>LIMITED</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>UNLIMITED</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>SWL</string>
+          </property>
+         </item>
+        </widget>
+       </item>
+       <item row="1" column="1" colspan="2">
+        <widget class="QComboBox" name="band_category">
+         <property name="focusPolicy">
+          <enum>Qt::StrongFocus</enum>
+         </property>
+         <property name="accessibleName">
+          <string>Band Category</string>
+         </property>
+         <property name="accessibleDescription">
+          <string>Band category.</string>
+         </property>
+         <item>
+          <property name="text">
+           <string>ALL</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>160M</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>80M</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>40M</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>20M</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>15M</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>10M</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>6M</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>2M</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>222</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>432</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>902</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>1.2G</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>2.3G</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>3.4G</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>5.7G</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>10G</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>24G</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>47G</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>75G</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>119G</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>142G</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>241G</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>LIGHT</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>VHF-3-BAND</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>VHF-FM-ONLY</string>
+          </property>
+         </item>
+        </widget>
+       </item>
+       <item row="3" column="1" colspan="2">
+        <widget class="QComboBox" name="mode_category">
+         <property name="focusPolicy">
+          <enum>Qt::StrongFocus</enum>
+         </property>
+         <property name="accessibleName">
+          <string>Operating mode</string>
+         </property>
+         <property name="accessibleDescription">
+          <string>Mode category</string>
+         </property>
+         <item>
+          <property name="text">
+           <string>CW</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>SSB</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>RTTY</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>PSK</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>SSB+CW</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>DIGITAL</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>SSB+CW+DIGITAL</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>FM</string>
+          </property>
+         </item>
+        </widget>
+       </item>
+       <item row="9" column="0">
+        <widget class="QLabel" name="label_13">
+         <property name="text">
+          <string>Operators</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+         </property>
+        </widget>
+       </item>
+       <item row="7" column="0">
+        <widget class="QLabel" name="label_11">
+         <property name="text">
+          <string>Transmitter</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+         </property>
+        </widget>
+       </item>
+       <item row="8" column="0">
+        <widget class="QLabel" name="label_12">
+         <property name="text">
+          <string>Sent Exchange</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+         </property>
+         <property name="buddy">
+          <cstring>For serial numbers, include 001 where the serial should be place in the exchage. It will be automatically increased and displayed for each QSO.</cstring>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="1" colspan="2">
+        <widget class="QComboBox" name="operator_category">
+         <property name="focusPolicy">
+          <enum>Qt::StrongFocus</enum>
+         </property>
+         <property name="accessibleName">
+          <string>Operator Category</string>
+         </property>
+         <property name="accessibleDescription">
+          <string>Operator category.</string>
+         </property>
+         <item>
+          <property name="text">
+           <string>SINGLE-OP</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>MULTI-OP</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>CHECKLOG</string>
+          </property>
+         </item>
+        </widget>
+       </item>
+       <item row="4" column="1" colspan="2">
+        <widget class="QComboBox" name="overlay_category">
+         <property name="focusPolicy">
+          <enum>Qt::StrongFocus</enum>
+         </property>
+         <property name="accessibleName">
+          <string>Overlay category</string>
+         </property>
+         <property name="accessibleDescription">
+          <string>Overlay category</string>
+         </property>
+         <item>
+          <property name="text">
+           <string>N/A</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>CLASSIC</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>NOVICE-TECH</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>OVER-50</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>ROOKIE</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>TB-WIRES</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>YOUTH</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>YL</string>
+          </property>
+         </item>
+        </widget>
+       </item>
+       <item row="2" column="1" colspan="2">
+        <widget class="QComboBox" name="power_category">
+         <property name="focusPolicy">
+          <enum>Qt::StrongFocus</enum>
+         </property>
+         <property name="accessibleName">
+          <string>Power Category</string>
+         </property>
+         <property name="accessibleDescription">
+          <string>Power category</string>
+         </property>
+         <item>
+          <property name="text">
+           <string>HIGH</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>LOW</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>QRP</string>
+          </property>
+         </item>
+        </widget>
+       </item>
+       <item row="5" column="1" colspan="2">
+        <widget class="QComboBox" name="station_category">
+         <property name="focusPolicy">
+          <enum>Qt::StrongFocus</enum>
+         </property>
+         <property name="accessibleName">
+          <string>Station type</string>
+         </property>
+         <property name="accessibleDescription">
+          <string>Station type.</string>
+         </property>
+         <item>
+          <property name="text">
+           <string>DISTRIBUTED</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>EXPEDITION</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>FIXED</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>HQ</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>MOBILE</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>PORTABLE</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>ROVER</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>ROVER-LIMITED</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>ROVER-UNLIMITED</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>SCHOOL</string>
+          </property>
+         </item>
+        </widget>
+       </item>
+       <item row="6" column="0">
+        <widget class="QLabel" name="label_10">
+         <property name="text">
+          <string>Assisted</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+         </property>
+        </widget>
+       </item>
+       <item row="5" column="0">
+        <widget class="QLabel" name="label_9">
+         <property name="text">
+          <string>Station</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+         </property>
+        </widget>
+       </item>
+       <item row="10" column="1" colspan="2">
+        <widget class="QPlainTextEdit" name="soapbox">
+         <property name="accessibleName">
+          <string>Soap Box</string>
+         </property>
+         <property name="accessibleDescription">
+          <string>The soap box</string>
+         </property>
+        </widget>
+       </item>
+       <item row="10" column="0">
+        <widget class="QLabel" name="label_14">
+         <property name="text">
+          <string>Soapbox</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+     <widget class="QWidget" name="field_tab">
+      <attribute name="title">
+       <string>Customize Fields</string>
+      </attribute>
+      <layout class="QVBoxLayout" name="verticalLayout">
+       <item>
+        <widget class="QLabel" name="label_25">
+         <property name="text">
+          <string>Contests / logging sessions will define what fields are necessary for a valid QSO. You may configure additional fields to appear on the main entry panel to suite your workflow to focus on different logging activities. Eg POTA fields, VHF satellite fields, etc. All fields are also available for data entry in the QSO edit sheet.</string>
+         </property>
+         <property name="wordWrap">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QTableView" name="table_fields"/>
+       </item>
+      </layout>
+     </widget>
+    </widget>
+   </item>
+   <item row="6" column="1">
+    <widget class="QDateTimeEdit" name="start_date">
+     <property name="accessibleName">
+      <string>Start of contest Date and U T C Time</string>
+     </property>
+     <property name="time">
+      <time>
+       <hour>4</hour>
+       <minute>0</minute>
+       <second>0</second>
+      </time>
+     </property>
+     <property name="maximumDateTime">
+      <datetime>
+       <hour>3</hour>
+       <minute>59</minute>
+       <second>59</second>
+       <year>10000</year>
+       <month>1</month>
+       <day>1</day>
+      </datetime>
+     </property>
+     <property name="currentSection">
+      <enum>QDateTimeEdit::YearSection</enum>
+     </property>
+     <property name="displayFormat">
+      <string>yyyy-MM-dd HH:mm:ss</string>
+     </property>
+     <property name="timeSpec">
+      <enum>Qt::UTC</enum>
+     </property>
+    </widget>
+   </item>
+   <item row="6" column="2">
+    <widget class="QLabel" name="label_17">
+     <property name="text">
+      <string>UTC</string>
+     </property>
+    </widget>
+   </item>
+   <item row="0" column="1" colspan="2">
+    <widget class="QComboBox" name="select_contest">
+     <property name="focusPolicy">
+      <enum>Qt::StrongFocus</enum>
+     </property>
+    </widget>
+   </item>
+   <item row="5" column="0">
+    <widget class="QLabel" name="label">
+     <property name="text">
+      <string>My Station / Call</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+     </property>
+    </widget>
+   </item>
+   <item row="7" column="0">
+    <widget class="QLabel" name="label_18">
+     <property name="text">
+      <string>Display Name</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+     </property>
+    </widget>
+   </item>
+   <item row="21" column="0" colspan="3">
     <widget class="QWidget" name="buttonBox" native="true">
      <layout class="QHBoxLayout" name="horizontalLayout_2">
       <item>
        <widget class="QPushButton" name="button_close">
-        <property name="focusPolicy">
-         <enum>Qt::ClickFocus</enum>
-        </property>
         <property name="text">
          <string>Close</string>
-        </property>
-        <property name="autoDefault">
-         <bool>false</bool>
         </property>
        </widget>
       </item>
@@ -904,6 +977,9 @@
       </item>
       <item>
        <widget class="QPushButton" name="button_save">
+        <property name="focusPolicy">
+         <enum>Qt::StrongFocus</enum>
+        </property>
         <property name="text">
          <string>Save</string>
         </property>
@@ -912,43 +988,33 @@
      </layout>
     </widget>
    </item>
-   <item row="16" column="0">
-    <widget class="QLabel" name="label_11">
+   <item row="7" column="1" colspan="2">
+    <widget class="QLineEdit" name="display_name"/>
+   </item>
+   <item row="0" column="0">
+    <widget class="QLabel" name="label_16">
      <property name="text">
-      <string>Transmitter</string>
+      <string>Select Contest</string>
      </property>
      <property name="alignment">
       <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
      </property>
     </widget>
    </item>
-   <item row="12" column="0">
-    <widget class="QLabel" name="label_7">
+   <item row="6" column="0">
+    <widget class="QLabel" name="label_3">
      <property name="text">
-      <string>Mode</string>
+      <string>Start UTC</string>
      </property>
      <property name="alignment">
       <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
      </property>
     </widget>
    </item>
-   <item row="5" column="3">
-    <spacer name="horizontalSpacer">
-     <property name="orientation">
-      <enum>Qt::Horizontal</enum>
-     </property>
-     <property name="sizeHint" stdset="0">
-      <size>
-       <width>40</width>
-       <height>20</height>
-      </size>
-     </property>
-    </spacer>
-   </item>
-   <item row="6" column="3">
-    <widget class="QLabel" name="label_17">
-     <property name="text">
-      <string>UTC</string>
+   <item row="5" column="1">
+    <widget class="QComboBox" name="fk_station">
+     <property name="focusPolicy">
+      <enum>Qt::StrongFocus</enum>
      </property>
     </widget>
    </item>
@@ -959,40 +1025,9 @@
   <tabstop>fk_contest</tabstop>
   <tabstop>fk_station</tabstop>
   <tabstop>start_date</tabstop>
-  <tabstop>operator_category</tabstop>
-  <tabstop>band_category</tabstop>
-  <tabstop>power_category</tabstop>
-  <tabstop>mode_category</tabstop>
-  <tabstop>overlay_category</tabstop>
-  <tabstop>station_category</tabstop>
-  <tabstop>assisted_category</tabstop>
-  <tabstop>transmitter_category</tabstop>
-  <tabstop>sent_exchange</tabstop>
-  <tabstop>operators</tabstop>
-  <tabstop>soapbox</tabstop>
+  <tabstop>display_name</tabstop>
   <tabstop>button_save</tabstop>
-  <tabstop>button_new</tabstop>
-  <tabstop>button_delete</tabstop>
-  <tabstop>button_activate</tabstop>
-  <tabstop>button_close</tabstop>
  </tabstops>
  <resources/>
- <connections>
-  <connection>
-   <sender>button_close</sender>
-   <signal>clicked()</signal>
-   <receiver>ContestEdit</receiver>
-   <slot>reject()</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>20</x>
-     <y>20</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>20</x>
-     <y>20</y>
-    </hint>
-   </hints>
-  </connection>
- </connections>
+ <connections/>
 </ui>

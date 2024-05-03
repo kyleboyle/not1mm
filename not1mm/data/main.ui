@@ -9,7 +9,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>768</width>
+    <width>809</width>
     <height>403</height>
    </rect>
   </property>
@@ -597,9 +597,9 @@
          </widget>
         </item>
         <item>
-         <layout class="QVBoxLayout" name="main_dialog" stretch="0,0,0,0,0,0,0">
+         <layout class="QVBoxLayout" name="main_dialog" stretch="0,0,0,0,0,0,0,0">
           <property name="leftMargin">
-           <number>2</number>
+           <number>4</number>
           </property>
           <item>
            <layout class="QHBoxLayout" name="qso_row1">
@@ -675,6 +675,9 @@
              <enum>QLayout::SetDefaultConstraint</enum>
             </property>
            </layout>
+          </item>
+          <item>
+           <layout class="QHBoxLayout" name="qso_row3"/>
           </item>
           <item>
            <layout class="QHBoxLayout" name="qso_status_row">
@@ -1218,7 +1221,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>768</width>
+     <width>809</width>
      <height>24</height>
     </rect>
    </property>

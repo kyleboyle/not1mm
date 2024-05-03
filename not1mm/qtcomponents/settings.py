@@ -3,16 +3,19 @@
 import logging
 import platform
 
-from PyQt6 import QtWidgets, uic
 import sounddevice as sd
+from PyQt6 import QtWidgets, uic
 from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtWidgets import QTabWidget
 
 from not1mm import fsutils
 
+logger = logging.getLogger(__name__)
+
+
 class Settings(QtWidgets.QDialog):
     """Settings dialog"""
-    updated = pyqtSignal()
+    updated = pyqtSignal(list)
     tabWidget: QTabWidget
 
     def __init__(self, app_data_path, pref, parent=None):
@@ -203,8 +206,6 @@ class Settings(QtWidgets.QDialog):
         if self.activate_23cm.isChecked():
             bandlist.append("23cm")
         new_pref["bands"] = bandlist
+
         fsutils.write_settings(new_pref)
         self.updated.emit()
-
-
-
