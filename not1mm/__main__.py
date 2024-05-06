@@ -415,9 +415,16 @@ class MainWindow(QtWidgets.QMainWindow):
         station_id = self.pref.get('active_station_id', None)
         if station_id:
             self.station = Station.select().where(Station.id == station_id).get_or_none()
+            if self.station is None:
+                del self.pref['active_station_id']
+                fsutils.write_settings({'active_station_id': None})
+
         contest_id = self.pref.get('active_contest_id', None)
         if contest_id:
             self.contest = Contest.select().where(Contest.id == contest_id).get_or_none()
+            if self.contest is None:
+                del self.pref['active_contest_id']
+                fsutils.write_settings({'active_contest_id': None})
 
         if not self.station:
             fsutils.write_settings({"active_station_id": None})
@@ -480,7 +487,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.current_op = self.station.callsign
         self.make_op_dir()
         if not self.contest:
-
             # show contest config window
             self.edit_contest()
 

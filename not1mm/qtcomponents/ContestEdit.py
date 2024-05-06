@@ -242,7 +242,7 @@ class ContestEdit(QtWidgets.QDialog):
             self.populate_contest_select(c)
             if c:
                 self.populate_form(c)
-            else:
+            elif self.settings.get('active_contest_id'):
                 del self.settings['active_contest_id']
         else:
             self.populate_contest_select()
@@ -388,7 +388,10 @@ class ContestEdit(QtWidgets.QDialog):
         self.contest.start_date = self.start_date.dateTime().toPyDateTime()
         self.contest.label = self.display_name.text()
         self.contest.save()
-        self.field_table_save()
+        if self.field_table_save() and self.settings.get('active_contest_id', None) == self.contest.id:
+            # if the entry fields have been updated, refresh the fields in the main window
+            appevent.emit(ContestActivated(self.contest))
+
         self.populate_contest_select(self.contest)
 
     def activate_contest(self):
@@ -484,16 +487,20 @@ class ContestEdit(QtWidgets.QDialog):
             contest_fields.insert(0, ContestField(name="call", display_label="Callsign", space_tabs=True, stretch_factor=4, max_chars=20))
             user_fields = self.contest.get_setting('user_fields', None)
 
+            force_model_dirty = False
             if user_fields is None and self.contest.id is None and isinstance(contest_plugin, GeneralLogging):
                 # General logging by default doesn't provide any fields beyond call & rsts, so add example columns
                 # for the user to start with (that mimic n1mm)
                 user_fields = [{'name': 'name', 'display_label': 'Name', 'stretch_factor': 4, 'space_tabs': False, 'max_chars': 255},
                                {'name': 'comment', 'display_label': 'Comment', 'stretch_factor': 4, 'space_tabs': False, 'max_chars': 255}]
+                force_model_dirty = True
 
             model = EntryFieldModel(contest_fields, user_fields)
             self.table_fields.setItemDelegateForColumn(0, ComboDelegate(self.table_fields, [f.name for f in contest_fields]))
             self.table_fields.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
             self.table_fields.setModel(model)
+            if force_model_dirty:
+                model.dirty = True
             self.table_fields.setContextMenuPolicy(Qt.ContextMenuPolicy.ActionsContextMenu)
             delete_action = QAction("Remove Selected Row(s)", self.table_fields)
             delete_action.triggered.connect(self.field_table_action_delete)

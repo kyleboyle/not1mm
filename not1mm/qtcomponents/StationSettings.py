@@ -148,6 +148,10 @@ class StationSettings(QtWidgets.QDialog):
         fsutils.write_settings({'active_station_id': self.station.id})
         appevent.emit(appevent.StationActivated(self.station))
         self.populate_select()
+        # If there is no active contest, close this dialog to enable less confusing on-boarding flow.
+        # The main window will open the contest edit window.
+        if not self.settings.get('active_contest_id', None):
+            self.close()
 
     def delete_station(self):
         active_station_id = self.settings.get("active_station_id", None)
