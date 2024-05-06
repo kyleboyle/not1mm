@@ -368,8 +368,11 @@ class MainWindow(QtWidgets.QMainWindow):
             QtGui.QIcon(str(fsutils.APP_DATA_PATH / "k6gte.not1mm-64.png"))
         )
         self.readpreferences()
-
-        model.persistent.loadPersistantDb(self.pref.get("current_database", fsutils.USER_DATA_PATH / 'qsodefault.db'))
+        db_path = self.pref.get("current_database", fsutils.USER_DATA_PATH / 'qsodefault.db')
+        if not self.pref.get("current_database", None):
+            self.pref["current_database"] = db_path
+            fsutils.write_settings({"current_database": str(db_path)})
+        model.persistent.loadPersistantDb(db_path)
 
         if not DEBUG_ENABLED:
             if VersionTest(__version__).test():
@@ -427,7 +430,9 @@ class MainWindow(QtWidgets.QMainWindow):
                 appevent.emit(appevent.ContestActivated(self.contest))
 
     def context_menu(self):
-        cat_name = 'flrig'
+        cat_name = 'CAT not configured'
+        if self.pref.get("cat_enable_flrig", False):
+            cat_name = 'flrig'
         if self.pref.get("cat_enable_rigctld", False):
             cat_name = 'rigctld'
         elif self.pref.get("cat_enable_omnirig", False):
@@ -441,9 +446,12 @@ class MainWindow(QtWidgets.QMainWindow):
         radio_manual = radio_parent.addAction("Manual Radio")
         radio_manual.setCheckable(True)
         radio_cat = radio_parent.addAction(cat_name)
-        radio_cat.setCheckable(True)
+
+        if cat_name != 'CAT not configured':
+            radio_cat.setCheckable(True)
+            radio_cat.setChecked(not self.pref.get("cat_enable_manual", False))
+
         radio_manual.setChecked(self.pref.get("cat_enable_manual", False))
-        radio_cat.setChecked(not self.pref.get("cat_enable_manual", False))
         if self.pref.get("cat_enable_manual", False):
             radio_cat.triggered.connect(self.toggle_manual_rig)
         else:
@@ -472,6 +480,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.current_op = self.station.callsign
         self.make_op_dir()
         if not self.contest:
+
             # show contest config window
             self.edit_contest()
 
@@ -1325,6 +1334,7 @@ class MainWindow(QtWidgets.QMainWindow):
                                custom_colors={
                                    "[light]": {
                                        "foreground": "#141414",
+                                       "input.background": "#ffffff",
                                    }
                                }
                                )
@@ -1442,37 +1452,13 @@ class MainWindow(QtWidgets.QMainWindow):
         if self.n1mm:
             self.n1mm.set_operator(self.current_op, self.pref.get("run_state", False))
 
-
-    def write_preference(self) -> None:
-        """
-        Write preferences to file.
-        """
-        logger.debug("writepreferences")
-        try:
-            with open(fsutils.CONFIG_FILE, "wt", encoding="utf-8") as file_descriptor:
-                file_descriptor.write(dumps(self.pref, indent=4))
-                # logger.info("writing: %s", self.pref)
-        except IOError as exception:
-            logger.critical("writepreferences: %s", exception)
-
     def readpreferences(self, updated_fields = None) -> None:
         """
         Restore preferences if they exist, otherwise create some sane defaults.
         """
         logger.debug("readpreferences")
-        try:
-            if os.path.exists(fsutils.CONFIG_FILE):
-                self.pref = fsutils.read_settings()
-            else:
-                logger.info("No preference file. Writing preference.")
-                with open(
-                        fsutils.CONFIG_FILE, "wt", encoding="utf-8"
-                ) as file_descriptor:
-                    from . import pref_ref
-                    self.pref = pref_ref
-                    fsutils.write_settings(pref_ref)
-        except IOError as exception:
-            logger.critical("Error: %s", exception)
+
+        self.pref = fsutils.read_settings()
 
         if updated_fields is not None and 'contest_fields' in updated_fields:
             self.contest = Contest.get_by_id(self.contest._pk)

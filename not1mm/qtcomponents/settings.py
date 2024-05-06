@@ -208,4 +208,4 @@ class Settings(QtWidgets.QDialog):
         new_pref["bands"] = bandlist
 
         fsutils.write_settings(new_pref)
-        self.updated.emit()
+        self.updated.emit([])
