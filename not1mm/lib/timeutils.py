@@ -6,7 +6,7 @@ def time_ago(utc_time_unzoned=False):
     pretty string like 'an hour ago', 'Yesterday', '3 months ago',
     'just now', etc
     """
-    now = datetime.datetime.now(datetime.UTC)
+    now = datetime.datetime.utcnow()
     if isinstance(utc_time_unzoned, datetime.datetime):
         diff = now - utc_time_unzoned
     elif isinstance(utc_time_unzoned, str):

@@ -34,9 +34,9 @@ from not1mm.qtcomponents.VoiceAudio import VoiceAudio
 from .qtcomponents.AdifImport import AdifImport
 
 from PyQt6 import QtCore, QtGui, QtWidgets, uic
-from PyQt6.QtCore import QDir, Qt, QByteArray, QEvent, QTimer
-from PyQt6.QtGui import QFontDatabase, QKeyEvent, QCursor, QMouseEvent
-from PyQt6.QtWidgets import QFileDialog, QLineEdit, QLabel, QHBoxLayout, QMessageBox, QMenu
+from PyQt6.QtCore import QDir, Qt, QByteArray, QEvent, QTimer, QUrl
+from PyQt6.QtGui import QFontDatabase, QKeyEvent, QCursor, QMouseEvent, QDesktopServices
+from PyQt6.QtWidgets import QFileDialog, QLineEdit, QLabel, QHBoxLayout, QMessageBox, QMenu, QPushButton
 
 import not1mm.fsutils as fsutils
 from . import model, contest
@@ -111,6 +111,14 @@ class MainWindow(QtWidgets.QMainWindow):
     contest_plugin: AbstractContest = None
     contest_fields: dict[str:QsoEntryField] = {}
     contact: QsoLog = None
+
+    button_cmd_esc: QPushButton
+    button_cmd_wipe: QPushButton
+    button_cmd_save: QPushButton
+    button_cmd_edit: QPushButton
+    button_cmd_mark: QPushButton
+    button_cmd_spot: QPushButton
+    button_cmd_qrz: QPushButton
 
     pref = None
     station: Station = None
@@ -363,6 +371,15 @@ class MainWindow(QtWidgets.QMainWindow):
             "SSB": self.band_indicators_ssb,
             "RTTY": self.band_indicators_rtty,
         }
+
+        self.button_cmd_esc.clicked.connect(self.cmd_escape_stop)
+        self.button_cmd_wipe.clicked.connect(self.clearinputs, Qt.ConnectionType.QueuedConnection)
+        self.button_cmd_edit.clicked.connect(self.launch_qso_edit_window, Qt.ConnectionType.QueuedConnection)
+        self.button_cmd_mark.clicked.connect(self.cmd_mark, Qt.ConnectionType.QueuedConnection)
+        self.button_cmd_spot.clicked.connect(self.cmd_spot, Qt.ConnectionType.QueuedConnection)
+        self.button_cmd_save.clicked.connect(self.save_contact, Qt.ConnectionType.QueuedConnection)
+        self.button_cmd_qrz.clicked.connect(self.cmd_qrz, Qt.ConnectionType.QueuedConnection)
+
 
         self.setWindowIcon(
             QtGui.QIcon(str(fsutils.APP_DATA_PATH / "k6gte.not1mm-64.png"))
@@ -1066,16 +1083,10 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.toggle_cw_entry()
                 return
         if event.key() == Qt.Key.Key_S and modifier == Qt.KeyboardModifier.ControlModifier:
-            freq = self.radio_state.vfoa_hz
-            dx = self.callsign_entry.input_field.text()
-            if len(dx) > 3 and freq and dx:
-                appevent.emit(appevent.SpotDx(self.station.get("Call", ""), dx, freq))
+            self.cmd_spot()
             return
         if event.key() == Qt.Key.Key_M and modifier == Qt.KeyboardModifier.ControlModifier:
-            freq = self.radio_state.vfoa_hz
-            dx = self.callsign_entry.input_field.text()
-            if len(dx) > 2 and freq and dx:
-                appevent.emit(appevent.MarkDx(self.station.get("Call", ""), dx, freq))
+            self.cmd_mark()
             return
         if event.key() == Qt.Key.Key_G and modifier == Qt.KeyboardModifier.ControlModifier:
             dx = self.callsign_entry.input_field.text()
@@ -1086,12 +1097,7 @@ class MainWindow(QtWidgets.QMainWindow):
             now = datetime.datetime.utcnow()
             if not self.last_escape_datetime or now - self.last_escape_datetime > datetime.timedelta(milliseconds=_ESCAPE_DOUBLE_TAP_TIME_MS):
                 # single escape press
-                if self.cw is not None:
-                    if self.cw.servertype == 1:
-                        self.cw.sendcw("\x1b4")
-                        return
-                if self.audio_thread:
-                    self.audio_thread.stop_sound()
+                self.cmd_escape_stop()
                 self.callsign_entry.input_field.setFocus()
                 self.last_escape_datetime = now
             else:
@@ -1146,6 +1152,31 @@ class MainWindow(QtWidgets.QMainWindow):
             self.process_function_key(self.F11)
         if event.key() == Qt.Key.Key_F12:
             self.process_function_key(self.F12)
+
+    def cmd_spot(self):
+        freq = self.radio_state.vfoa_hz
+        dx = self.callsign_entry.input_field.text().strip().upper()
+        if len(dx) > 3 and freq:
+            appevent.emit(appevent.SpotDx(self.station.callsign, dx, freq))
+
+    def cmd_mark(self):
+        freq = self.radio_state.vfoa_hz
+        dx = self.callsign_entry.input_field.text().strip().upper()
+        if len(dx) > 2 and freq:
+            appevent.emit(appevent.MarkDx(self.station.callsign, dx, freq))
+
+    def cmd_escape_stop(self):
+        if self.cw is not None:
+            if self.cw.servertype == 1:
+                self.cw.sendcw("\x1b4")
+                return
+        if self.audio_thread:
+            self.audio_thread.stop_sound()
+
+    def cmd_qrz(self):
+        if len(self.contact.call) > 2:
+            url = f'https://www.qrz.com/db/{str(self.contact.call).strip()}'
+            QDesktopServices.openUrl(QUrl(url))
 
     def set_window_title(self) -> None:
         """
@@ -1683,9 +1714,9 @@ class MainWindow(QtWidgets.QMainWindow):
         """
 
         if self.pref.get("command_buttons"):
-            self.Command_Buttons.show()
+            self.widget_cmd.show()
         else:
-            self.Command_Buttons.hide()
+            self.widget_cmd.hide()
 
     def is_floatable(self, item: str) -> bool:
         """

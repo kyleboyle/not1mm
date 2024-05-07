@@ -9,9 +9,6 @@ class EmacsCursorEventFilter(QObject):
     """emulate some emacs cursor movement shortcuts"""
     mark_active: bool = False
 
-    # mac has rudamentary ctrl+fbae cursor movement built in.
-    is_mac = platform.system() != ["Darwin"]
-
     def __init__(self, parent=None):
         super(EmacsCursorEventFilter, self).__init__(parent)
 

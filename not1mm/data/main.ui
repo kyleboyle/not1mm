@@ -10,7 +10,7 @@
     <x>0</x>
     <y>0</y>
     <width>809</width>
-    <height>403</height>
+    <height>416</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -1024,7 +1024,7 @@
            </widget>
           </item>
           <item>
-           <widget class="QFrame" name="Command_Buttons">
+           <widget class="QFrame" name="widget_cmd">
             <layout class="QHBoxLayout" name="ButtonRow3">
              <property name="leftMargin">
               <number>0</number>
@@ -1039,7 +1039,7 @@
               <number>0</number>
              </property>
              <item>
-              <widget class="QPushButton" name="esc_stop">
+              <widget class="QPushButton" name="button_cmd_esc">
                <property name="focusPolicy">
                 <enum>Qt::NoFocus</enum>
                </property>
@@ -1049,7 +1049,7 @@
               </widget>
              </item>
              <item>
-              <widget class="QPushButton" name="wipe">
+              <widget class="QPushButton" name="button_cmd_wipe">
                <property name="focusPolicy">
                 <enum>Qt::NoFocus</enum>
                </property>
@@ -1059,17 +1059,17 @@
               </widget>
              </item>
              <item>
-              <widget class="QPushButton" name="log_it">
+              <widget class="QPushButton" name="button_cmd_save">
                <property name="focusPolicy">
                 <enum>Qt::NoFocus</enum>
                </property>
                <property name="text">
-                <string>Log It</string>
+                <string>Save</string>
                </property>
               </widget>
              </item>
              <item>
-              <widget class="QPushButton" name="edit">
+              <widget class="QPushButton" name="button_cmd_edit">
                <property name="focusPolicy">
                 <enum>Qt::NoFocus</enum>
                </property>
@@ -1079,7 +1079,7 @@
               </widget>
              </item>
              <item>
-              <widget class="QPushButton" name="mark">
+              <widget class="QPushButton" name="button_cmd_mark">
                <property name="focusPolicy">
                 <enum>Qt::NoFocus</enum>
                </property>
@@ -1089,27 +1089,17 @@
               </widget>
              </item>
              <item>
-              <widget class="QPushButton" name="store">
+              <widget class="QPushButton" name="button_cmd_spot">
                <property name="focusPolicy">
                 <enum>Qt::NoFocus</enum>
                </property>
                <property name="text">
-                <string>Store</string>
+                <string>Spot</string>
                </property>
               </widget>
              </item>
              <item>
-              <widget class="QPushButton" name="spot_it">
-               <property name="focusPolicy">
-                <enum>Qt::NoFocus</enum>
-               </property>
-               <property name="text">
-                <string>Spot It</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QPushButton" name="qrz">
+              <widget class="QPushButton" name="button_cmd_qrz">
                <property name="focusPolicy">
                 <enum>Qt::NoFocus</enum>
                </property>
@@ -1264,6 +1254,7 @@
      <string>View</string>
     </property>
     <addaction name="actionCW_Macros"/>
+    <addaction name="actionCommand_Buttons"/>
     <addaction name="actionDark_Mode"/>
    </widget>
    <widget class="QMenu" name="menuWindow">
@@ -1315,16 +1306,10 @@
    <property name="checked">
     <bool>false</bool>
    </property>
-   <property name="enabled">
-    <bool>false</bool>
-   </property>
    <property name="text">
     <string>Command Buttons</string>
    </property>
    <property name="autoRepeat">
-    <bool>false</bool>
-   </property>
-   <property name="iconVisibleInMenu">
     <bool>false</bool>
    </property>
    <property name="shortcutVisibleInContextMenu">

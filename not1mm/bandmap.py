@@ -209,7 +209,7 @@ class BandMapWindow(DockWidget):
         self.send_command(spotdx)
 
     def event_mark_dx(self, event: appevent.MarkDx):
-        Spot(ts=datetime.now(UTC) + timedelta(days=5),
+        Spot(ts=datetime.utcnow() + timedelta(days=2),
              callsign=event.dx,
              freq_hz=event.freq_hz,
              mode="DX",
@@ -383,7 +383,7 @@ class BandMapWindow(DockWidget):
 
         result: list[Spot] = Spot.select().where(Spot.freq_hz.between(
             self.currentBand.start * 1_000_000, self.currentBand.end * 1_000_000))\
-            .order_by(Spot.freq_hz.desc()).limit(200)
+            .order_by(Spot.freq_hz.asc()).limit(200)
         #logger.debug(f"{len(result)} spots in range {self.currentBand.start} - {self.currentBand.end}")
 
         if result:
@@ -409,7 +409,7 @@ class BandMapWindow(DockWidget):
                 text = self.bandmap_scene.addText(spot.callsign) # overwritten with html
                 text.setHtml("<span style='font-family: JetBrains Mono;'>"
                     + spot.callsign + "</span> - "
-                    + timeutils.time_ago(spot.ts.replace(tzinfo=UTC))
+                    + timeutils.time_ago(spot.ts)
                     + " - " + spot.comment[:40])
                 text.document().setDocumentMargin(0)
 
