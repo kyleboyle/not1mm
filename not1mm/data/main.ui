@@ -1266,6 +1266,7 @@
     <addaction name="actionCheck_Window"/>
     <addaction name="actionExternalProfile_Window"/>
     <addaction name="actionQsoedit_Window"/>
+    <addaction name="actionMap_Window"/>
    </widget>
    <widget class="QMenu" name="menuOther">
     <property name="title">
@@ -1417,6 +1418,20 @@
   <action name="actionLog_Window">
    <property name="text">
     <string>QSO Log</string>
+   </property>
+   <property name="autoRepeat">
+    <bool>false</bool>
+   </property>
+   <property name="iconVisibleInMenu">
+    <bool>false</bool>
+   </property>
+   <property name="shortcutVisibleInContextMenu">
+    <bool>false</bool>
+   </property>
+  </action>
+  <action name="actionMap_Window">
+   <property name="text">
+    <string>Grey Line Map</string>
    </property>
    <property name="autoRepeat">
     <bool>false</bool>

@@ -72,6 +72,10 @@ class QsoUpdated(AppEvent):
 
 
 @dataclass
+class IntermediateQsoUpdate(AppEvent):
+    qso: QsoLog
+
+@dataclass
 class Tune(AppEvent):
     freq_hz: int = None
     dx: str = None

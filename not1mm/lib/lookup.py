@@ -23,16 +23,15 @@ class ExternalCallLookupService(QObject):
     @dataclasses.dataclass
     class Result:
         call: str
-        grid: str
-        first_name: str
-        name: str
-        nickname: str
-        profile_image: str
-        source_result: dict
+        grid: Optional[str] = None
+        first_name: Optional[str] = None
+        name: Optional[str] = None
+        nickname: Optional[str] = None
+        profile_image: Optional[str] = None
+        source_result: dict = None
 
         def __init__(self, call):
             self.call = call
-            pass
 
     init_flag = False
     network_access_manager = QtNetwork.QNetworkAccessManager()
@@ -45,7 +44,6 @@ class ExternalCallLookupService(QObject):
 
     def lookup(self, call: str) -> Optional[Result]:
         pass
-
 
 
 class HamDBlookup(ExternalCallLookupService):

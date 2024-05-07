@@ -27,6 +27,7 @@ from not1mm.cat.RigState import RigState
 from not1mm.cat.flrig import CatFlrig
 from not1mm.cat.manual import CatManual
 from not1mm.cat.rigctld import CatRigctld
+from not1mm.mapwindow import WorldMap
 from not1mm.qsoeditwindow import QsoEditWindow
 from not1mm.qtcomponents.AdifExport import AdifExport
 from not1mm.qtcomponents.CabrilloExport import CabrilloExport
@@ -50,7 +51,7 @@ from .lib.bigcty import BigCty
 from .lib.cwinterface import CW
 from .lib.edit_macro import EditMacro
 from .lib.edit_opon import OpOn
-from .lib.event_model import StationActivated
+from .lib.event_model import StationActivated, IntermediateQsoUpdate
 from .lib.ham_utility import (
     bearing,
     bearing_with_latlon,
@@ -160,6 +161,7 @@ class MainWindow(QtWidgets.QMainWindow):
     vfo_window: DockWidget = None
     profile_window: DockWidget = None
     qso_edit_window: QsoEditWindow = None
+    map_window: WorldMap = None
 
     n1mm: N1MM = None
 
@@ -207,6 +209,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.actionCheck_Window.triggered.connect(self.launch_check_window)
         self.actionExternalProfile_Window.triggered.connect(self.launch_profile_image_window)
         self.actionQsoedit_Window.triggered.connect(self.launch_qso_edit_window)
+        self.actionMap_Window.triggered.connect(self.launch_map_window)
         self.actionVFO.triggered.connect(self.launch_vfo)
         self.actionRecalculate_Mults.triggered.connect(self.recalculate_mults)
 
@@ -993,6 +996,13 @@ class MainWindow(QtWidgets.QMainWindow):
             self.profile_window.closed.connect(self.handle_dock_closed)
         self.profile_window.show()
 
+    def launch_map_window(self) -> None:
+        if not self.map_window:
+            self.map_window = WorldMap()
+            self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.map_window)
+            self.map_window.setFloating(True)
+        self.map_window.show()
+
     def launch_qso_edit_window(self) -> None:
         if not self.qso_edit_window:
             self.qso_edit_window = QsoEditWindow(None, contest=self.contest)
@@ -1057,7 +1067,8 @@ class MainWindow(QtWidgets.QMainWindow):
             "window_log_enable": self.log_window and self.log_window.isVisible(),
             "window_profile_enable": self.profile_window and self.profile_window.isVisible(),
             "window_qsoedit_enable": self.qso_edit_window and self.qso_edit_window.isVisible(),
-            "window_vfo_enable": self.vfo_window and self.vfo_window.isVisible()
+            "window_vfo_enable": self.vfo_window and self.vfo_window.isVisible(),
+            "window_worldmap_enable": self.map_window and self.map_window.isVisible(),
         }
 
         fsutils.write_settings(window_state)
@@ -1300,6 +1311,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         if notify:
             self.contest_plugin.intermediate_qso_update(self.contact, None)
+            appevent.emit(IntermediateQsoUpdate(self.contact))
             if self.qso_edit_window:
                 self.qso_edit_window.set_qso(self.contact)
 
@@ -1636,7 +1648,7 @@ class MainWindow(QtWidgets.QMainWindow):
             if (not self.pref.get('lookup_name_prefer_qso_history_name', False) or not self.contact.name) \
                 and self.pref.get('lookup_populate_name', None):
                 name_field = self.contest_fields.get('name', None)
-                if self.pref.get('lookup_populate_name', None):
+                if name_field and self.pref.get('lookup_populate_name', None):
                     if self.pref.get('lookup_firstname', None):
                         self.contact.name = event.result.first_name.title()
                     else:
@@ -1673,6 +1685,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 )
                 self.contact.distance = kilometers
             self.contest_plugin.intermediate_qso_update(self.contact, ['gridsquare', 'name', 'distance'])
+            appevent.emit(IntermediateQsoUpdate(self.contact))
             if self.qso_edit_window:
                 self.qso_edit_window.set_qso(self.contact)
 
@@ -1938,6 +1951,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.contact.lat = lat
             self.contact.lon = lon
             self.contest_plugin.intermediate_qso_update(self.contact, None)
+            appevent.emit(IntermediateQsoUpdate(self.contact))
 
             if self.station.gridsquare:
                 heading = bearing_with_latlon(self.station.gridsquare, self.contact.lat, self.contact.lon)
@@ -2316,6 +2330,8 @@ def run() -> None:
         window.launch_log_window()
     if window.pref.get("window_profile_enable", None):
         window.launch_profile_image_window()
+    if window.pref.get("window_worldmap_enable", None):
+        window.launch_map_window()
     if window.pref.get("window_vfo_enable", None):
         window.launch_vfo()
     if window.pref.get("window_qsoedit_enable", None):
@@ -2349,6 +2365,7 @@ logging.basicConfig(
 
 logging.getLogger('PyQt6.uic.uiparser').setLevel('INFO')
 logging.getLogger('PyQt6.uic.properties').setLevel('INFO')
+logging.getLogger('matplotlib.font_manager').setLevel('INFO')
 logging.getLogger('peewee').setLevel('INFO')
 #os.environ["QT_QPA_PLATFORMTHEME"] = "gnome"
 app = QtWidgets.QApplication(sys.argv)
