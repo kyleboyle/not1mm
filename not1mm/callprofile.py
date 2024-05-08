@@ -7,13 +7,14 @@ import typing
 
 from PyQt6 import uic, QtNetwork, QtGui
 from PyQt6.QtCore import QUrl, Qt, QSize, QBuffer
-from PyQt6.QtGui import QImage, QPixmap, QDesktopServices
+from PyQt6.QtGui import QImage, QPixmap, QDesktopServices, QIcon
 from PyQt6.QtNetwork import QNetworkReply, QNetworkRequest, QNetworkDiskCache
 from PyQt6.QtWidgets import QDockWidget, QLabel, QStyle
 
 import not1mm.fsutils as fsutils
 from not1mm.lib import event
 from not1mm.qtcomponents.DockWidget import DockWidget
+from not1mm.qtcomponents.SvgIcon import SvgIcon
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +22,7 @@ logger = logging.getLogger(__name__)
 class ScaledLabel(QLabel):
     """Basic image-in-a-label which will scale to it's changing dimensions"""
     pixmap: QPixmap
+    icon: QIcon
     external_url: str
 
     def __init__(self, *args, **kwargs):
@@ -41,6 +43,7 @@ class ScaledLabel(QLabel):
                 self.setContentsMargins(h_gap, 0, h_gap, 0)
             else:
                 self.setContentsMargins(0, 0, 0, 0)
+
 
     def clear(self):
         self.pixmap = None
@@ -83,7 +86,8 @@ class ExternalCallProfileWindow(DockWidget):
 
     def reset_image(self):
         self.imageLabel.clear()
-        self.imageLabel.setPixmap(QPixmap(str(fsutils.APP_DATA_PATH / 'profile_placeholder.png')), self.frameSize())
+        self.imageLabel.setPixmap(SvgIcon('image_polaroid').rotate(10)
+                                  .get_icon().pixmap(self.frameSize(), self.devicePixelRatio()), self.frameSize())
         self.imageLabel.setToolTip(None)
 
     def event_external_lookup(self, e: event.ExternalLookupResult):

@@ -114,14 +114,16 @@ class WorldMap(DockWidget):
             ax.plot(self.station.longitude, self.station.latitude, linewidth=1, marker='x',
                     transform=ccrs.PlateCarree(), color='red', markersize=4)
             if self.call_coords:
+                # draw end point
+                ax.plot(self.call_coords[0], self.call_coords[1], marker='o',
+                        transform=ccrs.PlateCarree(), color='red', markersize=2)
+                # draw line
                 ax.plot([self.station.longitude, self.call_coords[0]], [self.station.latitude, self.call_coords[1]],
-                        color="blue",
-                        transform=ccrs.Geodetic())
+                        color="blue", transform=ccrs.Geodetic())
 
         ax.add_feature(Nightshade(date + datetime.timedelta(minutes=10), alpha=0.3, delta=0.1))
         ax.add_feature(Nightshade(date - datetime.timedelta(minutes=10), alpha=0.3, delta=0.1))
 
         # remove margins
         self.figure.subplots_adjust(left=0, right=1, bottom=0, top=1)
-
         self.canvas.draw()

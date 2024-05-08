@@ -116,6 +116,8 @@ class Settings(QtWidgets.QDialog):
         self.activate_33cm.setChecked(bool("33cm" in self.preference.get("bands", [])))
         self.activate_23cm.setChecked(bool("23cm" in self.preference.get("bands", [])))
 
+        self.interface_checkbox_emacs.setChecked(self.preference.get('interface_emacs', False))
+
     def save_pref_values(self):
         new_pref = {}
         new_pref["sounddevice"] = self.sounddevice.currentText()
@@ -206,6 +208,8 @@ class Settings(QtWidgets.QDialog):
         if self.activate_23cm.isChecked():
             bandlist.append("23cm")
         new_pref["bands"] = bandlist
+
+        new_pref['interface_emacs'] = self.interface_checkbox_emacs.isChecked()
 
         fsutils.write_settings(new_pref)
         self.updated.emit([])

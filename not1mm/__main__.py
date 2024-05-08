@@ -423,7 +423,8 @@ class MainWindow(QtWidgets.QMainWindow):
 
         for entry in [self.callsign_entry, self.rst_received_entry, self.rst_sent_entry]:
             entry.input_field.installEventFilter(self.qso_field_event_filter)
-            entry.input_field.installEventFilter(EmacsCursorEventFilter(parent=entry.input_field))
+            if self.pref.get('interface_emacs', False):
+                entry.input_field.installEventFilter(EmacsCursorEventFilter(parent=entry.input_field))
 
         self.read_cw_macros()
         self.open_database()
@@ -821,7 +822,8 @@ class MainWindow(QtWidgets.QMainWindow):
             row.addWidget(field, f.stretch_factor)
             if f.name not in ['rst_rcvd', 'rst_sent']:
                 field.input_field.installEventFilter(self.qso_field_event_filter)
-                field.input_field.installEventFilter(EmacsCursorEventFilter(parent=field))
+                if self.pref.get('interface_emacs', False):
+                    field.input_field.installEventFilter(EmacsCursorEventFilter(parent=field))
                 field.input_field.returnPressed.connect(self.save_contact)
                 field.input_field.focused.connect(self.handle_input_focus, Qt.ConnectionType.QueuedConnection)
 
@@ -1648,12 +1650,13 @@ class MainWindow(QtWidgets.QMainWindow):
             if (not self.pref.get('lookup_name_prefer_qso_history_name', False) or not self.contact.name) \
                 and self.pref.get('lookup_populate_name', None):
                 name_field = self.contest_fields.get('name', None)
-                if name_field and self.pref.get('lookup_populate_name', None):
+                if self.pref.get('lookup_populate_name', None):
                     if self.pref.get('lookup_firstname', None):
                         self.contact.name = event.result.first_name.title()
                     else:
                         self.contact.name = event.result.name.title()
-                    name_field.input_field.setText(self.contact.name)
+                    if name_field:
+                        name_field.input_field.setText(self.contact.name)
 
             if self.pref.get('lookup_others', None):
                 # populate more fields from the external lookup
