@@ -13,6 +13,7 @@ from PyQt6.QtWidgets import QDockWidget, QLabel, QStyle
 
 import not1mm.fsutils as fsutils
 from not1mm.lib import event
+from not1mm.lib.ham_utility import get_call_base
 from not1mm.qtcomponents.DockWidget import DockWidget
 from not1mm.qtcomponents.SvgIcon import SvgIcon
 
@@ -92,7 +93,7 @@ class ExternalCallProfileWindow(DockWidget):
 
     def event_external_lookup(self, e: event.ExternalLookupResult):
         """Upon successful external callsign db lookup, populate the station profile information"""
-        if e.result.call != self.call:
+        if get_call_base(e.result.call) != get_call_base(self.call):
             # make sure the station in the external data is still the active qso callsign
             return
         if e.result.profile_image:

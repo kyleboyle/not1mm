@@ -126,6 +126,8 @@ class EntryFieldModel(QAbstractTableModel):
         return 5
 
     def setData(self, index: QModelIndex, value: typing.Any, role: Qt.ItemDataRole = None) -> bool:
+        if not value:
+            return False
         try:
             if index.row() == len(self._data):
                 self.beginInsertRows(QModelIndex(), index.row(), index.row())
@@ -395,7 +397,6 @@ class ContestEdit(QtWidgets.QDialog):
         self.populate_contest_select(self.contest)
 
     def activate_contest(self):
-        # TODO activating a new contest didn't work
         if not self.contest:
             return
 

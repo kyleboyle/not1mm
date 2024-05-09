@@ -14,6 +14,8 @@ from PyQt6.QtCore import QObject, QUrl, QUrlQuery
 from PyQt6.QtNetwork import QNetworkRequest, QNetworkReply
 
 import not1mm.lib.event as appevent
+from not1mm.lib.ham_utility import get_call_base
+from not1mm.model import QsoLog
 
 logger = logging.getLogger(__name__)
 
@@ -225,11 +227,11 @@ class QRZlookup(ExternalCallLookupService):
         Lookup a call on QRZ. async result sent in app event
         """
         if self.session and not self.call_reply:
-            self.call = call
+            self.call = get_call_base(call)
             url = QUrl(self.qrzurl)
             query = QUrlQuery()
             query.addQueryItem("s", self.session)
-            query.addQueryItem("callsign", call)
+            query.addQueryItem("callsign", self.call)
             url.setQuery(query.query())
             logger.debug(f"query {url}")
             self.call_reply = self.network_access_manager.get(QNetworkRequest(url))

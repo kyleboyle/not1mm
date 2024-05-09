@@ -1,4 +1,4 @@
-# TODO in the future it might be necessary to change persistent schema
+# Facilitates updating user databases as models change
 # https://docs.peewee-orm.com/en/latest/peewee/playhouse.html#schema-migrations
 from peewee import Database
 

@@ -5,6 +5,8 @@ from peewee import Model, CharField, IntegerField, ForeignKeyField, TextField, D
     UUIDField, BooleanField, SQL
 from playhouse.sqlite_ext import SqliteExtDatabase, JSONField
 from . import persistent_migrations
+from ..lib.ham_utility import get_call_base
+
 _database = SqliteExtDatabase(None)
 
 class BaseModel(Model):
@@ -120,6 +122,7 @@ class QsoLog(BaseModel):
     time_on = DateTimeField(index=True)
     station_callsign = CharField(20, index=True)
     call = CharField(20, index=True)
+    call_search = CharField(20, index=True) # base callsign without strokes
     time_off = DateTimeField(null=True)
     rst_sent = CharField(10) # can be rst, rs, db level (digi)
     rst_rcvd = CharField(10)
@@ -274,6 +277,11 @@ class QsoLog(BaseModel):
     fk_station = ForeignKeyField(Station, null=True) #imported logs from other apps won't have a station
     fk_contest = ForeignKeyField(Contest)
 
+    def save(self, force_insert=False, only=None):
+        if self.call:
+            self.call_search = get_call_base(str(self.call))
+        return super().save(force_insert, only)
+
     @staticmethod
     def get_like_calls(search: str, contest: Optional[Contest]) -> list[str]:
         safe = re.sub('[^a-zA-Z0-9/?]', '', search.upper())
@@ -284,15 +292,15 @@ class QsoLog(BaseModel):
 
     @staticmethod
     def get_logs_by_like_call(search: str, contest: Optional[Contest]) -> list[str]:
-        safe = re.sub('[^a-zA-Z0-9/?]', '', search.upper())
-        result = QsoLog.select().where(SQL(f"call like '%{safe.replace('?', '_')}%'"))
+        safe = re.sub('[^a-zA-Z0-9/?]', '', get_call_base(search).upper())
+        result = QsoLog.select().where(SQL(f"call_search like '%{safe.replace('?', '_')}%'"))
         if contest:
             result = result.where(QsoLog.fk_contest == contest)
         return result
 
     @staticmethod
     def get_name_from_previous_contact(call: str) -> str:
-        result = QsoLog.select(QsoLog.name).where(QsoLog.call == call)\
+        result = QsoLog.select(QsoLog.name).where(QsoLog.call_search == call)\
             .where(QsoLog.name != None).order_by(QsoLog.time_on.desc()).get_or_none()
         if result:
             return result.name

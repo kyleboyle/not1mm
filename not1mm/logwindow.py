@@ -20,6 +20,7 @@ from .contest import contests_by_cabrillo_id
 from .contest.AbstractContest import AbstractContest
 from .lib import event as appevent
 from .lib import flags
+from .lib.ham_utility import get_call_base
 from .model import QsoLog, Contest, DeletedQsoLog
 from .qsoeditwindow import QsoEditWindow
 from .qtcomponents.DockWidget import DockWidget
@@ -38,6 +39,7 @@ def _show_info_message_box(message: str) -> None:
 def get_default_column_list():
     col = list(QsoLog._meta.sorted_field_names)
     col.remove('id')
+    col.remove('call_search')
     col.remove('time_on')
     col.remove('call')
     col.insert(0, 'call')
@@ -220,6 +222,8 @@ class LogWindow(DockWidget):
         delete_action = QAction("Delete QSO(s)", self.stationHistoryTable)
         delete_action.triggered.connect(self.action_delete)
         self.stationHistoryTable.addAction(delete_action)
+        self.stationHistoryTable.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+
 
         self.qsoModel.edited.connect(self.table_model_edit)
         self.qsoModel.deleted.connect(self.table_model_delete)
@@ -305,14 +309,17 @@ class LogWindow(DockWidget):
 
     def populate_matching_qsos(self, call: str) -> None:
         if not self.stationHistoryTable.model():
-            self.stationHistoryTable.setModel(self.stationHistoryModel)
+            sort_model = QSortFilterProxyModel(self)
+            sort_model.setSourceModel(self.stationHistoryModel)
+            sort_model.setSortRole(Qt.ItemDataRole.UserRole)
+            self.stationHistoryTable.setModel(sort_model)
+
         if call == "":
             self.stationHistoryModel.replaceDataset([])
             return
 
-        # TODO handle slash prefixes and slash suffix (/M /P) appropriately
         # prioritize exact match
-        history = QsoLog.select().where(QsoLog.fk_contest == self.contest).where(QsoLog.call == call)
+        history = QsoLog.select().where(QsoLog.fk_contest == self.contest).where(QsoLog.call_search == get_call_base(call))
         if len(history) == 0:
             history = QsoLog.get_logs_by_like_call(call, self.contest)
 
@@ -402,6 +409,7 @@ class LogWindow(DockWidget):
         self.stationHistoryTable.horizontalHeader().restoreState(self.qsoTable.horizontalHeader().saveState())
         self.stationHistoryTable.horizontalHeader().setSectionsMovable(False)
         self.stationHistoryTable.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Fixed)
+        self.stationHistoryTable.update() #this forces the rows to re-draw for the new header(column) widths
         if self.contest:
             column_state = self.qsoTable.horizontalHeader().saveState()
             self.contest.merge_settings({"qso_table_column_state": bytes(column_state.toHex()).decode('ascii')})
@@ -409,7 +417,7 @@ class LogWindow(DockWidget):
     def load_settings(self):
         """
         sets the column order and size from saved state. history table mimics the main table and it's columns
-        are reset to non interactive
+        are reset to non-interactive
         """
         state = self.contest.get_setting("qso_table_column_state")
         if state:
@@ -425,10 +433,13 @@ class LogWindow(DockWidget):
                 self.qsoTable.setColumnWidth(flag_index, self.qsoTable.columnWidth(flag_index) - 15)
             self.qsoTable.resizeColumnToContents(self.qsoModel._columns.index('time_on'))
 
-        self.stationHistoryTable.sortByColumn(1, Qt.SortOrder.DescendingOrder)
         self.qsoTable.sortByColumn(self.qsoModel._columns.index('time_on'), Qt.SortOrder.DescendingOrder)
         self.qsoTable.horizontalHeader().setSectionsMovable(True)
+
         self.stationHistoryTable.horizontalHeader().setSectionsMovable(False)
         self.stationHistoryTable.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Fixed)
+        self.stationHistoryTable.sortByColumn(self.stationHistoryModel._columns.index('time_on'), Qt.SortOrder.DescendingOrder)
+        self.stationHistoryTable.setSortingEnabled(True)
+
 
 

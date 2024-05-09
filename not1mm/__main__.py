@@ -59,7 +59,7 @@ from .lib.ham_utility import (
     distance_with_latlon,
     getband,
     reciprocol,
-    fakefreq, gridtolatlon, calculate_wpx_prefix,
+    fakefreq, gridtolatlon, calculate_wpx_prefix, get_call_base,
 )
 from .lib.lookup import HamQTH, QRZlookup, ExternalCallLookupService
 from .lib.n1mm import N1MM
@@ -597,7 +597,6 @@ class MainWindow(QtWidgets.QMainWindow):
         mode : str
         """
         if event.button() == Qt.MouseButton.LeftButton:
-            # TODO if an active  qso is in progress, do we abort?
             if self.contact.time_on:
                 self.show_message_box("QSO in progress! Wipe it or Save it before switching bands.")
             elif mode in ["CW", "SSB", "RTTY"]:
@@ -1003,6 +1002,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.map_window = WorldMap()
             self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.map_window)
             self.map_window.setFloating(True)
+            self.map_window.closed.connect(self.handle_dock_closed)
         self.map_window.show()
 
     def launch_qso_edit_window(self) -> None:
@@ -1031,6 +1031,9 @@ class MainWindow(QtWidgets.QMainWindow):
         if event and event.source and event.source == self.qso_edit_window:
             self.removeDockWidget(self.qso_edit_window)
             self.qso_edit_window = None
+        if event and event.source and event.source == self.map_window:
+            self.removeDockWidget(self.map_window)
+            self.map_window = None
 
     def clear_band_indicators(self) -> None:
         """
@@ -1274,7 +1277,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.pre_populate_contact()
 
         self.check_callsign_external(callsign_value)
-        # TODO could do prefill from previous station contact here
 
     def pre_populate_contact(self, notify=True):
         if self.contact.time_on is not None:
@@ -1305,7 +1307,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.contact.is_original = True
 
         if self.pref['lookup_name_prefer_qso_history_name']:
-            name_from_log = QsoLog.get_name_from_previous_contact(self.contact.call)
+            name_from_log = QsoLog.get_name_from_previous_contact(get_call_base(self.contact.call))
             if name_from_log:
                 self.contact.name = name_from_log
                 if 'name' in self.contest_fields:
@@ -1345,7 +1347,6 @@ class MainWindow(QtWidgets.QMainWindow):
             self.contact.qso_complete = 'Y'
 
         self.contact.points = self.contest_plugin.points_for_qso(self.contact)
-        # TODO verify correct adif format for contest_id
         self.contact.contest_id = self.contact.fk_contest.fk_contest_meta.cabrillo_name
 
         # TODO special features from parsing the comment field (eg pota/iota/sota references)
@@ -1931,6 +1932,7 @@ class MainWindow(QtWidgets.QMainWindow):
         callsign : str
         Callsign to check.
         """
+        # TODO handle stroke callsigns correctly. stroke suffixes currently work
         result = self.bigcty.find_call_match(callsign)
         logger.debug(f"cty lookup result {result}")
         if result:

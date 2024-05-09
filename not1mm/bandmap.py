@@ -29,8 +29,6 @@ logger = logging.getLogger(__name__)
 PIXELSPERSTEP = 10
 UPDATE_INTERVAL = 2000
 
-# TODO worked list can grow indefinitely. would probably be better to query database for dup or use common dupe code
-
 class Band:
     """the band"""
 
@@ -172,7 +170,7 @@ class BandMapWindow(DockWidget):
         self.clear_spot_olderSpinBox.setValue(self.settings.get("bandmap_spot_age_minutes", 2))
 
     def event_radio_state(self, event: appevent.RadioState):
-        # TODO if multiple band maps, check to make sure this bandmap window is the one tracking the vfo
+        # TODO when/if multiple band maps, check to make sure this bandmap window is the one tracking the vfo
 
         self.set_band(ham_utility.getband(str(event.state.vfoa_hz or 0)) + "m", False)
         try:

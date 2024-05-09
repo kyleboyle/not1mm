@@ -43,9 +43,7 @@ class WorldMap(DockWidget):
         self.figure = Figure()
         self.figure.set_facecolor("none")
         self.canvas = FigureCanvasQTAgg(self.figure)
-
         self.setWidget(self.canvas)
-        self.canvas.setPalette(QtGui.QGuiApplication.palette())
         self.load_station()
 
     def load_station(self, station: Station = None):
@@ -83,7 +81,7 @@ class WorldMap(DockWidget):
         # debounce the plot calls incase they come in quick succession
         if not self.plot_debounce_timer:
             self.plot_debounce_timer = True
-            QTimer.singleShot(500, self._plot_debounce)
+            QTimer.singleShot(400, self._plot_debounce)
 
     def _plot_debounce(self):
         self.render_thread = RenderWorker(self)
@@ -91,23 +89,18 @@ class WorldMap(DockWidget):
 
     def plot_render(self):
         self.plot_debounce_timer = False
-
+        self.figure.clf()
         center_map = None
         if self.station and self.station.longitude:
             center_map = self.station.longitude
 
         ax = self.figure.add_subplot(1, 1, 1, projection=ccrs.PlateCarree(central_longitude=center_map), frame_on=False)
-
-        # make the map global rather than have it zoom in to
-        # the extents of any plotted data
-        ax.set_global()
-
         # ax.stock_img()
         date = datetime.datetime.now(datetime.UTC)
 
         #ax.coastlines()
-        ax.add_feature(cartopy.feature.LAND)  # , facecolor="olivedrab")
-        ax.add_feature(cartopy.feature.OCEAN)  # , facecolor="cornflowerblue")
+        ax.add_feature(cartopy.feature.LAND, facecolor="#f3efe9")
+        ax.add_feature(cartopy.feature.OCEAN, facecolor="#a3d3de")
         ax.add_feature(cartopy.feature.BORDERS, alpha=0.2)
 
         if self.station and self.station.latitude and self.station.longitude:
@@ -120,10 +113,17 @@ class WorldMap(DockWidget):
                 # draw line
                 ax.plot([self.station.longitude, self.call_coords[0]], [self.station.latitude, self.call_coords[1]],
                         color="blue", transform=ccrs.Geodetic())
+                # TODO (configurably) to zoom to the short path automatically, the default extent will need to
+                # be adjusted to fill the aspect ratio of the canvas
+                #ax.get_extent(), ax.set_extent(), https://scitools.org.uk/cartopy/docs/v0.15/matplotlib/geoaxes.html#cartopy.mpl.geoaxes.GeoAxes.set_extent
+            #else:
+            #    ax.set_global()
 
-        ax.add_feature(Nightshade(date + datetime.timedelta(minutes=10), alpha=0.3, delta=0.1))
-        ax.add_feature(Nightshade(date - datetime.timedelta(minutes=10), alpha=0.3, delta=0.1))
+        ax.set_global()
+        # abuse refraction to create a 'dusk' line
+        ax.add_feature(Nightshade(date, alpha=0.3, refraction=-1))
+        ax.add_feature(Nightshade(date, alpha=0.3, refraction=1))
 
-        # remove margins
+        # remove margins from plot area
         self.figure.subplots_adjust(left=0, right=1, bottom=0, top=1)
         self.canvas.draw()

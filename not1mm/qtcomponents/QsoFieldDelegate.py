@@ -120,7 +120,7 @@ def handle_set_data(qso: QsoLog, field_name: str, value ) -> bool:
         value = int(value)
     elif field_name == 'call':
         value = value.strip().upper()
-    #TODO re-generate other dependent fields?
+        #TODO re-generate other dependent fields?
 
     if isinstance(qso._meta.fields.get(field_name), FloatField):
         try:

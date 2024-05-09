@@ -163,7 +163,6 @@ class CheckWindow(DockWidget):
         Call to get matches for
         """
         result = QsoLog.get_like_calls(call, None)
-        # TODO option to include only current contest
         self.populate_layout(self.qsoLayout, result)
 
     def dxc_list(self, spots: list) -> None:

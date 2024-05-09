@@ -5,9 +5,6 @@ import typing
 
 from PyQt6 import uic, QtWidgets, QtCore
 from PyQt6.QtCore import Qt, QAbstractItemModel, QModelIndex, QMimeData, pyqtSignal, QTimer
-from PyQt6.QtGui import QIcon
-from qdarktheme._icon.icon_engine import SvgIconEngine
-from qdarktheme._icon.svg import Svg
 
 from not1mm import fsutils
 from not1mm.contest import contests_by_cabrillo_id

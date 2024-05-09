@@ -10,6 +10,16 @@ from decimal import Decimal
 logger = logging.getLogger("ham_utility")
 
 
+def get_call_base(call: str):
+    # strip slash suffixes/prefixes like mobile prefix or mode (/M /P)
+    if call:
+        if '\\' in call:
+            call = call.replace('\\', '/')
+        if '/' in call:
+            # get longest
+            call = sorted(call.split('/'), key=lambda part: len(part), reverse=True)[0]
+        return call
+
 # TODO - an invalid callsign should probably return nothing
 def calculate_wpx_prefix(the_call: str) -> str:
     """Calculate a WPX Prefix"""
