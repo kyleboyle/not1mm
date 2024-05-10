@@ -44,7 +44,7 @@
       <enum>QTabWidget::Rounded</enum>
      </property>
      <property name="currentIndex">
-      <number>7</number>
+      <number>0</number>
      </property>
      <property name="elideMode">
       <enum>Qt::ElideNone</enum>
@@ -1395,10 +1395,47 @@
        <string>Interface Settings</string>
       </attribute>
       <layout class="QFormLayout" name="interface_form_layout">
-       <item row="0" column="0">
+       <property name="verticalSpacing">
+        <number>20</number>
+       </property>
+       <item row="1" column="1">
+        <layout class="QHBoxLayout" name="horizontalLayout">
+         <item>
+          <widget class="QRadioButton" name="interface_entry_focus_select">
+           <property name="text">
+            <string>Select All</string>
+           </property>
+           <attribute name="buttonGroup">
+            <string notr="true">buttonGroupInterfaceEntrySelect</string>
+           </attribute>
+          </widget>
+         </item>
+         <item>
+          <widget class="QRadioButton" name="interface_entry_focus_end">
+           <property name="text">
+            <string>Cursor to End</string>
+           </property>
+           <attribute name="buttonGroup">
+            <string notr="true">buttonGroupInterfaceEntrySelect</string>
+           </attribute>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item row="2" column="1">
         <widget class="QCheckBox" name="interface_checkbox_emacs">
          <property name="text">
           <string>Enable emacs-like keybindings in entry fields (requires restart)</string>
+         </property>
+         <attribute name="buttonGroup">
+          <string notr="true">buttonGroupInterfaceEntrySelect</string>
+         </attribute>
+        </widget>
+       </item>
+       <item row="1" column="0">
+        <widget class="QLabel" name="label_23">
+         <property name="text">
+          <string>Entry Field Focus Behaviour</string>
          </property>
         </widget>
        </item>
@@ -1430,7 +1467,7 @@
       <set>QDialogButtonBox::Cancel|QDialogButtonBox::Save</set>
      </property>
      <property name="centerButtons">
-      <bool>true</bool>
+      <bool>false</bool>
      </property>
     </widget>
    </item>
@@ -1504,6 +1541,7 @@
   </property>
  </designerdata>
  <buttongroups>
+  <buttongroup name="buttonGroupInterfaceEntrySelect"/>
   <buttongroup name="buttonGroup_2"/>
   <buttongroup name="buttonGroup"/>
  </buttongroups>

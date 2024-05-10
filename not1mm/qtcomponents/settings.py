@@ -117,6 +117,8 @@ class Settings(QtWidgets.QDialog):
         self.activate_23cm.setChecked(bool("23cm" in self.preference.get("bands", [])))
 
         self.interface_checkbox_emacs.setChecked(self.preference.get('interface_emacs', False))
+        self.interface_entry_focus_select.setChecked(self.preference.get('interface_entry_focus_select', True))
+        self.interface_entry_focus_end.setChecked(not self.preference.get('interface_entry_focus_select', True))
 
     def save_pref_values(self):
         new_pref = {}
@@ -210,6 +212,7 @@ class Settings(QtWidgets.QDialog):
         new_pref["bands"] = bandlist
 
         new_pref['interface_emacs'] = self.interface_checkbox_emacs.isChecked()
+        new_pref['interface_entry_focus_select'] = self.interface_entry_focus_select.isChecked()
 
         fsutils.write_settings(new_pref)
         self.updated.emit([])

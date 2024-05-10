@@ -66,7 +66,7 @@ class CatRigctld(AbstractCat):
             self.rigctrlsocket.send(b"f\n")
             vfo = self.rigctrlsocket.recv(1024).decode().strip()
             if "RPRT -" not in vfo:
-                state.vfoa_hz = int(vfo)
+                state.vfotx_hz = int(vfo)
 
             self.rigctrlsocket.send(b"m\n")
             mode = self.rigctrlsocket.recv(1024).decode().strip().split()

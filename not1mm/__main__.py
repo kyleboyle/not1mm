@@ -383,10 +383,12 @@ class MainWindow(QtWidgets.QMainWindow):
         self.button_cmd_save.clicked.connect(self.save_contact, Qt.ConnectionType.QueuedConnection)
         self.button_cmd_qrz.clicked.connect(self.cmd_qrz, Qt.ConnectionType.QueuedConnection)
 
+        app_icon = QtGui.QIcon()
+        app_icon.addFile(str(fsutils.APP_DATA_PATH / "qsource-32.png"), QtCore.QSize(32, 32))
+        app_icon.addFile(str(fsutils.APP_DATA_PATH / "qsource-128.png"), QtCore.QSize(128, 128))
+        app_icon.addFile(str(fsutils.APP_DATA_PATH / "qsource-512.png"), QtCore.QSize(512, 512))
+        self.setWindowIcon(app_icon)
 
-        self.setWindowIcon(
-            QtGui.QIcon(str(fsutils.APP_DATA_PATH / "k6gte.not1mm-64.png"))
-        )
         self.readpreferences()
         db_path = self.pref.get("current_database", fsutils.USER_DATA_PATH / 'qsodefault.db')
         if not self.pref.get("current_database", None):
@@ -515,11 +517,12 @@ class MainWindow(QtWidgets.QMainWindow):
         if (source == self.rst_received_entry.input_field or source == self.rst_sent_entry.input_field) and (source.text() == '59' or source.text() == '599'):
             source.setSelection(1, 1)
         else:
-            # TODO - should maybe have configuration that will define what to do on field focus
-            # IE auto select the field or cursor to end for all fields
-            # default behaviour on focus
-            source.deselect()
-            source.end(False)
+            # behaviour for focusing into an entry field
+            if self.pref.get('interface_entry_focus_select', True):
+                source.setFocus()
+            else:
+                source.deselect()
+                source.end(False)
 
         # clear up any spaces that need to be removed as a result of pressing the space bar
         while self.space_character_removal_queue:
@@ -622,21 +625,14 @@ class MainWindow(QtWidgets.QMainWindow):
         _ = message_box.exec()
 
     def show_about_dialog(self) -> None:
-        """
-        Show the About dialog when the menu item is clicked.
-        """
-
         self.about_dialog = About(fsutils.APP_DATA_PATH)
         self.about_dialog.donors.setSource(
             QtCore.QUrl.fromLocalFile(f"{fsutils.APP_DATA_PATH / 'donors.html'}")
         )
+
         self.about_dialog.open()
 
     def show_help_dialog(self):
-        """
-        Show the Help dialog when the menu item is clicked.
-        """
-
         self.about_dialog = About(fsutils.APP_DATA_PATH)
 
         self.about_dialog.setWindowTitle("Help")
@@ -853,15 +849,15 @@ class MainWindow(QtWidgets.QMainWindow):
         self.hide_band_mode(self.contest.mode_category)
         if self.contest.mode_category == "CW":
             self.setmode("CW")
-            band = getband(str(self.radio_state.vfoa_hz or 0))
+            band = getband(str(self.radio_state.vfotx_hz or 0))
             self.set_band_indicator(band)
         elif self.contest.mode_category == "SSB":
             self.setmode("SSB")
-            if (self.radio_state.vfoa_hz or 0) > 10000000:
+            if (self.radio_state.vfotx_hz or 0) > 10000000:
                 self.radio_state.mode = "USB"
             else:
                 self.radio_state.mode = "LSB"
-            band = getband(str(self.radio_state.vfoa_hz or 0))
+            band = getband(str(self.radio_state.vfotx_hz or 0))
             self.set_band_indicator(band)
 
         self.set_window_title()
@@ -1170,13 +1166,13 @@ class MainWindow(QtWidgets.QMainWindow):
             self.process_function_key(self.F12)
 
     def cmd_spot(self):
-        freq = self.radio_state.vfoa_hz
+        freq = self.radio_state.vfotx_hz
         dx = self.callsign_entry.input_field.text().strip().upper()
         if len(dx) > 3 and freq:
             appevent.emit(appevent.SpotDx(self.station.callsign, dx, freq))
 
     def cmd_mark(self):
-        freq = self.radio_state.vfoa_hz
+        freq = self.radio_state.vfotx_hz
         dx = self.callsign_entry.input_field.text().strip().upper()
         if len(dx) > 2 and freq:
             appevent.emit(appevent.MarkDx(self.station.callsign, dx, freq))
@@ -1199,7 +1195,7 @@ class MainWindow(QtWidgets.QMainWindow):
         Set window title based on current state.
         """
 
-        vfoa = self.radio_state.vfoa_hz
+        vfoa = self.radio_state.vfotx_hz
         if vfoa:
             try:
                 vfoa = int(vfoa) / 1000
@@ -1288,12 +1284,14 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.contact.station_callsign = self.contact.fk_station.callsign
         self.contact.call = self.callsign_entry.input_field.text().strip().upper()
-        self.contact.freq = self.radio_state.vfoa_hz
+        self.contact.freq = self.radio_state.vfotx_hz
         self.contact.band = hamutils.adif.common.convert_freq_to_band((self.contact.freq or 0) / 1000_000)
 
-        # TODO - important for dexpediation - split mode - set when radio state indicates split
-        # self.contact.freq_rx = int(self.radio_state.get("vfoa", 0.0))
-        # self.contact.band_rx = hamutils.adif.common.convert_freq_to_band(self.contact.freq_rx / 1000_000)
+        # important for dexpediation - split mode - set when radio state indicates split
+        if self.radio_state.is_split:
+            self.contact.freq_rx = self.radio_state.vforx_hz
+            self.contact.band_rx = hamutils.adif.common.convert_freq_to_band((self.contact.freq_rx or 0) / 1000_000)
+
 
         self.contact.mode = (self.radio_state.mode or "").upper()
         if self.contact.mode in ['USB', 'LSB']:
@@ -1859,7 +1857,7 @@ class MainWindow(QtWidgets.QMainWindow):
         vfo = int(vfo * 1000)
         band = getband(str(vfo))
         self.set_band_indicator(band)
-        self.radio_state.vfoa_hz = vfo
+        self.radio_state.vfotx_hz = vfo
         self.set_window_title()
         #self.clearinputs()
         if self.rig_control:
@@ -1891,7 +1889,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.radio_state.mode = "CW"
             if self.rig_control:
                 self.rig_control.set_mode("CW")
-            band = getband(str(self.radio_state.vfoa_hz))
+            band = getband(str(self.radio_state.vfotx_hz))
             self.set_band_indicator(band)
             self.set_window_title()
             self.clearinputs()
@@ -1902,18 +1900,18 @@ class MainWindow(QtWidgets.QMainWindow):
             self.radio_state.mode = "RTTY"
             if self.rig_control:
                 self.rig_control.set_mode("RTTY")
-            band = getband(str(self.radio_state.vfoa_hz))
+            band = getband(str(self.radio_state.vfotx_hz))
             self.set_band_indicator(band)
             self.set_window_title()
             self.clearinputs()
             return
         if mode == "SSB":
             self.setmode("SSB")
-            if int(self.radio_state.vfoa_hz) > 10000000:
+            if int(self.radio_state.vfotx_hz) > 10000000:
                 self.radio_state.mode = "USB"
             else:
                 self.radio_state.mode = "LSB"
-            band = getband(str(self.radio_state.vfoa_hz))
+            band = getband(str(self.radio_state.vfotx_hz))
             self.set_band_indicator(band)
             self.set_window_title()
             if self.rig_control:
@@ -1997,7 +1995,7 @@ class MainWindow(QtWidgets.QMainWindow):
         if not dupe_type:
             return False
 
-        band = hamutils.adif.common.convert_freq_to_band((self.radio_state.vfoa_hz or 0) / 1000_000)
+        band = hamutils.adif.common.convert_freq_to_band((self.radio_state.vfotx_hz or 0) / 1000_000)
         mode = self.radio_state.mode
         if mode == 'USB' or mode == 'LSB':
             mode = 'SSB'
@@ -2221,27 +2219,27 @@ class MainWindow(QtWidgets.QMainWindow):
         self.radio_state = event.state
         self.set_radio_icon(0)
         self.set_radio_icon_tooltip()
-        if self.radio_state.error or not self.radio_state.vfoa_hz:
+        if self.radio_state.error or not self.radio_state.vfotx_hz:
             self.set_radio_icon(1)
-        elif self.radio_state.vfoa_hz:
+        elif self.radio_state.vfotx_hz:
             self.set_radio_icon(2)
             if self.radio_state.mode == "CW" or self.radio_state.mode == 'RTTY':
                 self.setmode(self.radio_state.mode)
             if self.radio_state.mode == "LSB" or self.radio_state.mode == "USB" or self.radio_state.mode == 'SSB':
                 self.setmode("SSB")
-            band = getband(str(self.radio_state.vfoa_hz))
+            band = getband(str(self.radio_state.vfotx_hz))
             self.set_band_indicator(band)
             self.set_window_title()
             if self.radio_state.is_ptt:
                 self.set_radio_icon(3)
 
     def set_radio_icon_tooltip(self):
-        if self.radio_state.vfoa_hz is None:
+        if self.radio_state.vfotx_hz is None:
             return
         self.radio_icon.setToolTip(f"<table><tr><td>rig</td><td>{self.radio_state.id}</td></tr>"
-                                   f"<tr><td>vfo a</td><td>{self.radio_state.vfoa_hz:,}</td></tr>"
+                                   f"<tr><td>vfo a</td><td>{self.radio_state.vfotx_hz:,}</td></tr>"
                                    f"<tr><td>mode</td><td>{self.radio_state.mode}</td></tr>"
-                                   f"<tr><td>vfo b</td><td>{self.radio_state.vfob_hz}</td></tr>"
+                                   f"<tr><td>vfo b</td><td>{self.radio_state.vforx_hz}</td></tr>"
                                    f"<tr><td>bandwidth</td><td>{self.radio_state.bandwidth_hz}</td></tr>"
                                    f"<tr><td>power</td><td>{self.radio_state.power}</td></tr></table>"
                                    )

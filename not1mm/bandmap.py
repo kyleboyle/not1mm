@@ -172,14 +172,14 @@ class BandMapWindow(DockWidget):
     def event_radio_state(self, event: appevent.RadioState):
         # TODO when/if multiple band maps, check to make sure this bandmap window is the one tracking the vfo
 
-        self.set_band(ham_utility.getband(str(event.state.vfoa_hz or 0)) + "m", False)
+        self.set_band(ham_utility.getband(str(event.state.vfotx_hz or 0)) + "m", False)
         try:
-            if self.rx_freq != float(event.state.vfoa_hz or 0) / 1_000_000:
-                self.rx_freq = float(event.state.vfoa_hz or 0) / 1_000_000
+            if self.rx_freq != float(event.state.vfotx_hz or 0) / 1_000_000:
+                self.rx_freq = float(event.state.vfotx_hz or 0) / 1_000_000
                 self.tx_freq = self.rx_freq
                 self.center_on_rxfreq()
         except ValueError:
-            logger.debug(f"vfo value error {event.state.vfoa_hz}")
+            logger.debug(f"vfo value error {event.state.vfotx_hz}")
 
         self.bandwidth = event.state.bandwidth_hz if event.state.bandwidth_hz is not None else 0
         step, _ = self.determine_step_digits()

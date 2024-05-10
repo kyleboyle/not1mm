@@ -37,7 +37,7 @@ class CatManual(AbstractCat):
             self.count += 1
 
         state = RigState()
-        state.vfoa_hz = self.vfo or self.settings.get("cat_manual_vfo")
+        state.vfotx_hz = self.vfo or self.settings.get("cat_manual_vfo")
         state.mode = self.mode or self.settings.get("cat_manual_mode")
         state.power = self.power
         state.id = "Manual"

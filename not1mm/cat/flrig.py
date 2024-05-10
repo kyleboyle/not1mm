@@ -76,7 +76,7 @@ class CatFlrig(AbstractCat):
             self.failure_count = 0
         try:
             state = RigState(id=self.get_id())
-            state.vfoa_hz = int(self.server.rig.get_vfo())
+            state.vfotx_hz = int(self.server.rig.get_vfo())
             state.mode = self.server.rig.get_mode()
             state.is_ptt = self.server.rig.get_ptt() == '1'
             state.power = self.server.rig.get_power()

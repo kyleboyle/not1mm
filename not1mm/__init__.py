@@ -8,7 +8,7 @@ pref_ref = {
     "bands_modes": True,
     "bands": ["160", "80", "40", "20", "15", "10"],
     "send_n1mm_packets": False,
-    "n1mm_station_name": "My n1mm station name",
+    "n1mm_station_name": "Shack",
     "n1mm_operator": "Jimmy",
     "n1mm_radioport": "127.0.0.1:12060",
     "n1mm_contactport": "127.0.0.1:12060",

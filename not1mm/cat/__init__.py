@@ -10,9 +10,11 @@ from .RigState import RigState
 
 # TODO hamlib and omnirig
 
+# TODO split
 logger = logging.getLogger("cat")
 _DEFAULT_POLL_INTERVAL_MS = 250
 
+# TODO send cw/morse through cat if supported (rigctld)
 class AbstractCat(QThread):
 
     poll_interval_ms = _DEFAULT_POLL_INTERVAL_MS
@@ -65,7 +67,7 @@ class AbstractCat(QThread):
         state = self.get_state()
 
         if datetime.now() > self.radio_state_broadcast_time or self.previous_state != state:
-            logger.debug("VFO: %s MODE: %s BW: %s", state.vfoa_hz, state.mode, state.bandwidth_hz)
+            logger.debug("VFO: %s MODE: %s BW: %s", state.vfotx_hz, state.mode, state.bandwidth_hz)
             appevent.emit(appevent.RadioState(state))
             self.radio_state_broadcast_time = datetime.now() + timedelta(seconds=10)
         self.previous_state = state
