@@ -354,7 +354,7 @@ class LogWindow(DockWidget):
             index = self.qsoTable.model().mapToSource(selection[0]).row()
             self.qso_to_edit = self.qsoModel.getDataset()[index]
             if self.qso_to_edit:
-                edit_window = QsoEditWindow(self.qso_to_edit, parent=self.parent(), is_dockable=False, contest=self.contest)
+                edit_window = QsoEditWindow(self.qso_to_edit, parent=self.parent(), is_in_progress=False, contest=self.contest)
                 edit_window.setFloating(True)
                 edit_window.show()
                 edit_window.model.edited.connect(self.edit_sheet_edit)

@@ -47,7 +47,7 @@ class CatFlrig(AbstractCat):
             self.online = False
 
     def get_info(self):
-        locker = QMutexLocker(self.mutex)
+        #locker = QMutexLocker(self.mutex)
         if not self.online:
             self.connect()
 
@@ -76,9 +76,15 @@ class CatFlrig(AbstractCat):
             self.failure_count = 0
         try:
             state = RigState(id=self.get_id())
-            state.vfotx_hz = int(self.server.rig.get_vfo())
             state.mode = self.server.rig.get_mode()
-            state.is_ptt = self.server.rig.get_ptt() == '1'
+            state.is_ptt = self.server.rig.get_ptt() == 1
+            state.is_split = self.server.rig.get_split() == 1
+            if state.is_split:
+                state.vforx_hz = int(self.server.rig.get_vfoA())
+                state.vfotx_hz = int(self.server.rig.get_vfoB())
+            else:
+                state.vfotx_hz = int(self.server.rig.get_vfo())
+                state.vforx_hz = state.vfotx_hz
             state.power = self.server.rig.get_power()
             try:
                 state.bandwidth_hz = int(self.server.rig.get_bw()[0])

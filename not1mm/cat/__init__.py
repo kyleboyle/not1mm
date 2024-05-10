@@ -30,7 +30,6 @@ class AbstractCat(QThread):
         self.rig_poll_timer.moveToThread(self)
         self.moveToThread(self)
 
-
     def get_id(self):
         raise NotImplementedError()
 

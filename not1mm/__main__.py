@@ -26,6 +26,7 @@ from not1mm.cat import AbstractCat
 from not1mm.cat.RigState import RigState
 from not1mm.cat.flrig import CatFlrig
 from not1mm.cat.manual import CatManual
+from not1mm.cat.omnirig import CatOmnirig
 from not1mm.cat.rigctld import CatRigctld
 from not1mm.mapwindow import WorldMap
 from not1mm.qsoeditwindow import QsoEditWindow
@@ -1054,7 +1055,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.clear_band_indicators()
             indicator = self.all_mode_indicators[self.current_mode].get(band, None)
             if indicator:
-                indicator.setFrameShape(QtWidgets.QFrame.Shape.Box)
+                #indicator.setFrameShape(QtWidgets.QFrame.Shape.Box)
                 indicator.setStyleSheet("QLabel {color:white; background-color : green;}")
 
     def closeEvent(self, event) -> None:
@@ -1347,7 +1348,25 @@ class MainWindow(QtWidgets.QMainWindow):
         self.contact.points = self.contest_plugin.points_for_qso(self.contact)
         self.contact.contest_id = self.contact.fk_contest.fk_contest_meta.cabrillo_name
 
-        # TODO special features from parsing the comment field (eg pota/iota/sota references)
+        # special comment field features (eg pota/iota/sota references)
+        if self.contact.comment:
+            source = str(self.contact.comment).strip().lower()
+            if source.startswith('pota '):
+                pota_ref = source[5:].strip()
+                if pota_ref:
+                    self.contact.pota_ref = pota_ref
+            elif source.startswith('iota '):
+                iota_ref = source[5:].strip()
+                if iota_ref:
+                    self.contact.iota_ref = iota_ref
+            elif source.startswith('sota '):
+                sota_ref = source[5:].strip()
+                if sota_ref:
+                    self.contact.sota_ref = sota_ref
+            elif source.startswith('wwff '):
+                wwff_ref = source[5:].strip()
+                if wwff_ref:
+                    self.contact.wwff_ref = wwff_ref
 
         # contest may need to do re calculation or normalization or something
         self.contest_plugin.pre_process_qso_log(self.contact)
@@ -1607,17 +1626,15 @@ class MainWindow(QtWidgets.QMainWindow):
         if self.pref.get('cat_enable_manual', False):
             self.rig_control = CatManual()
         elif self.pref.get("cat_enable_flrig", False):
-            logger.debug(
-                "Using flrig: %s",
-                f"{self.pref.get('cat_flrig_ip')} {self.pref.get('cat_flrig_port')}",
-            )
+            logger.debug(f"Using flrig: {self.pref.get('cat_flrig_ip')} {self.pref.get('cat_flrig_port')}")
             self.rig_control = CatFlrig(self.pref.get("cat_flrig_ip", "127.0.0.1"), int(self.pref.get("cat_flrig_port", 12345)))
         elif self.pref.get("cat_enable_rigctld", False):
-            logger.debug(
-                "Using rigctld: %s",
-                f"{self.pref.get('cat_rigctld_ip')} {self.pref.get('cat_rigctld_port')}",
-            )
+            logger.debug(f"Using rigctld: {self.pref.get('cat_rigctld_ip')} {self.pref.get('cat_rigctld_port')}")
             self.rig_control = CatRigctld(self.pref.get("cat_rigctld_ip", "127.0.0.1"), int(self.pref.get("cat_rigctld_port", 4532)))
+
+        elif sys.platform == 'windows' and self.pref.get("cat_enable_omnirig", False):
+            logger.debug(f"Using omni rig: {self.pref.get('cat_rigctld_ip')} {self.pref.get('cat_rigctld_port')}")
+            self.rig_control = CatOmnirig(self.pref.get("cat_omnirig_index", 1))
 
         if self.rig_control:
             self.rig_control.start_poll_loop()
@@ -2235,6 +2252,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def set_radio_icon_tooltip(self):
         if self.radio_state.vfotx_hz is None:
+            self.radio_icon.setToolTip("Unavailable")
             return
         self.radio_icon.setToolTip(f"<table><tr><td>rig</td><td>{self.radio_state.id}</td></tr>"
                                    f"<tr><td>vfo a</td><td>{self.radio_state.vfotx_hz:,}</td></tr>"

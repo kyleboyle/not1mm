@@ -77,7 +77,16 @@ class CatRigctld(AbstractCat):
             state.power = int(float(self.rigctrlsocket.recv(1024).decode().strip()) * 100)
 
             self.rigctrlsocket.send(b"t\n")
-            state.is_ptt = self.rigctrlsocket.recv(1024).decode().strip == 1
+            state.is_ptt = self.rigctrlsocket.recv(1024).decode().strip == '1'
+
+            self.rigctrlsocket.send(b"s\n")
+            state.is_split = self.rigctrlsocket.recv(1024).decode().strip[0] == '1'
+            if state.is_split:
+                state.vforx_hz = state.vfotx_hz
+                self.rigctrlsocket.send(b"i\n")
+                vfo = self.rigctrlsocket.recv(1024).decode().strip()
+                state.vfotx_hz = int(vfo)
+
             return state
         except IndexError as exception:
             logger.debug("%s", f"{exception}")
