@@ -2303,18 +2303,14 @@ def install_icons() -> None:
     if sys.platform == "linux":
         os.system(
             "xdg-icon-resource install --size 32 --context apps --mode user "
-            f"{fsutils.APP_DATA_PATH}/k6gte.not1mm-32.png k6gte-not1mm"
-        )
-        os.system(
-            "xdg-icon-resource install --size 64 --context apps --mode user "
-            f"{fsutils.APP_DATA_PATH}/k6gte.not1mm-64.png k6gte-not1mm"
+            f"{fsutils.APP_DATA_PATH}/qsource-32.png qsource-logger"
         )
         os.system(
             "xdg-icon-resource install --size 128 --context apps --mode user "
-            f"{fsutils.APP_DATA_PATH}/k6gte.not1mm-128.png k6gte-not1mm"
+            f"{fsutils.APP_DATA_PATH}/qsource-128.png qsource-logger"
         )
         os.system(
-            f"xdg-desktop-menu install {fsutils.APP_DATA_PATH}/k6gte-not1mm.desktop"
+            f"xdg-desktop-menu install {fsutils.APP_DATA_PATH}/qsource-logger.desktop"
         )
 
 

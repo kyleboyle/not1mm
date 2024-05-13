@@ -141,6 +141,8 @@ class StationSettings(QtWidgets.QDialog):
     def save_station_table(self):
         for row, field in enumerate(self.get_fields()):
             value = self.table_station.item(row, 0).text()
+            if field == 'callsign':
+                value = value.upper()
             setattr(self.station, field, value or None) # empty strings become null
 
         self.station.save()
