@@ -1,5 +1,5 @@
 
-import not1mm
+import qsourcelogger
 
-not1mm.run()
+qsourcelogger.run()
 

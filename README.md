@@ -1,13 +1,11 @@
 # QSource Logger
 
-The worlds #1 unfinished contest logger <sup>*According to my daughter Corinna.<sup>
-
 [![PyPI](https://img.shields.io/pypi/v/qsource-logger)](https://pypi.org/project/qsource-logger/)
 
 ## Intro
 
-QSOurce Logger is an attempt to provide a flexible logging interface for both general logging
-and beginner to intermediate contesting. It is cross-platform and tries to leverage existing CAT interface layers
+QSOurce Logger is an attempt to provide a flexible amateur radio logging interface for both general logging
+and beginner to intermediate contesting. It is cross-platform and leverages existing CAT interface layers
 for CAT control.
 
 The project was originally forked from Not1mm - thanks to the original authors for the starting point and inspiration.

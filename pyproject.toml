@@ -3,12 +3,13 @@ requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "not1mm" 
+name = "qsource-logger"
 version = "24.3.24.1"
-description = "NOT1MM Logger"
+description = "QSOurce Logger - Amateur radio log book and utilities"
 readme = "README.md"
 requires-python = ">=3.9"
 authors = [
+  { name="Kyle Boyle", email="kyle@kyleboyle.com" },
   { name="Michael Bridak", email="michael.bridak@gmail.com" },
 ]
 dependencies = [
@@ -23,32 +24,34 @@ dependencies = [
     "numpy",
     "rapidfuzz",
     "appdata",
-    "pyqtdarktheme"
+    "pyqtdarktheme",
+    'levenshtein',
+    'peewee',
+    'feedparser',
+    'cartopy',
+    "pywin32; sys_platform == 'windows'"
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
-    "Development Status :: 4 - Beta",
     "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
-    "Environment :: X11 Applications :: Qt",
-    "Operating System :: POSIX :: Linux",
     "Intended Audience :: End Users/Desktop",
     "Natural Language :: English",
     "Topic :: Communications :: Ham Radio",
 ]
 
 [project.urls]
-"Homepage" = "https://github.com/mbridak/not1mm"
-"Bug Tracker" = "https://github.com/mbridak/not1mm/issues"
+"Homepage" = "https://github.com/kyleboyle/qsourcelogger"
+"Bug Tracker" = "https://github.com/kyleboyle/qsourcelogger/issues"
 
 [tool.setuptools.packages.find]
 where = ["."]
 
-exclude = ["not1mm.testing*", "not1mm.not1mm.testing*", "testing*", "usb_vfo_knob*",]
+exclude = ["qsourcelogger.testing*", "qsourcelogger.qsourcelogger.testing*", "testing*", "usb_vfo_knob*",]
 
 [tool.setuptools.package-data]
-"not1mm.data" = ["*.json", "*.txt", "*.SCP", "*.ui", "*.ttf", "*.desktop", "*.png", "*.qss", "*.sql", "*.html",]
-"not1mm.data.phonetics" = ["*.wav",]
-"not1mm.icon" = ["*.png",]
+"qsourcelogger.data" = ["*.json", "*.txt", "*.SCP", "*.ui", "*.ttf", "*.desktop", "*.png", "*.qss", "*.sql", "*.html",]
+"qsourcelogger.data.phonetics" = ["*.wav",]
+"qsourcelogger.icon" = ["*.png",]
 
 [project.scripts]
-not1mm = "not1mm.__main__:run"
+qsourcelogger = "qsourcelogger.__main__:run"
