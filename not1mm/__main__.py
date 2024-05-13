@@ -1276,6 +1276,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.check_callsign_external(callsign_value)
 
     def pre_populate_contact(self, notify=True):
+        # triggered when callsign of qso is set
         if self.contact.time_on is not None:
             return
         if len(self.callsign_entry.input_field.text()) < 3:
@@ -1345,8 +1346,11 @@ class MainWindow(QtWidgets.QMainWindow):
         if not self.contact.qso_complete:
             self.contact.qso_complete = 'Y'
 
-        self.contact.points = self.contest_plugin.points_for_qso(self.contact)
         self.contact.contest_id = self.contact.fk_contest.fk_contest_meta.cabrillo_name
+
+        if self.contact.gridsquare and self.station.gridsquare:
+            kilometers = distance(self.station.gridsquare, self.contact.gridsquare)
+            self.contact.distance = kilometers
 
         # special comment field features (eg pota/iota/sota references)
         if self.contact.comment:
@@ -1370,6 +1374,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # contest may need to do re calculation or normalization or something
         self.contest_plugin.pre_process_qso_log(self.contact)
+        self.contact.points = self.contest_plugin.points_for_qso(self.contact)
 
         self.contact.id = uuid.uuid4()
         try:
@@ -2255,13 +2260,12 @@ class MainWindow(QtWidgets.QMainWindow):
             self.radio_icon.setToolTip("Unavailable")
             return
         self.radio_icon.setToolTip(f"<table><tr><td>rig</td><td>{self.radio_state.id}</td></tr>"
-                                   f"<tr><td>vfo a</td><td>{self.radio_state.vfotx_hz:,}</td></tr>"
+                                   f"<tr><td>vfo</td><td>{self.radio_state.vforx_hz:,}</td></tr>"
                                    f"<tr><td>mode</td><td>{self.radio_state.mode}</td></tr>"
-                                   f"<tr><td>vfo b</td><td>{self.radio_state.vforx_hz}</td></tr>"
+                                   f"<tr><td>split tx</td><td>{'N/A' if not self.radio_state.is_split else self.radio_state.vfotx_hz}</td></tr>"
                                    f"<tr><td>bandwidth</td><td>{self.radio_state.bandwidth_hz}</td></tr>"
                                    f"<tr><td>power</td><td>{self.radio_state.power}</td></tr></table>"
                                    )
-
 
     def edit_window_data_change(self, qso_before, qso_after, field_name, value):
         # update entry fields with new values from the qso edit window

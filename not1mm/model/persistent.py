@@ -157,6 +157,9 @@ class QsoLog(BaseModel):
     distance = IntegerField(null=True) # positive kilometers via the specified signal path
     tx_pwr = IntegerField(null=True)
     points = IntegerField(null=True) # points for qso in a contest
+    multiplier1 = CharField(255, null=True) # set to the value of the multiplier if the qso represents a multiplier
+    multiplier2 = CharField(255, null=True) # depends on contest, could be one or many qso fields (eg 1 = band, 2 = ARRL DXCC List)
+    multiplier3 = CharField(255, null=True) # or just one eg ARRL DXCC List
     a_index = IntegerField(null=True) # the geomagnetic A index at the time of the QSO in the range 0 to 400 (inclusive)
     address = CharField(null=True)
     age = IntegerField(null=True)

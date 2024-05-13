@@ -80,8 +80,10 @@ class CatFlrig(AbstractCat):
             state.is_ptt = self.server.rig.get_ptt() == 1
             state.is_split = self.server.rig.get_split() == 1
             if state.is_split:
-                state.vforx_hz = int(self.server.rig.get_vfoA())
+                state.vforx_hz = int(self.server.rig.get_vfo())
                 state.vfotx_hz = int(self.server.rig.get_vfoB())
+                if state.vforx_hz == state.vfotx_hz:
+                    state.vfotx_hz = int(self.server.rig.get_vfoA())
             else:
                 state.vfotx_hz = int(self.server.rig.get_vfo())
                 state.vforx_hz = state.vfotx_hz
