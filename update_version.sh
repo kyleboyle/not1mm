@@ -9,4 +9,4 @@ sed -i "s/$str/$tnlz/" pyproject.toml
 
 str=$(cat qsourcelogger/lib/version.py | grep __version__)
 tnlz=$(echo __version__ = \"$today_no_leading_zeros\")
-sed -i "s/$str/$tnlz/" not1mm/lib/version.py
+sed -i "s/$str/$tnlz/" qsourcelogger/lib/version.py
