@@ -780,6 +780,9 @@
               <property name="focusPolicy">
                <enum>Qt::NoFocus</enum>
               </property>
+              <property name="toolTip">
+               <string>Operating in Run Mode (calling CQ on a freq)</string>
+              </property>
               <property name="accessibleName">
                <string>Run Mode</string>
               </property>
@@ -798,6 +801,9 @@
              <widget class="QPushButton" name="pushButton_sp">
               <property name="focusPolicy">
                <enum>Qt::NoFocus</enum>
+              </property>
+              <property name="toolTip">
+               <string>Operating in Search and Pounce mode (responding to CQ calls)</string>
               </property>
               <property name="accessibleName">
                <string>Search and Pounce</string>
@@ -1043,6 +1049,9 @@
                <property name="focusPolicy">
                 <enum>Qt::NoFocus</enum>
                </property>
+               <property name="toolTip">
+                <string>Stop audio / CW</string>
+               </property>
                <property name="text">
                 <string>Esc: STOP</string>
                </property>
@@ -1052,6 +1061,9 @@
               <widget class="QPushButton" name="button_cmd_wipe">
                <property name="focusPolicy">
                 <enum>Qt::NoFocus</enum>
+               </property>
+               <property name="toolTip">
+                <string>Clear Active QSO</string>
                </property>
                <property name="text">
                 <string>Wipe</string>
@@ -1063,6 +1075,9 @@
                <property name="focusPolicy">
                 <enum>Qt::NoFocus</enum>
                </property>
+               <property name="toolTip">
+                <string>Save Active QSO to log</string>
+               </property>
                <property name="text">
                 <string>Save</string>
                </property>
@@ -1072,6 +1087,9 @@
               <widget class="QPushButton" name="button_cmd_edit">
                <property name="focusPolicy">
                 <enum>Qt::NoFocus</enum>
+               </property>
+               <property name="toolTip">
+                <string>Show active QSO edit sheet (if not currently open)</string>
                </property>
                <property name="text">
                 <string>Edit</string>
@@ -1083,6 +1101,9 @@
                <property name="focusPolicy">
                 <enum>Qt::NoFocus</enum>
                </property>
+               <property name="toolTip">
+                <string>Stash current callsign and freq on bandmap</string>
+               </property>
                <property name="text">
                 <string>Mark</string>
                </property>
@@ -1093,6 +1114,9 @@
                <property name="focusPolicy">
                 <enum>Qt::NoFocus</enum>
                </property>
+               <property name="toolTip">
+                <string>Spot current callsign in dx cluster</string>
+               </property>
                <property name="text">
                 <string>Spot</string>
                </property>
@@ -1102,6 +1126,9 @@
               <widget class="QPushButton" name="button_cmd_qrz">
                <property name="focusPolicy">
                 <enum>Qt::NoFocus</enum>
+               </property>
+               <property name="toolTip">
+                <string>Open current callsign in qrz website</string>
                </property>
                <property name="text">
                 <string>QRZ</string>

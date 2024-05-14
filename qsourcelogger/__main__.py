@@ -74,6 +74,7 @@ from .qtcomponents.QsoEntryField import QsoEntryField
 from .qtcomponents.StationSettings import StationSettings
 from .qtcomponents.VoiceAudio import VoiceAudio
 from .qtcomponents.settings import Settings
+from .qtcomponents.spotsend import Spotsend
 from .vfo import VfoWindow
 
 qss = """
@@ -1169,7 +1170,21 @@ class MainWindow(QtWidgets.QMainWindow):
         freq = self.radio_state.vfotx_hz
         dx = self.callsign_entry.input_field.text().strip().upper()
         if len(dx) > 3 and freq:
-            appevent.emit(appevent.SpotDx(self.station.callsign, dx, freq))
+            dialog = Spotsend(self)
+
+            dialog.text_mycall.setText(self.station.callsign)
+            dialog.text_dx.setText(self.callsign_entry.input_field.text().upper())
+            dialog.text_freq.setText(str(self.radio_state.vforx_hz))
+            if 'comment' in self.contest_fields:
+                dialog.text_comment.setText(self.contest_fields['comment'].input_field.text())
+
+            dialog.accepted.connect(lambda: appevent.emit(
+                appevent.SpotDx(de=dialog.text_mycall.text(),
+                                dx=dialog.text_dx.text(),
+                                freq_hz=int(dialog.text_freq.text()),
+                                comment=dialog.text_comment.text())))
+            dialog.open()
+
 
     def cmd_mark(self):
         freq = self.radio_state.vfotx_hz

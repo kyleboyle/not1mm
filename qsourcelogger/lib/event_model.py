@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import Optional
 
 import qsourcelogger.cat.RigState
 from . import lookup
@@ -15,12 +16,9 @@ class AppEvent():
 class SpotDx(AppEvent):
     de: str = None
     dx: str = None
-    freq_hz: int = None
+    freq_hz: float = None
+    comment: Optional[str] = None
 
-    def __init__(self, de, dx, freq_hz):
-        self.de = de
-        self.dx = dx
-        self.freq_hz = float(int(freq_hz))
 
 @dataclass
 class MarkDx(SpotDx):

@@ -4,7 +4,8 @@
 
 ## Intro
 
-<img align="left" src="qsourcelogger/data/qsource-128.png"> QSOurce Logger is an attempt to provide a flexible amateur radio logging interface for both general logging
+<img align="left" src="qsourcelogger/data/qsource-128.png"> QSOurce Logger is an attempt to provide a flexible amateur 
+radio logging program for both general logging
 and beginner to intermediate contesting. It is cross-platform and leverages existing CAT interface layers
 for CAT control.
 
@@ -23,7 +24,7 @@ Check the [project wiki](https://github.com/kyleboyle/qsource-logger/wiki) for m
 
 ## List of should be working contests
 
-- General Logging - similar options to [n1mm dx](https://n1mmwp.hamdocs.com/manual-supported/contests-setup/setup-dx-contests/)
+- General Logging - similar options to [n1mm dx](https://n1mmwp.hamdocs.com/manual-supported/contests-setup/setup-dx-contests/) Generic Contests
   - General DX Logging
   - DXpedition
   - DX Serial

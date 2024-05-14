@@ -202,9 +202,12 @@ class BandMapWindow(DockWidget):
                 appevent.emit(appevent.Tune(spot.freq_hz, spot.callsign))
 
     def event_spot_dx(self, event: appevent.SpotDx):
-        # cluster expects Mhz
-        spotdx = f"dx {event.dx} {event.freq_hz / 1_000_000}"
-        self.send_command(spotdx)
+        # cluster expects Mhz or khz
+        spotdx = f"dx {event.dx} {event.freq_hz / 1_000_000} {event.comment}"
+        if self.connected:
+            self.send_command(spotdx)
+        else:
+            logger.warning(f"dx cluster not connected, ignoring spot {spotdx}")
 
     def event_mark_dx(self, event: appevent.MarkDx):
         Spot(ts=datetime.utcnow() + timedelta(days=2),
