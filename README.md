@@ -4,11 +4,15 @@
 
 ## Intro
 
-QSOurce Logger is an attempt to provide a flexible amateur radio logging interface for both general logging
+<img align="left" src="qsourcelogger/data/qsource-128.png"> QSOurce Logger is an attempt to provide a flexible amateur radio logging interface for both general logging
 and beginner to intermediate contesting. It is cross-platform and leverages existing CAT interface layers
 for CAT control.
 
 The project was originally forked from Not1mm - thanks to the original authors for the starting point and inspiration.
+<p>
+  &nbsp;
+<p>
+
 
 The QSO entry interface is partially informed by n1mm+ with additional windows and tools available to enhance the experience
 of making amateur radio contacts.
