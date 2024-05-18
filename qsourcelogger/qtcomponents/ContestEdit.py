@@ -13,7 +13,7 @@ from qsourcelogger import fsutils
 from qsourcelogger.contest.AbstractContest import ContestField
 from qsourcelogger.lib.event_model import ContestActivated
 from qsourcelogger.model import Contest, ContestMeta, Station, QsoLog, DeletedQsoLog
-from qsourcelogger.contest import contest_plugin_list, contests_by_cabrillo_id, GeneralLogging
+from qsourcelogger.contest import contest_plugin_list, contests_by_cabrillo_id, GeneralLogging, GeneralSerialLogging
 
 import qsourcelogger.lib.event as appevent
 
@@ -321,7 +321,6 @@ class ContestEdit(QtWidgets.QDialog):
 
     def clear_form(self):
         self.contest = None
-        self.tabWidget.setCurrentIndex(0)
         self.tabWidget.setEnabled(False)
         self.button_activate.setEnabled(False)
         self.button_delete.setEnabled(False)
@@ -356,6 +355,7 @@ class ContestEdit(QtWidgets.QDialog):
         self.start_date.setTime(QTime(0, 0, 0))
         self.start_date.setEnabled(False)
         self.display_name.clear()
+        self.tabWidget.setCurrentIndex(0)
 
     def edit_contest(self, index):
         if index == -1 or not self.select_contest.itemData(index):
@@ -392,8 +392,9 @@ class ContestEdit(QtWidgets.QDialog):
         self.contest.sent_exchange = self.sent_exchange.text()
         self.contest.start_date = self.start_date.dateTime().toPyDateTime()
         self.contest.label = self.display_name.text()
+        self.field_table_save()
         self.contest.save()
-        if self.field_table_save() and self.settings.get('active_contest_id', None) == self.contest.id:
+        if self.settings.get('active_contest_id', None) == self.contest.id:
             # if the entry fields have been updated, refresh the fields in the main window
             appevent.emit(ContestActivated(self.contest))
 
@@ -458,6 +459,7 @@ class ContestEdit(QtWidgets.QDialog):
                 self.start_date.setDate(values['start_date'])
             if 'start_time' in values:
                 self.start_date.setTime(values['start_time'])
+        self.tabWidget.setCurrentIndex(0)
 
     def closeEvent(self, event: typing.Optional[QtGui.QCloseEvent]) -> None:
         if not self.settings.get('active_contest_id', None):
@@ -492,12 +494,12 @@ class ContestEdit(QtWidgets.QDialog):
             user_fields = self.contest.get_setting('user_fields', None)
 
             force_model_dirty = False
-            if user_fields is None and self.contest.id is None and isinstance(contest_plugin, GeneralLogging):
-                # General logging by default doesn't provide any fields beyond call & rsts, so add example columns
-                # for the user to start with (that mimic n1mm)
-                user_fields = [{'name': 'name', 'display_label': 'Name', 'stretch_factor': 4, 'space_tabs': False, 'max_chars': 255},
-                               {'name': 'comment', 'display_label': 'Comment', 'stretch_factor': 4, 'space_tabs': False, 'max_chars': 255}]
-                force_model_dirty = True
+            if user_fields is None and self.contest.id is None:
+                # if this is a fresh contest edit, supply the contest optional fields as pre-configured
+                optional_fields = contest_plugin.get_optional_qso_fields()
+                if optional_fields:
+                    user_fields = [vars(x) for x in optional_fields]
+                    force_model_dirty = True
 
             model = EntryFieldModel(contest_fields, user_fields)
             self.table_fields.setItemDelegateForColumn(0, ComboDelegate(self.table_fields, [f.name for f in contest_fields]))
@@ -517,9 +519,7 @@ class ContestEdit(QtWidgets.QDialog):
         for i in sorted(rows, reverse=True):
             self.table_fields.model().removeRow(i)
 
-    def field_table_save(self) -> bool:
-        if self.table_fields.model() and self.table_fields.model().dirty:
+    def field_table_save(self):
+        if self.contest and self.table_fields.model() and self.table_fields.model().dirty:
             user_fields = self.table_fields.model().get_user_fields()
-            self.contest.merge_settings({'user_fields': user_fields})
-            return True
-        return False
+            self.contest.merge_settings({'user_fields': user_fields}, save=False)

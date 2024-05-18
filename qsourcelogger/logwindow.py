@@ -241,9 +241,6 @@ class LogWindow(DockWidget):
         if not contest:
             return
 
-        if self.contest:
-            self.save_settings()
-
         self.contest = contest
 
         logger.debug(f"self contest id {self.contest.id}, cabrillo {self.contest.fk_contest_meta.cabrillo_name}")

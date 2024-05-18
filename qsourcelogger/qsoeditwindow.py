@@ -17,12 +17,12 @@ logger = logging.getLogger(__name__)
 
 _default_field_structure = [
     ('Main', ['time_on', 'call', 'rst_sent', 'rst_rcvd', 'freq', 'band', 'mode', 'submode', 'name', 'comment',
-              'distance', 'freq_rx', 'band_rx', 'force_init', 'time_off',]),
+              'distance', 'freq_rx', 'band_rx', 'time_off']),
     ('Contact',
      ['address', 'state', 've_prov', 'country', 'continent', 'gridsquare', 'lat', 'lon', 'gridsquare_ext', 'dxcc',
       'prefix', 'email', 'cqz', 'ituz', 'arrl_sect', 'wpx_prefix', 'qth', 'county', 'region', 'altitude',
       'age', 'contacted_op', 'guest_op', 'notes', 'prop_mode', 'qso_complete', 'qso_random',
-      'sat_mode', 'sat_name', 'silent_key', 'swl', 'usaca_counties', 'vucc_grids']),
+      'sat_mode', 'sat_name', 'silent_key', 'swl', 'usaca_counties', 'vucc_grids', 'force_init']),
     ('Their Station', ['ant_path', 'ant_az', 'ant_el', 'eq_call', 'rig', 'rx_pwr', 'web']),
     ('My Station', ['station_callsign', 'operator',
                     'owner_callsign', 'tx_pwr', 'my_altitude', 'my_antenna',
@@ -409,6 +409,9 @@ class QsoEditWindow(DockWidget):
 
         # make sure contest fields are in main section
         contest_fields = plugin_class.get_preferred_column_order()
+        # also prioritize entry fields which have been customized by the user into the Main category
+        contest_fields.extend([x['name'] for x in self.contest.get_setting('user_fields', [])])
+        contest_fields = set(filter(lambda x: x in QsoLog._meta.sorted_field_names, contest_fields))
         for c in field_structure:
             if c[0] == 'Main':
                 # add contest fields to Main

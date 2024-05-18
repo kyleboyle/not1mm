@@ -1690,8 +1690,6 @@ class MainWindow(QtWidgets.QMainWindow):
                         self.contact.name = event.result.first_name.title()
                     else:
                         self.contact.name = event.result.name.title()
-                    if name_field:
-                        name_field.input_field.setText(self.contact.name)
 
             if self.pref.get('lookup_others', None):
                 # populate more fields from the external lookup
@@ -1722,10 +1720,23 @@ class MainWindow(QtWidgets.QMainWindow):
                     f"{int(kilometers * 0.621371)}mi {kilometers}km"
                 )
                 self.contact.distance = kilometers
+                self.sync_entry_fields(['distance'])
             self.contest_plugin.intermediate_qso_update(self.contact, ['gridsquare', 'name', 'distance'])
+            self.sync_entry_fields()
             appevent.emit(IntermediateQsoUpdate(self.contact))
             if self.qso_edit_window:
                 self.qso_edit_window.set_qso(self.contact)
+
+    def sync_entry_fields(self, fields: Optional[list[str]] = None):
+        if not fields:
+            fields = list(self.contest_fields.keys())
+            fields.remove('call')
+            fields.remove('rst_sent')
+            fields.remove('rst_rcvd')
+        for f in fields:
+            if f in self.contest_fields:
+                self.contest_fields[f].input_field.setText( getattr(self.contact, f))
+
 
     def dark_mode_state_changed(self) -> None:
         self.pref["darkmode"] = self.actionDark_Mode.isChecked()

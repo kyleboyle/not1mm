@@ -109,9 +109,12 @@ class Contest(BaseModel):
             return self.label
         return f"{self.fk_contest_meta.display_name} {self.start_date.date()}"
 
-    def merge_settings(self, to_merge: dict[str: Any]):
-        self.settings.update(to_merge)
-        self.save()
+    def merge_settings(self, to_merge: dict[str: Any], save=True):
+        settings = self.settings
+        settings.update(to_merge)
+        self.settings = settings
+        if save:
+            self.save()
 
     def get_setting(self, setting_name: str, default_value: Any = None):
         return dict(self.settings).get(setting_name, default_value)
@@ -120,10 +123,8 @@ class Contest(BaseModel):
 class QsoLog(BaseModel):
     id = UUIDField(primary_key=True)
     time_on = DateTimeField(index=True)
-    station_callsign = CharField(20, index=True)
     call = CharField(20, index=True)
     call_search = CharField(20, index=True) # base callsign without strokes
-    time_off = DateTimeField(null=True)
     rst_sent = CharField(10) # can be rst, rs, db level (digi)
     rst_rcvd = CharField(10)
     freq = IntegerField() # frequency (hz)
@@ -138,6 +139,7 @@ class QsoLog(BaseModel):
     srx_string = CharField(null=True) # received contest exchange, use cabrillo format
     gridsquare = CharField(20, null=True)
     gridsquare_ext = CharField(20, null=True)
+    time_off = DateTimeField(null=True)
     qth = CharField(null=True)
     county = CharField(20, null=True) # https://www.adif.org/314/ADIF_314.htm#Secondary_Administrative_Subdivision
     country = CharField(30, null=True) # DXCC entity name
@@ -160,6 +162,7 @@ class QsoLog(BaseModel):
     multiplier1 = CharField(255, null=True) # set to the value of the multiplier if the qso represents a multiplier
     multiplier2 = CharField(255, null=True) # depends on contest, could be one or many qso fields (eg 1 = band, 2 = ARRL DXCC List)
     multiplier3 = CharField(255, null=True) # or just one eg ARRL DXCC List
+    station_callsign = CharField(20, index=True)
     a_index = IntegerField(null=True) # the geomagnetic A index at the time of the QSO in the range 0 to 400 (inclusive)
     address = CharField(null=True)
     age = IntegerField(null=True)

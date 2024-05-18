@@ -3,7 +3,7 @@ from .GeneralLogging import GeneralLogging
 from ..lib import event
 
 
-class GeneralSerialLogging(GeneralLogging):
+class VhfGeneralSerialLogging(GeneralLogging):
 
     _fields = [
         ContestField(name='rst_sent', display_label='RST Sent', space_tabs=True, stretch_factor=1, max_chars=3),
@@ -12,9 +12,9 @@ class GeneralSerialLogging(GeneralLogging):
     ]
 
     _optional_fields = [
-        ContestField(name='srx_string', display_label='Exch Rcv', space_tabs=False, stretch_factor=4, max_chars=255),
+        ContestField(name='srx', display_label='Serial Rcv', space_tabs=True, stretch_factor=3, max_chars=5),
+        ContestField(name='gridsquare', display_label='Gridsquare', space_tabs=True, stretch_factor=3, max_chars=8),
     ]
-
 
     _previously_saved_serial: Optional[int] = None
 
@@ -28,14 +28,14 @@ class GeneralSerialLogging(GeneralLogging):
 
     @staticmethod
     def get_cabrillo_name() -> str:
-        return 'DXSerial'
+        return 'VHFSerial'
 
     def get_dupe_type(self) -> DupeType:
         return DupeType.EACH_BAND_MODE
 
     @staticmethod
     def get_preferred_column_order() -> list[str]:
-        return ['band', 'rst_sent', 'rst_rcvd', 'stx', 'stx_string', 'srx_string', 'mode', 'submode']
+        return ['band', 'rst_sent', 'rst_rcvd', 'stx', 'stx_string', 'srx', 'srx_string', 'gridsquare', 'distance', 'mode', 'submode']
 
     def get_qso_fields(self) -> list[ContestField]:
         return self._fields
@@ -46,8 +46,8 @@ class GeneralSerialLogging(GeneralLogging):
     @staticmethod
     def get_suggested_contest_setup() -> dict[str: str]:
         return {
-            "band_category": "ALL",
-            "mode_category": "SSB+CW+DIGITAL",
+            "band_category": "VHF-3-BAND",
+            "mode_category": "FM",
             "operator_category": "SINGLE-OP",
             "station_category": "FIXED",
             "transmitter_category": "UNLIMITED",
@@ -73,10 +73,13 @@ class GeneralSerialLogging(GeneralLogging):
 
     def pre_process_qso_log(self, qso: QsoLog):
         if not qso.srx_string:
-            qso.srx_string = str(qso.srx)
+            qso.srx_string = str(qso.srx) + ' ' + qso.gridsquare
         super().pre_process_qso_log(qso)
         self._previously_saved_serial = int(qso.stx)
 
     def calculate_total_points(self):
-        return 0
+        # No multipliers
+        return QsoLog.select(fn.Sum(QsoLog.points)).where(QsoLog.fk_contest == self.contest).scalar()
 
+    def points_for_qso(self, qso: QsoLog) -> Optional[int]:
+        return qso.distance

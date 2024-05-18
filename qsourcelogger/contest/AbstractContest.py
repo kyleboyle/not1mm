@@ -1,6 +1,9 @@
+import re
 from dataclasses import dataclass
 from enum import Enum
 from typing import Optional
+
+from peewee import fn
 
 from qsourcelogger.model import QsoLog, Contest, Station
 from qsourcelogger.model.adapters import CabrilloRecord
@@ -33,9 +36,18 @@ class AbstractContest:
     Defines interface contract and generic methods / default implementations for contest plugins
     """
 
+    # when defining a contest sent exchange, the location into which to substitute the serial number
+    # is denoted by a 3 digit placeholder. this placeholder is also the starting serial number.
+    _exchange_serial_token: str = None
+
     def __init__(self, contest: Contest):
         self.contest = contest
         self.points_per_contact = self.contest.fk_contest_meta.points_per_contact
+
+        if self.contest.sent_exchange:
+            matches = re.compile(r'\d{3,}').findall(self.contest.sent_exchange)
+            if matches:
+                self._exchange_serial_token = matches[0]
 
     @staticmethod
     def get_cabrillo_name() -> str:
@@ -88,6 +100,14 @@ class AbstractContest:
         """
         raise NotImplementedError()
 
+    def get_optional_qso_fields(self) -> list[ContestField]:
+        """
+        Most specific contests would not use this.
+        Fields that the user may remove from the entry field list if they choose to do so.
+        A starting set of user defined fields.
+        """
+        return None
+
     def get_tab_order(self) -> list[str]:
         """
         gives the correct tab order of contest fields. callsign is always first. Using this list is how
@@ -114,10 +134,27 @@ class AbstractContest:
     def calculate_total_points(self):
         if not self.points_per_contact or self.points_per_contact == 0:
             return None
+        points = QsoLog.select(fn.Sum(QsoLog.points)).where(QsoLog.fk_contest == self.contest).scalar()
+        mults = QsoLog.select(QsoLog.multiplier1, QsoLog.multiplier2, QsoLog.multiplier3).distinct().count()
+        if not mults:
+            mults = 1
+        return points * mults
+
 
     def points_for_qso(self, qso: QsoLog) -> Optional[int]:
         if not self.points_per_contact or self.points_per_contact == 0:
             return None
+
+    def generate_sent_exchange(self, serial_sent: int):
+        if self.contest.sent_exchange and '001' in self.contest.sent_exchange:
+                return str(self.contest.sent_exchange).replace(self._exchange_serial_token, str(serial_sent))
+        else:
+            return str(serial_sent)
+
+    def get_starting_serial(self):
+        if self._exchange_serial_token:
+            return int(self._exchange_serial_token)
+        return 1
 
     def cabrillo_headers(self, station: Station) -> list[tuple[2]]:
         """ by default, generate all the headers"""
