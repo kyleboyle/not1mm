@@ -1,10 +1,9 @@
 /.vscode
 /.venv
 /dist
-/not1mm.egg-info
+/qsourcelogger.egg-info
 /publish.sh
 __pycache__
-not1mm.json
 test.py
 ui.blp
 ui.css

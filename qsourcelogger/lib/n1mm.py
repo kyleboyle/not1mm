@@ -13,7 +13,7 @@ class N1MM:
     """Send N1MM style packets"""
 
     radio_info = {
-        "app": "NOT1MM",
+        "app": "qsourcelogger",
         "StationName": "",
         "RadioNr": "1",
         "Freq": "",
@@ -37,7 +37,7 @@ class N1MM:
     }
 
     contact_info = {
-        "app": "NOT1MM",
+        "app": "qsourcelogger",
         "contestname": "",
         "contestnr": "1",
         "timestamp": "",
@@ -87,7 +87,7 @@ class N1MM:
     }
 
     contactdelete = {
-        "app": "NOT1MM",
+        "app": "qsourcelogger",
         "timestamp": "",
         "call": "",
         "contestnr": "1",

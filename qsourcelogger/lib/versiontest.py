@@ -9,7 +9,7 @@ class VersionTest:
     def __init__(
         self,
         current_version: str,
-        rss_feed="https://pypi.org/rss/project/not1mm/releases.xml",
+        rss_feed="https://pypi.org/rss/project/qsourcelogger/releases.xml",
     ):
         self.current_version = current_version
         self.rss_feed = rss_feed
