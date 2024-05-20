@@ -33,6 +33,8 @@ USER_DATA_PATH = _DATA_PATH
 CONFIG_PATH = USER_DATA_PATH
 CONFIG_FILE = CONFIG_PATH / "qsourcelogger.json"
 
+logger.warning(f"{CONFIG_FILE=}")
+
 def openFileWithOS(file):
     """Open a file with the default program for that OS."""
     if sys.platform == "win32":

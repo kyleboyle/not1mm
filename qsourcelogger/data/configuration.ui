@@ -10,9 +10,6 @@
     <height>443</height>
    </rect>
   </property>
-  <property name="font">
-   <font/>
-  </property>
   <property name="windowTitle">
    <string>Configuration Settings</string>
   </property>
@@ -24,12 +21,6 @@
     <widget class="QTabWidget" name="tabWidget">
      <property name="enabled">
       <bool>true</bool>
-     </property>
-     <property name="font">
-      <font>
-       <pointsize>12</pointsize>
-       <strikeout>false</strikeout>
-      </font>
      </property>
      <property name="accessibleName">
       <string/>
@@ -62,12 +53,6 @@
       <bool>false</bool>
      </property>
      <widget class="QWidget" name="cat_tab">
-      <property name="font">
-       <font>
-        <pointsize>12</pointsize>
-        <strikeout>false</strikeout>
-       </font>
-      </property>
       <attribute name="title">
        <string>CAT</string>
       </attribute>
@@ -76,13 +61,6 @@
         <layout class="QFormLayout" name="formLayout">
          <item row="1" column="0">
           <widget class="QLabel" name="label_6">
-           <property name="font">
-            <font>
-             <pointsize>12</pointsize>
-             <bold>false</bold>
-             <strikeout>false</strikeout>
-            </font>
-           </property>
            <property name="text">
             <string>Host</string>
            </property>
@@ -100,13 +78,6 @@
          </item>
          <item row="2" column="1">
           <widget class="QLineEdit" name="cat_flrig_port">
-           <property name="font">
-            <font>
-             <pointsize>12</pointsize>
-             <bold>false</bold>
-             <strikeout>false</strikeout>
-            </font>
-           </property>
            <property name="accessibleName">
             <string>port number</string>
            </property>
@@ -123,13 +94,6 @@
          </item>
          <item row="2" column="0">
           <widget class="QLabel" name="label_7">
-           <property name="font">
-            <font>
-             <pointsize>12</pointsize>
-             <bold>false</bold>
-             <strikeout>false</strikeout>
-            </font>
-           </property>
            <property name="text">
             <string>Port:</string>
            </property>
@@ -140,12 +104,6 @@
          </item>
          <item row="0" column="1">
           <widget class="QRadioButton" name="cat_enable_flrig">
-           <property name="font">
-            <font>
-             <pointsize>12</pointsize>
-             <strikeout>false</strikeout>
-            </font>
-           </property>
            <property name="accessibleName">
             <string>f l rig</string>
            </property>
@@ -190,13 +148,6 @@
          </item>
          <item row="2" column="1">
           <widget class="QLineEdit" name="cat_rigctld_port">
-           <property name="font">
-            <font>
-             <pointsize>12</pointsize>
-             <bold>false</bold>
-             <strikeout>false</strikeout>
-            </font>
-           </property>
            <property name="accessibleName">
             <string>cat control i p address</string>
            </property>
@@ -317,12 +268,6 @@
       </layout>
      </widget>
      <widget class="QWidget" name="lookup_tab">
-      <property name="font">
-       <font>
-        <pointsize>12</pointsize>
-        <strikeout>false</strikeout>
-       </font>
-      </property>
       <attribute name="title">
        <string>Call Lookup</string>
       </attribute>
@@ -331,13 +276,6 @@
         <layout class="QHBoxLayout" name="horizontalLayout_2">
          <item>
           <widget class="QLabel" name="label">
-           <property name="font">
-            <font>
-             <pointsize>12</pointsize>
-             <bold>false</bold>
-             <strikeout>false</strikeout>
-            </font>
-           </property>
            <property name="text">
             <string>User Name:</string>
            </property>
@@ -348,13 +286,6 @@
          </item>
          <item>
           <widget class="QLineEdit" name="lookup_user_name_field">
-           <property name="font">
-            <font>
-             <pointsize>12</pointsize>
-             <bold>false</bold>
-             <strikeout>false</strikeout>
-            </font>
-           </property>
            <property name="accessibleName">
             <string>user name</string>
            </property>
@@ -371,13 +302,6 @@
          </item>
          <item>
           <widget class="QLabel" name="label_2">
-           <property name="font">
-            <font>
-             <pointsize>12</pointsize>
-             <bold>false</bold>
-             <strikeout>false</strikeout>
-            </font>
-           </property>
            <property name="text">
             <string>Password:</string>
            </property>
@@ -388,13 +312,6 @@
          </item>
          <item>
           <widget class="QLineEdit" name="lookup_password_field">
-           <property name="font">
-            <font>
-             <pointsize>12</pointsize>
-             <bold>false</bold>
-             <strikeout>false</strikeout>
-            </font>
-           </property>
            <property name="accessibleName">
             <string>password</string>
            </property>
@@ -415,12 +332,6 @@
         <layout class="QHBoxLayout" name="horizontalLayout_3">
          <item>
           <widget class="QRadioButton" name="lookup_source_none">
-           <property name="font">
-            <font>
-             <pointsize>12</pointsize>
-             <strikeout>false</strikeout>
-            </font>
-           </property>
            <property name="accessibleName">
             <string>none</string>
            </property>
@@ -440,13 +351,6 @@
          </item>
          <item>
           <widget class="QRadioButton" name="lookup_source_qrz">
-           <property name="font">
-            <font>
-             <pointsize>12</pointsize>
-             <bold>false</bold>
-             <strikeout>false</strikeout>
-            </font>
-           </property>
            <property name="accessibleName">
             <string>use q r z</string>
            </property>
@@ -469,12 +373,6 @@
          </item>
          <item>
           <widget class="QRadioButton" name="lookup_source_hamqth">
-           <property name="font">
-            <font>
-             <pointsize>12</pointsize>
-             <strikeout>false</strikeout>
-            </font>
-           </property>
            <property name="accessibleName">
             <string>use ham q t h</string>
            </property>
@@ -496,12 +394,6 @@
           <widget class="QRadioButton" name="lookup_source_hamdb">
            <property name="enabled">
             <bool>false</bool>
-           </property>
-           <property name="font">
-            <font>
-             <pointsize>12</pointsize>
-             <strikeout>false</strikeout>
-            </font>
            </property>
            <property name="accessibleName">
             <string>use ham d b</string>
@@ -744,12 +636,6 @@
       <property name="enabled">
        <bool>true</bool>
       </property>
-      <property name="font">
-       <font>
-        <pointsize>12</pointsize>
-        <strikeout>false</strikeout>
-       </font>
-      </property>
       <attribute name="title">
        <string>Sound</string>
       </attribute>
@@ -806,24 +692,12 @@
       </layout>
      </widget>
      <widget class="QWidget" name="cw_tab">
-      <property name="font">
-       <font>
-        <pointsize>12</pointsize>
-        <strikeout>false</strikeout>
-       </font>
-      </property>
       <attribute name="title">
        <string>CW</string>
       </attribute>
       <layout class="QGridLayout" name="gridLayout_6">
        <item row="1" column="2" colspan="2">
         <widget class="QLineEdit" name="cwport_field">
-         <property name="font">
-          <font>
-           <pointsize>12</pointsize>
-           <strikeout>false</strikeout>
-          </font>
-         </property>
          <property name="accessibleName">
           <string>c w port number</string>
          </property>
@@ -840,12 +714,6 @@
        </item>
        <item row="1" column="1">
         <widget class="QLabel" name="label_11">
-         <property name="font">
-          <font>
-           <pointsize>12</pointsize>
-           <strikeout>false</strikeout>
-          </font>
-         </property>
          <property name="text">
           <string>CW_Port:</string>
          </property>
@@ -869,12 +737,6 @@
        </item>
        <item row="2" column="2" alignment="Qt::AlignHCenter">
         <widget class="QRadioButton" name="usepywinkeyer_radioButton">
-         <property name="font">
-          <font>
-           <pointsize>12</pointsize>
-           <strikeout>false</strikeout>
-          </font>
-         </property>
          <property name="accessibleName">
           <string>pywinkeyer</string>
          </property>
@@ -888,12 +750,6 @@
        </item>
        <item row="2" column="3" alignment="Qt::AlignHCenter">
         <widget class="QRadioButton" name="radioButton_5">
-         <property name="font">
-          <font>
-           <pointsize>12</pointsize>
-           <strikeout>false</strikeout>
-          </font>
-         </property>
          <property name="accessibleName">
           <string>none</string>
          </property>
@@ -907,12 +763,6 @@
        </item>
        <item row="0" column="2" colspan="2">
         <widget class="QLineEdit" name="cwip_field">
-         <property name="font">
-          <font>
-           <pointsize>12</pointsize>
-           <strikeout>false</strikeout>
-          </font>
-         </property>
          <property name="accessibleName">
           <string>c w address</string>
          </property>
@@ -926,12 +776,6 @@
        </item>
        <item row="2" column="1" alignment="Qt::AlignHCenter">
         <widget class="QRadioButton" name="usecwdaemon_radioButton">
-         <property name="font">
-          <font>
-           <pointsize>12</pointsize>
-           <strikeout>false</strikeout>
-          </font>
-         </property>
          <property name="accessibleName">
           <string>cwdaemon</string>
          </property>
@@ -945,12 +789,6 @@
        </item>
        <item row="0" column="1">
         <widget class="QLabel" name="label_10">
-         <property name="font">
-          <font>
-           <pointsize>12</pointsize>
-           <strikeout>false</strikeout>
-          </font>
-         </property>
          <property name="text">
           <string>CW_Address:</string>
          </property>
@@ -978,24 +816,12 @@
       <property name="enabled">
        <bool>true</bool>
       </property>
-      <property name="font">
-       <font>
-        <pointsize>12</pointsize>
-        <strikeout>false</strikeout>
-       </font>
-      </property>
       <attribute name="title">
        <string>N1MM</string>
       </attribute>
       <layout class="QGridLayout" name="gridLayout_8">
        <item row="1" column="5">
         <widget class="QLabel" name="label_14">
-         <property name="font">
-          <font>
-           <pointsize>12</pointsize>
-           <strikeout>false</strikeout>
-          </font>
-         </property>
          <property name="text">
           <string>Operator Name:</string>
          </property>
@@ -1003,12 +829,6 @@
        </item>
        <item row="1" column="6">
         <widget class="QLineEdit" name="n1mm_operator">
-         <property name="font">
-          <font>
-           <pointsize>12</pointsize>
-           <strikeout>false</strikeout>
-          </font>
-         </property>
          <property name="accessibleName">
           <string>operator name</string>
          </property>
@@ -1022,12 +842,6 @@
        </item>
        <item row="0" column="0" colspan="7" alignment="Qt::AlignHCenter">
         <widget class="QCheckBox" name="send_n1mm_packets">
-         <property name="font">
-          <font>
-           <pointsize>12</pointsize>
-           <strikeout>false</strikeout>
-          </font>
-         </property>
          <property name="accessibleName">
           <string>send n 1 m m packets.</string>
          </property>
@@ -1044,12 +858,6 @@
        </item>
        <item row="1" column="0">
         <widget class="QLabel" name="label_13">
-         <property name="font">
-          <font>
-           <pointsize>12</pointsize>
-           <strikeout>false</strikeout>
-          </font>
-         </property>
          <property name="text">
           <string>Station Name:</string>
          </property>
@@ -1057,12 +865,6 @@
        </item>
        <item row="1" column="1" colspan="4">
         <widget class="QLineEdit" name="n1mm_station_name">
-         <property name="font">
-          <font>
-           <pointsize>12</pointsize>
-           <strikeout>false</strikeout>
-          </font>
-         </property>
          <property name="accessibleName">
           <string>station name</string>
          </property>
@@ -1076,12 +878,6 @@
        </item>
        <item row="2" column="0">
         <widget class="QLabel" name="label_16">
-         <property name="font">
-          <font>
-           <pointsize>12</pointsize>
-           <strikeout>false</strikeout>
-          </font>
-         </property>
          <property name="text">
           <string>Radio:</string>
          </property>
@@ -1092,12 +888,6 @@
        </item>
        <item row="3" column="0">
         <widget class="QLabel" name="label_17">
-         <property name="font">
-          <font>
-           <pointsize>12</pointsize>
-           <strikeout>false</strikeout>
-          </font>
-         </property>
          <property name="text">
           <string>Contact:</string>
          </property>
@@ -1108,12 +898,6 @@
        </item>
        <item row="6" column="0">
         <widget class="QLabel" name="label_18">
-         <property name="font">
-          <font>
-           <pointsize>12</pointsize>
-           <strikeout>false</strikeout>
-          </font>
-         </property>
          <property name="text">
           <string>Lookup:</string>
          </property>
@@ -1124,12 +908,6 @@
        </item>
        <item row="7" column="0">
         <widget class="QLabel" name="label_19">
-         <property name="font">
-          <font>
-           <pointsize>12</pointsize>
-           <strikeout>false</strikeout>
-          </font>
-         </property>
          <property name="text">
           <string>Score:</string>
          </property>
@@ -1222,12 +1000,6 @@
        </item>
        <item row="2" column="2" colspan="5">
         <widget class="QLineEdit" name="n1mm_radioport">
-         <property name="font">
-          <font>
-           <pointsize>12</pointsize>
-           <strikeout>false</strikeout>
-          </font>
-         </property>
          <property name="accessibleName">
           <string>radio packet address and port</string>
          </property>
@@ -1247,12 +1019,6 @@
        </item>
        <item row="3" column="2" colspan="5">
         <widget class="QLineEdit" name="n1mm_contactport">
-         <property name="font">
-          <font>
-           <pointsize>12</pointsize>
-           <strikeout>false</strikeout>
-          </font>
-         </property>
          <property name="accessibleName">
           <string>contact packet address and port</string>
          </property>
@@ -1272,12 +1038,6 @@
        </item>
        <item row="6" column="2" colspan="5">
         <widget class="QLineEdit" name="n1mm_lookupport">
-         <property name="font">
-          <font>
-           <pointsize>12</pointsize>
-           <strikeout>false</strikeout>
-          </font>
-         </property>
          <property name="accessibleName">
           <string>lookup packet address and port</string>
          </property>
@@ -1297,12 +1057,6 @@
        </item>
        <item row="7" column="2" colspan="5">
         <widget class="QLineEdit" name="n1mm_scoreport">
-         <property name="font">
-          <font>
-           <pointsize>12</pointsize>
-           <strikeout>false</strikeout>
-          </font>
-         </property>
          <property name="accessibleName">
           <string>score packet address and port</string>
          </property>
@@ -1473,12 +1227,6 @@
        <horstretch>0</horstretch>
        <verstretch>0</verstretch>
       </sizepolicy>
-     </property>
-     <property name="font">
-      <font>
-       <pointsize>12</pointsize>
-       <bold>false</bold>
-      </font>
      </property>
      <property name="layoutDirection">
       <enum>Qt::LeftToRight</enum>

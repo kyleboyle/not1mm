@@ -18,6 +18,10 @@ of making amateur radio contacts.
 
 Check the [project wiki](https://github.com/kyleboyle/qsource-logger/wiki) for more information
 
+## Run application as python module
+
+pip install --ignore-requires-python qsourcelogger
+
 ## Contest list (see [project wiki](https://github.com/kyleboyle/qsource-logger/wiki/Contests))
 
 - General Logging - similar options to [n1mm dx](https://n1mmwp.hamdocs.com/manual-supported/contests-setup/setup-dx-contests/) Generic Contests

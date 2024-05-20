@@ -122,11 +122,6 @@
     </item>
     <item row="0" column="0">
      <widget class="QLabel" name="logListLabel">
-      <property name="font">
-       <font>
-        <pointsize>10</pointsize>
-       </font>
-      </property>
       <property name="text">
        <string>Log</string>
       </property>
@@ -134,11 +129,6 @@
     </item>
     <item row="0" column="1">
      <widget class="QLabel" name="masterListLabel">
-      <property name="font">
-       <font>
-        <pointsize>10</pointsize>
-       </font>
-      </property>
       <property name="text">
        <string>Master</string>
       </property>
@@ -146,11 +136,6 @@
     </item>
     <item row="0" column="2">
      <widget class="QLabel" name="telnetListLabel">
-      <property name="font">
-       <font>
-        <pointsize>10</pointsize>
-       </font>
-      </property>
       <property name="text">
        <string>DXC</string>
       </property>

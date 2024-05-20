@@ -75,11 +75,6 @@
     </item>
     <item>
      <widget class="QScrollArea" name="scrollArea">
-      <property name="font">
-       <font>
-        <pointsize>9</pointsize>
-       </font>
-      </property>
       <property name="focusPolicy">
        <enum>Qt::ClickFocus</enum>
       </property>
@@ -95,22 +90,12 @@
          <height>192</height>
         </rect>
        </property>
-       <property name="font">
-        <font>
-         <pointsize>9</pointsize>
-        </font>
-       </property>
        <layout class="QVBoxLayout" name="verticalLayout">
         <property name="margin" stdset="0">
          <number>0</number>
         </property>
         <item>
          <widget class="QGraphicsView" name="graphicsView">
-          <property name="font">
-           <font>
-            <pointsize>6</pointsize>
-           </font>
-          </property>
           <property name="focusPolicy">
            <enum>Qt::NoFocus</enum>
           </property>
@@ -200,11 +185,6 @@
       </property>
       <item>
        <widget class="QLabel" name="clear_spot_olderLabel">
-        <property name="font">
-         <font>
-          <pointsize>10</pointsize>
-         </font>
-        </property>
         <property name="text">
          <string>Clear older than </string>
         </property>

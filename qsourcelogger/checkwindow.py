@@ -129,7 +129,7 @@ class CheckWindow(DockWidget):
         label = QLabel(str(count))
         label.setGraphicsEffect(QGraphicsOpacityEffect())
         label.graphicsEffect().setOpacity(0.5)
-        label.setStyleSheet("QLabel {font-size: 10pt; font-family: 'Roboto Mono'; font-style: italic;}")
+        label.setStyleSheet("QLabel {font-style: italic;}")
         layout.addWidget(label)
         layout.addStretch(0)
 
@@ -211,7 +211,6 @@ class CheckWindow(DockWidget):
 
         for _, label_text, call in call_items:
             label = CallLabel(label_text, call=call)
-            label.setStyleSheet("QLabel {/*font-size: 11pt; */letter-spacing: 0.15em; font-family: 'Roboto Mono';}")
             layout.addWidget(label)
         if len(call_items):
             # top aligns
@@ -222,6 +221,7 @@ class CallLabel(QLabel):
     def __init__(self, *args, call=None, ):
         super().__init__(*args)
         self.call = call
+        self.setStyleSheet("QLabel {letter-spacing: 0.15em;}")
 
     def mouseDoubleClickEvent(self, e: QMouseEvent) -> None:
         if self.call:

@@ -1,11 +1,12 @@
 import logging
+import time
 from sys import platform
 
 from PyQt6.QtCore import QMutex, QMutexLocker
 
 from qsourcelogger.cat import AbstractCat, RigState
 
-if platform == 'windows':
+if platform == 'win32':
 
     logger = logging.getLogger(__name__)
     import win32com.client
@@ -75,6 +76,9 @@ if platform == 'windows':
         # split
         SPLIT_ON = 0x00008000
         SPLIT_OFF = 0x00010000
+
+        TX_OFF = 0x00200000
+        TX_ON = 0x00400000
 
         # vfo
         VFO_AA = 128
@@ -218,7 +222,53 @@ if platform == 'windows':
                 return s, ""
 
         def showParams(self):
-            print(dir(self.rig))
+            for x in dir(self.rig):
+                self.showParam(x)
+
+        def showParam(self, param):
+            if param == 'Freq':
+                logger.info(f'Freq: {self.rig.Freq}')
+            elif param == 'FreqA':
+                logger.info(f'FreqA: {self.rig.FreqA}')
+            elif param == 'FreqB':
+                logger.info(f'FreqB: {self.rig.FreqB}')
+            elif param == 'FrequencyOfTone':
+                logger.info(f'FrequencyOfTone: {self.rig.FrequencyOfTone(0)}')
+            elif param == 'GetRxFrequency':
+                logger.info(f'GetRxFrequency: {self.rig.GetRxFrequency()}')
+            elif param == 'GetTxFrequency':
+                logger.info(f'GetTxFrequency: {self.rig.GetTxFrequency()}')
+            elif param == 'Mode':
+                logger.info(f'Mode: {hex(self.rig.Mode)}')
+            elif param == 'Pitch':
+                logger.info(f'Pitch: {self.rig.Pitch}')
+            elif param == 'PortBits':
+                logger.info(f'PortBits.Cts: {self.rig.PortBits.Cts}')
+                logger.info(f'PortBits.Dsr: {self.rig.PortBits.Dsr}')
+                logger.info(f'PortBits.Dtr: {self.rig.PortBits.Dtr}')
+                logger.info(f'PortBits.Rts: {self.rig.PortBits.Rts}')
+            elif param == 'ReadableParams':
+                logger.info(f'ReadableParams: {self.rig.ReadableParams}')
+            elif param == 'RigType':
+                logger.info(f'RigType: {self.rig.RigType}')
+            elif param == 'Rit':
+                logger.info(f'Rit: {self.rig.Rit}')
+            elif param == 'RitOffset':
+                logger.info(f'RitOffset: {self.rig.RitOffset}')
+            elif param == 'Split':
+                logger.info(f'Split: {self.rig.Split}')
+            elif param == 'Status':
+                logger.info(f'Status: {self.rig.Status}')
+            elif param == 'StatusStr':
+                logger.info(f'StatusStr: {self.rig.StatusStr}')
+            elif param == 'Tx':
+                logger.info(f'Tx: {self.rig.Tx}')
+            elif param == 'Vfo':
+                logger.info(f'Vfo: {self.rig.Vfo}')
+            elif param == 'WriteableParams':
+                logger.info(f'WriteableParams: {self.rig.WriteableParams}')
+            elif param == 'Xit':
+                logger.info(f'Xit: {self.rig.Xit}')
 
         def safe_int(self, input_data):
             if isinstance(input_data, str):
@@ -251,6 +301,7 @@ if platform == 'windows':
             try:
                 self.client = OmniRigClient()
                 self.client.setActiveRig(2 if self.rig_num == 2 else 1)
+                time.sleep(0.2) # com object seems to need some time to "seed"
                 self.client.showParams()
                 self.online = True
             except:
@@ -271,14 +322,12 @@ if platform == 'windows':
             try:
                 state = RigState(id=self.get_id())
                 state.mode = OmniRigClient.mode_str(self.client.rig.Mode)
-                state.is_ptt = self.client.rig.Tx != 0
-                state.is_split = self.client.rig.Split == 0x00008000
-                if state.is_split:
-                    state.vforx_hz = int(self.client.rig.FreqA())
-                    state.vfotx_hz = int(self.client.rig.FreqA())
-                else:
-                    state.vfotx_hz = int(self.client.rig.Freq())
-                    state.vforx_hz = state.vfotx_hz
+                state.is_ptt = self.client.rig.Tx == self.client.TX_ON
+                state.is_split = self.client.rig.Split == self.client.SPLIT_ON
+
+                state.vforx_hz = int(self.client.rig.GetRxFrequency())
+                state.vfotx_hz = int(self.client.rig.GetTxFrequency())
+
                 #state.power = self.server.rig.get_power()
                 #state.bandwidth = ??
                 return state
@@ -291,7 +340,7 @@ if platform == 'windows':
             locker = QMutexLocker(self.mutex)
             try:
                 if self.online:
-                    self.client.setFrequency(self.client.Vfo, float(freq))
+                    self.client.setFrequency('A', float(freq))
                     return True
             except Exception as exception:
                 self.online = False
@@ -308,7 +357,8 @@ if platform == 'windows':
                         mode = OmniRigClient.MODE_DATA_U
                     elif mode == 'SSB':
                         mode = OmniRigClient.MODE_SSB_U
-                    return self.client.rig.set_mode(mode)
+                    self.client.setMode(mode)
+                    return True
             except:
                 self.online = False
                 logger.exception(f"omni rig set_mode {mode} failed")
@@ -324,3 +374,8 @@ if platform == 'windows':
 else:
     class CatOmnirig(AbstractCat):
         pass
+
+
+if __name__ == "__main__":
+    omni = CatOmnirig(1)
+    omni.get_state()

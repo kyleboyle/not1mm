@@ -27,8 +27,10 @@ class Settings(QtWidgets.QDialog):
         self.preference = pref
         self.devices = sd.query_devices()
         self.setup()
-        if platform.system() != ["Windows"]:
+        if platform.system() != "Windows":
             self.cat_enable_omnirig.setEnabled(False)
+        if platform.system() != "Linux":
+            self.cat_enable_rigctld.setEnabled(False)
 
     def show_tab(self, tab_name):
         self.tabWidget.setCurrentWidget(getattr(self, tab_name))

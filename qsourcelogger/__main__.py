@@ -77,31 +77,43 @@ from .qtcomponents.settings import Settings
 from .qtcomponents.spotsend import Spotsend
 from .vfo import VfoWindow
 
-qss = """
-QFrame#Band_Mode_Frame_CW QLabel, QFrame#Band_Mode_Frame_RTTY QLabel, QFrame#Band_Mode_Frame_SSB QLabel {
-    font-size: 11pt;
+def getQss():
+    small_font_pt = QtWidgets.QApplication.instance().font('QLabel').pointSize() - 1
+    entry_font_pt = QtWidgets.QApplication.instance().font('QLabel').pointSize() + 12
+    return f"""
+QFrame#Band_Mode_Frame_CW QLabel, QFrame#Band_Mode_Frame_RTTY QLabel, QFrame#Band_Mode_Frame_SSB QLabel {{
+    font-size: {small_font_pt}pt;
     font-family: 'Roboto Mono';
-}
+}}
 
-QFrame#Button_Row1 QPushButton, QFrame#Button_Row2 QPushButton {
-    font-size: 11pt;
+QFrame#Button_Row1 QPushButton, QFrame#Button_Row2 QPushButton {{
+    font-size: {small_font_pt}pt;
     font-family: 'Roboto Mono';
-}
+}}
 
-#MainWindow #centralwidget QFrame QLineEdit {
+#MainWindow #centralwidget QFrame QLineEdit {{
     font-family: 'Roboto Mono';
-    font-size: 26pt;
+    font-size: {entry_font_pt}pt;
     border-bottom-width: 2px;
     padding: 0;
-}
-#MainWindow #centralwidget QFrame QLineEdit#callsign_input {
+}}
+#MainWindow #centralwidget QFrame QLineEdit#callsign_input {{
     text-transform: uppercase;
-}
+}}
 
-#MainWindow #Band_Mode_Frame_SSB QLabel, #MainWindow #Band_Mode_Frame_RTTY QLabel, #MainWindow #Band_Mode_Frame_CW QLabel {
+#MainWindow #Band_Mode_Frame_SSB QLabel, #MainWindow #Band_Mode_Frame_RTTY QLabel, #MainWindow #Band_Mode_Frame_CW QLabel {{
     border-radius: 4px;
-}
+}}
+
+QDockWidget#CheckWindow #qsoScrollWidget QLabel,
+QDockWidget#CheckWindow #masterScrollWidget QLabel,
+QDockWidget#CheckWindow #dxcScrollWidget QLabel {{
+    font-family: 'Roboto Mono';
+}}
+
 """
+
+
 logger = logging.getLogger("__main__")
 
 _ESCAPE_DOUBLE_TAP_TIME_MS = 200
@@ -477,16 +489,16 @@ class MainWindow(QtWidgets.QMainWindow):
         radio_manual = radio_parent.addAction("Manual Radio")
         radio_manual.setCheckable(True)
         radio_cat = radio_parent.addAction(cat_name)
+        radio_manual.setChecked(self.pref.get("cat_enable_manual", False))
 
         if cat_name != 'CAT not configured':
             radio_cat.setCheckable(True)
             radio_cat.setChecked(not self.pref.get("cat_enable_manual", False))
 
-        radio_manual.setChecked(self.pref.get("cat_enable_manual", False))
-        if self.pref.get("cat_enable_manual", False):
-            radio_cat.triggered.connect(self.toggle_manual_rig)
-        else:
-            radio_manual.triggered.connect(self.toggle_manual_rig)
+            if self.pref.get("cat_enable_manual", False):
+                radio_cat.triggered.connect(self.toggle_manual_rig)
+            else:
+                radio_manual.triggered.connect(self.toggle_manual_rig)
 
         bands.triggered.connect(lambda: self.edit_configuration_settings(show_tab='bands_tab'))
 
@@ -1418,7 +1430,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def set_dark_mode(self, enabled):
         qdarktheme.setup_theme(theme="dark" if enabled else "light", corner_shape="sharp",
-                               additional_qss=qss,
+                               additional_qss=getQss(),
                                custom_colors={
                                    "[light]": {
                                        "foreground": "#141414",
@@ -1650,8 +1662,7 @@ class MainWindow(QtWidgets.QMainWindow):
         elif self.pref.get("cat_enable_rigctld", False):
             logger.debug(f"Using rigctld: {self.pref.get('cat_rigctld_ip')} {self.pref.get('cat_rigctld_port')}")
             self.rig_control = CatRigctld(self.pref.get("cat_rigctld_ip", "127.0.0.1"), int(self.pref.get("cat_rigctld_port", 4532)))
-
-        elif sys.platform == 'windows' and self.pref.get("cat_enable_omnirig", False):
+        elif self.pref.get("cat_enable_omnirig", False):
             logger.debug(f"Using omni rig: {self.pref.get('cat_rigctld_ip')} {self.pref.get('cat_rigctld_port')}")
             self.rig_control = CatOmnirig(self.pref.get("cat_omnirig_index", 1))
 

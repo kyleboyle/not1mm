@@ -67,11 +67,6 @@
             <height>0</height>
            </size>
           </property>
-          <property name="font">
-           <font>
-            <pointsize>11</pointsize>
-           </font>
-          </property>
           <property name="lineWidth">
            <number>0</number>
           </property>
@@ -245,11 +240,6 @@
             <height>0</height>
            </size>
           </property>
-          <property name="font">
-           <font>
-            <pointsize>11</pointsize>
-           </font>
-          </property>
           <property name="frameShape">
            <enum>QFrame::NoFrame</enum>
           </property>
@@ -422,11 +412,6 @@
             <width>30</width>
             <height>0</height>
            </size>
-          </property>
-          <property name="font">
-           <font>
-            <pointsize>11</pointsize>
-           </font>
           </property>
           <property name="frameShape">
            <enum>QFrame::NoFrame</enum>
@@ -603,77 +588,10 @@
           </property>
           <item>
            <layout class="QHBoxLayout" name="qso_row1">
-            <item>
-             <widget class="QFrame" name="callsignfieldplaceholder">
-              <layout class="QVBoxLayout" name="input_call">
-               <property name="spacing">
-                <number>0</number>
-               </property>
-               <property name="margin" stdset="0">
-                <number>0</number>
-               </property>
-               <item>
-                <widget class="QLabel" name="callsign_label">
-                 <property name="text">
-                  <string>Callsign placeholder</string>
-                 </property>
-                 <property name="alignment">
-                  <set>Qt::AlignBottom|Qt::AlignLeading|Qt::AlignLeft</set>
-                 </property>
-                </widget>
-               </item>
-               <item>
-                <widget class="QLineEdit" name="callsign">
-                 <property name="sizePolicy">
-                  <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-                   <horstretch>0</horstretch>
-                   <verstretch>0</verstretch>
-                  </sizepolicy>
-                 </property>
-                 <property name="minimumSize">
-                  <size>
-                   <width>0</width>
-                   <height>0</height>
-                  </size>
-                 </property>
-                 <property name="maximumSize">
-                  <size>
-                   <width>16777215</width>
-                   <height>16777215</height>
-                  </size>
-                 </property>
-                 <property name="font">
-                  <font>
-                   <pointsize>20</pointsize>
-                  </font>
-                 </property>
-                 <property name="accessibleName">
-                  <string>callsign</string>
-                 </property>
-                 <property name="accessibleDescription">
-                  <string>enter callsign here</string>
-                 </property>
-                 <property name="styleSheet">
-                  <string notr="true"/>
-                 </property>
-                 <property name="maxLength">
-                  <number>20</number>
-                 </property>
-                 <property name="frame">
-                  <bool>true</bool>
-                 </property>
-                </widget>
-               </item>
-              </layout>
-             </widget>
-            </item>
            </layout>
           </item>
           <item>
            <layout class="QHBoxLayout" name="qso_row2">
-            <property name="sizeConstraint">
-             <enum>QLayout::SetDefaultConstraint</enum>
-            </property>
            </layout>
           </item>
           <item>
@@ -697,12 +615,6 @@
              <widget class="QLabel" name="dupe_indicator">
               <property name="enabled">
                <bool>true</bool>
-              </property>
-              <property name="font">
-               <font>
-                <pointsize>20</pointsize>
-                <bold>true</bold>
-               </font>
               </property>
               <property name="styleSheet">
                <string notr="true">color: rgb(246, 10, 10);</string>
