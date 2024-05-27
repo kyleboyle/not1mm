@@ -1,4 +1,5 @@
 from .AbstractContest import *
+from ..lib.ham_utility import bearing
 
 
 class VhfGeneralLogging(AbstractContest):
@@ -55,4 +56,8 @@ class VhfGeneralLogging(AbstractContest):
     def points_for_qso(self, qso: QsoLog) -> Optional[int]:
         return qso.distance
 
-
+    def pre_process_qso_log(self, qso: QsoLog):
+        if qso.gridsquare and qso.fk_station and qso.fk_station.gridsquare:
+            heading = "Bearing: " + str(bearing(qso.fk_station.gridsquare, qso.gridsquare))
+            qso.comment = heading if not qso.comment else qso.comment + " " + heading
+        super().pre_process_qso_log(qso)

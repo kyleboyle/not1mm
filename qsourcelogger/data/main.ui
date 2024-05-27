@@ -10,7 +10,7 @@
     <x>0</x>
     <y>0</y>
     <width>809</width>
-    <height>416</height>
+    <height>442</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -24,10 +24,6 @@
   </property>
   <property name="windowTitle">
    <string>QSource Logger</string>
-  </property>
-  <property name="windowIcon">
-   <iconset>
-    <normaloff>k6gte.not1mm-32.png</normaloff>k6gte.not1mm-32.png</iconset>
   </property>
   <property name="iconSize">
    <size>
@@ -587,12 +583,10 @@
            <number>4</number>
           </property>
           <item>
-           <layout class="QHBoxLayout" name="qso_row1">
-           </layout>
+           <layout class="QHBoxLayout" name="qso_row1"/>
           </item>
           <item>
-           <layout class="QHBoxLayout" name="qso_row2">
-           </layout>
+           <layout class="QHBoxLayout" name="qso_row2"/>
           </item>
           <item>
            <layout class="QHBoxLayout" name="qso_row3"/>
@@ -651,6 +645,12 @@
                 <horstretch>0</horstretch>
                 <verstretch>0</verstretch>
                </sizepolicy>
+              </property>
+              <property name="minimumSize">
+               <size>
+                <width>40</width>
+                <height>0</height>
+               </size>
               </property>
               <property name="focusPolicy">
                <enum>Qt::NoFocus</enum>
@@ -975,7 +975,7 @@
                 <enum>Qt::NoFocus</enum>
                </property>
                <property name="toolTip">
-                <string>Clear Active QSO</string>
+                <string>Clear Active QSO (ESC double-tap)</string>
                </property>
                <property name="text">
                 <string>Wipe</string>
@@ -1153,9 +1153,6 @@
      <width>809</width>
      <height>24</height>
     </rect>
-   </property>
-   <property name="nativeMenuBar">
-    <bool>true</bool>
    </property>
    <widget class="QMenu" name="menuFile">
     <property name="title">

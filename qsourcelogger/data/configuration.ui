@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>613</width>
-    <height>443</height>
+    <width>750</width>
+    <height>409</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -58,158 +58,307 @@
       </attribute>
       <layout class="QHBoxLayout" name="horizontalLayout_4">
        <item>
-        <layout class="QFormLayout" name="formLayout">
-         <item row="1" column="0">
-          <widget class="QLabel" name="label_6">
-           <property name="text">
-            <string>Host</string>
-           </property>
-           <property name="alignment">
-            <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+        <layout class="QVBoxLayout" name="verticalLayout_3">
+         <item>
+          <layout class="QFormLayout" name="formLayout_2">
+           <item row="0" column="1">
+            <widget class="QRadioButton" name="cat_enable_hamlib">
+             <property name="text">
+              <string>Hamlib</string>
+             </property>
+             <attribute name="buttonGroup">
+              <string notr="true">buttonGroup</string>
+             </attribute>
+            </widget>
+           </item>
+           <item row="1" column="1">
+            <widget class="QComboBox" name="cat_hamlib_dev">
+             <property name="editable">
+              <bool>true</bool>
+             </property>
+            </widget>
+           </item>
+           <item row="1" column="0">
+            <widget class="QLabel" name="label_24">
+             <property name="text">
+              <string>Device</string>
+             </property>
+            </widget>
+           </item>
+           <item row="2" column="1">
+            <widget class="QComboBox" name="cat_hamlib_rig">
+             <property name="editable">
+              <bool>true</bool>
+             </property>
+            </widget>
+           </item>
+           <item row="3" column="1">
+            <widget class="QComboBox" name="cat_hamlib_baud">
+             <item>
+              <property name="text">
+               <string>300</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>600</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>1200</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>2400</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>4800</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>9600</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>19200</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>38400</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>57600</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>115200</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>230400</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>460800</string>
+              </property>
+             </item>
+            </widget>
+           </item>
+           <item row="2" column="0">
+            <widget class="QLabel" name="label_25">
+             <property name="text">
+              <string>Rig</string>
+             </property>
+            </widget>
+           </item>
+           <item row="3" column="0">
+            <widget class="QLabel" name="label_26">
+             <property name="text">
+              <string>Baud</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
+         <item>
+          <widget class="Line" name="line">
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
            </property>
           </widget>
          </item>
-         <item row="1" column="1">
-          <widget class="QLineEdit" name="cat_flrig_ip">
-           <property name="text">
-            <string>localhost</string>
-           </property>
-          </widget>
-         </item>
-         <item row="2" column="1">
-          <widget class="QLineEdit" name="cat_flrig_port">
-           <property name="accessibleName">
-            <string>port number</string>
-           </property>
-           <property name="accessibleDescription">
-            <string>port number of rig control d or f l rig.</string>
-           </property>
-           <property name="inputMethodHints">
-            <set>Qt::ImhDigitsOnly</set>
-           </property>
-           <property name="text">
-            <string>4532</string>
-           </property>
-          </widget>
-         </item>
-         <item row="2" column="0">
-          <widget class="QLabel" name="label_7">
-           <property name="text">
-            <string>Port:</string>
-           </property>
-           <property name="alignment">
-            <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-           </property>
-          </widget>
-         </item>
-         <item row="0" column="1">
-          <widget class="QRadioButton" name="cat_enable_flrig">
-           <property name="accessibleName">
-            <string>f l rig</string>
-           </property>
-           <property name="accessibleDescription">
-            <string>use f l rig</string>
-           </property>
-           <property name="styleSheet">
-            <string notr="true"/>
-           </property>
-           <property name="text">
-            <string>flrig</string>
-           </property>
-           <attribute name="buttonGroup">
-            <string notr="true">buttonGroup</string>
-           </attribute>
-          </widget>
+         <item>
+          <layout class="QFormLayout" name="formLayout_2">
+           <item row="2" column="0">
+            <widget class="QLabel" name="label_3">
+             <property name="text">
+              <string>Port</string>
+             </property>
+            </widget>
+           </item>
+           <item row="1" column="0">
+            <widget class="QLabel" name="label_9">
+             <property name="text">
+              <string>Host</string>
+             </property>
+            </widget>
+           </item>
+           <item row="1" column="1">
+            <widget class="QLineEdit" name="cat_rigctld_ip">
+             <property name="text">
+              <string>localhost</string>
+             </property>
+            </widget>
+           </item>
+           <item row="2" column="1">
+            <widget class="QLineEdit" name="cat_rigctld_port">
+             <property name="accessibleName">
+              <string>cat control i p address</string>
+             </property>
+             <property name="accessibleDescription">
+              <string>i p address of rig control d or f l rig.</string>
+             </property>
+             <property name="text">
+              <string/>
+             </property>
+            </widget>
+           </item>
+           <item row="0" column="1">
+            <widget class="QRadioButton" name="cat_enable_rigctld">
+             <property name="text">
+              <string>rigctld</string>
+             </property>
+             <attribute name="buttonGroup">
+              <string notr="true">buttonGroup</string>
+             </attribute>
+            </widget>
+           </item>
+          </layout>
          </item>
         </layout>
        </item>
        <item>
-        <layout class="QFormLayout" name="formLayout_2">
-         <item row="2" column="0">
-          <widget class="QLabel" name="label_3">
-           <property name="text">
-            <string>Port</string>
+        <widget class="Line" name="line_2">
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <layout class="QVBoxLayout" name="verticalLayout_5">
+         <item>
+          <layout class="QFormLayout" name="formLayout">
+           <item row="0" column="1">
+            <widget class="QRadioButton" name="cat_enable_flrig">
+             <property name="accessibleName">
+              <string>f l rig</string>
+             </property>
+             <property name="accessibleDescription">
+              <string>use f l rig</string>
+             </property>
+             <property name="styleSheet">
+              <string notr="true"/>
+             </property>
+             <property name="text">
+              <string>flrig</string>
+             </property>
+             <attribute name="buttonGroup">
+              <string notr="true">buttonGroup</string>
+             </attribute>
+            </widget>
+           </item>
+           <item row="1" column="0">
+            <widget class="QLabel" name="label_6">
+             <property name="text">
+              <string>Host</string>
+             </property>
+             <property name="alignment">
+              <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+             </property>
+            </widget>
+           </item>
+           <item row="1" column="1">
+            <widget class="QLineEdit" name="cat_flrig_ip">
+             <property name="text">
+              <string>localhost</string>
+             </property>
+            </widget>
+           </item>
+           <item row="2" column="0">
+            <widget class="QLabel" name="label_7">
+             <property name="text">
+              <string>Port:</string>
+             </property>
+             <property name="alignment">
+              <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+             </property>
+            </widget>
+           </item>
+           <item row="2" column="1">
+            <widget class="QLineEdit" name="cat_flrig_port">
+             <property name="accessibleName">
+              <string>port number</string>
+             </property>
+             <property name="accessibleDescription">
+              <string>port number of rig control d or f l rig.</string>
+             </property>
+             <property name="inputMethodHints">
+              <set>Qt::ImhDigitsOnly</set>
+             </property>
+             <property name="text">
+              <string>4532</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
+         <item>
+          <widget class="Line" name="line_4">
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
            </property>
           </widget>
          </item>
-         <item row="1" column="0">
-          <widget class="QLabel" name="label_9">
-           <property name="text">
-            <string>Host</string>
-           </property>
-          </widget>
-         </item>
-         <item row="1" column="1">
-          <widget class="QLineEdit" name="cat_rigctld_ip">
-           <property name="text">
-            <string>localhost</string>
-           </property>
-          </widget>
-         </item>
-         <item row="2" column="1">
-          <widget class="QLineEdit" name="cat_rigctld_port">
-           <property name="accessibleName">
-            <string>cat control i p address</string>
-           </property>
-           <property name="accessibleDescription">
-            <string>i p address of rig control d or f l rig.</string>
-           </property>
-           <property name="text">
-            <string/>
-           </property>
-          </widget>
-         </item>
-         <item row="0" column="1">
-          <widget class="QRadioButton" name="cat_enable_rigctld">
-           <property name="text">
-            <string>rigctld</string>
-           </property>
-           <attribute name="buttonGroup">
-            <string notr="true">buttonGroup</string>
-           </attribute>
-          </widget>
+         <item>
+          <layout class="QFormLayout" name="formLayout_4">
+           <item row="0" column="1">
+            <widget class="QRadioButton" name="cat_enable_omnirig">
+             <property name="text">
+              <string>omnirig</string>
+             </property>
+             <attribute name="buttonGroup">
+              <string notr="true">buttonGroup</string>
+             </attribute>
+            </widget>
+           </item>
+           <item row="1" column="1">
+            <widget class="QRadioButton" name="radioButton">
+             <property name="text">
+              <string>Rig 1</string>
+             </property>
+             <property name="checked">
+              <bool>false</bool>
+             </property>
+             <attribute name="buttonGroup">
+              <string notr="true">buttonGroup_3</string>
+             </attribute>
+            </widget>
+           </item>
+           <item row="2" column="1">
+            <widget class="QRadioButton" name="radioButton_2">
+             <property name="text">
+              <string>Rig 2</string>
+             </property>
+             <attribute name="buttonGroup">
+              <string notr="true">buttonGroup_3</string>
+             </attribute>
+            </widget>
+           </item>
+          </layout>
          </item>
         </layout>
        </item>
        <item>
-        <layout class="QFormLayout" name="formLayout_4">
-         <item row="0" column="1">
-          <widget class="QRadioButton" name="cat_enable_omnirig">
-           <property name="text">
-            <string>omnirig</string>
-           </property>
-           <attribute name="buttonGroup">
-            <string notr="true">buttonGroup</string>
-           </attribute>
-          </widget>
-         </item>
-         <item row="1" column="1">
-          <widget class="QRadioButton" name="radioButton">
-           <property name="text">
-            <string>Rig 1</string>
-           </property>
-           <property name="checked">
-            <bool>true</bool>
-           </property>
-           <attribute name="buttonGroup">
-            <string notr="true">buttonGroup_3</string>
-           </attribute>
-          </widget>
-         </item>
-         <item row="2" column="1">
-          <widget class="QRadioButton" name="radioButton_2">
-           <property name="text">
-            <string>Rig 2</string>
-           </property>
-           <attribute name="buttonGroup">
-            <string notr="true">buttonGroup_3</string>
-           </attribute>
-          </widget>
-         </item>
-        </layout>
+        <widget class="Line" name="line_3">
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
+         </property>
+        </widget>
        </item>
        <item>
-        <layout class="QFormLayout" name="omnirig_layout">
+        <layout class="QFormLayout" name="manual_layout">
          <item row="1" column="0">
           <widget class="QLabel" name="label_12">
            <property name="text">
@@ -1245,19 +1394,68 @@
   </layout>
  </widget>
  <tabstops>
-  <tabstop>sounddevice</tabstop>
-  <tabstop>cwport_field</tabstop>
-  <tabstop>usepywinkeyer_radioButton</tabstop>
-  <tabstop>radioButton_5</tabstop>
-  <tabstop>cwip_field</tabstop>
+  <tabstop>cat_enable_hamlib</tabstop>
+  <tabstop>cat_hamlib_dev</tabstop>
+  <tabstop>cat_hamlib_rig</tabstop>
+  <tabstop>cat_hamlib_baud</tabstop>
+  <tabstop>cat_enable_rigctld</tabstop>
+  <tabstop>cat_rigctld_ip</tabstop>
+  <tabstop>cat_rigctld_port</tabstop>
+  <tabstop>cat_enable_flrig</tabstop>
+  <tabstop>cat_flrig_ip</tabstop>
+  <tabstop>cat_flrig_port</tabstop>
+  <tabstop>cat_enable_omnirig</tabstop>
+  <tabstop>radioButton</tabstop>
+  <tabstop>radioButton_2</tabstop>
+  <tabstop>cat_manual_vfo</tabstop>
+  <tabstop>cat_manual_mode</tabstop>
   <tabstop>usecwdaemon_radioButton</tabstop>
   <tabstop>n1mm_station_name</tabstop>
-  <tabstop>n1mm_operator</tabstop>
+  <tabstop>cwip_field</tabstop>
   <tabstop>send_n1mm_packets</tabstop>
   <tabstop>n1mm_radioport</tabstop>
+  <tabstop>n1mm_operator</tabstop>
   <tabstop>n1mm_contactport</tabstop>
   <tabstop>n1mm_lookupport</tabstop>
   <tabstop>n1mm_scoreport</tabstop>
+  <tabstop>tabWidget</tabstop>
+  <tabstop>sounddevice</tabstop>
+  <tabstop>lookup_user_name_field</tabstop>
+  <tabstop>lookup_password_field</tabstop>
+  <tabstop>lookup_source_none</tabstop>
+  <tabstop>lookup_source_qrz</tabstop>
+  <tabstop>lookup_source_hamqth</tabstop>
+  <tabstop>lookup_source_hamdb</tabstop>
+  <tabstop>lookup_populate_name</tabstop>
+  <tabstop>lookup_firstname</tabstop>
+  <tabstop>lookup_name_prefer_qso_history_name</tabstop>
+  <tabstop>lookup_others</tabstop>
+  <tabstop>cluster_server_field</tabstop>
+  <tabstop>cluster_filter</tabstop>
+  <tabstop>cluster_mode</tabstop>
+  <tabstop>cluster_port_field</tabstop>
+  <tabstop>send_n1mm_radio</tabstop>
+  <tabstop>send_n1mm_contact</tabstop>
+  <tabstop>send_n1mm_lookup</tabstop>
+  <tabstop>send_n1mm_score</tabstop>
+  <tabstop>activate_2m</tabstop>
+  <tabstop>activate_1dot25</tabstop>
+  <tabstop>activate_40m</tabstop>
+  <tabstop>activate_80m</tabstop>
+  <tabstop>activate_160m</tabstop>
+  <tabstop>activate_6m</tabstop>
+  <tabstop>activate_20m</tabstop>
+  <tabstop>activate_15m</tabstop>
+  <tabstop>activate_10m</tabstop>
+  <tabstop>activate_70cm</tabstop>
+  <tabstop>activate_33cm</tabstop>
+  <tabstop>activate_23cm</tabstop>
+  <tabstop>interface_entry_focus_select</tabstop>
+  <tabstop>interface_entry_focus_end</tabstop>
+  <tabstop>interface_checkbox_emacs</tabstop>
+  <tabstop>cwport_field</tabstop>
+  <tabstop>usepywinkeyer_radioButton</tabstop>
+  <tabstop>radioButton_5</tabstop>
  </tabstops>
  <resources/>
  <connections>
@@ -1312,9 +1510,9 @@
   </property>
  </designerdata>
  <buttongroups>
-  <buttongroup name="buttonGroup"/>
   <buttongroup name="buttonGroup_2"/>
   <buttongroup name="buttonGroupInterfaceEntrySelect"/>
+  <buttongroup name="buttonGroup"/>
   <buttongroup name="buttonGroup_3"/>
  </buttongroups>
 </ui>

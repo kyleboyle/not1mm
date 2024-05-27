@@ -1,5 +1,6 @@
 import logging
 import time
+from queue import Queue
 from sys import platform
 
 from PyQt6.QtCore import QMutex, QMutexLocker
@@ -288,6 +289,11 @@ if platform == 'win32':
 
         failure_count = 0
         client: OmniRigClient
+
+        # since the com object can only be written to by the thread that created it, maintain a queue of commands
+        # to execute when the get state function is run.
+        command_queue = Queue()
+
         def __init__(self, rig_num):
             super().__init__()
             self.mutex = QMutex()
@@ -330,6 +336,11 @@ if platform == 'win32':
 
                 #state.power = self.server.rig.get_power()
                 #state.bandwidth = ??
+
+                while not self.command_queue.empty():
+                    # execute any functions which are queued
+                    self.command_queue.get_nowait()()
+
                 return state
             except Exception as exception:
                 self.online = False
@@ -355,9 +366,13 @@ if platform == 'win32':
                         mode = OmniRigClient.MODE_CW_L
                     elif mode == 'DATA':
                         mode = OmniRigClient.MODE_DATA_U
-                    elif mode == 'SSB':
+                    elif mode == 'SSB' or mode == 'USB':
                         mode = OmniRigClient.MODE_SSB_U
-                    self.client.setMode(mode)
+                    elif mode == 'LSB':
+                        mode = OmniRigClient.MODE_SSB_L
+                    elif mode == 'FM':
+                        mode = OmniRigClient.MODE_FM
+                    self.command_queue.append(lambda: self.client.setMode(mode))
                     return True
             except:
                 self.online = False
@@ -368,7 +383,9 @@ if platform == 'win32':
             return False
 
         def set_ptt(self, is_on: bool) -> bool:
-            return False
+            locker = QMutexLocker(self.mutex)
+            self.command_queue.append(lambda: self.client.setMode(self.client.TX_ON if is_on else self.client.TX_OFF))
+            return True
 
 
 else:

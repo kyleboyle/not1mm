@@ -52,8 +52,7 @@ class CatRigctld(AbstractCat):
             logger.debug(f"inventory from rigctld: {ret}")
         except:
             logger.exception("rigctld couldn't get inventory")
-        finally:
-            self.close()
+
 
     def get_state(self) -> RigState:
         locker = QMutexLocker(self.mutex)

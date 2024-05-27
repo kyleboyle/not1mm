@@ -2,15 +2,13 @@
 
 """
 fsutils.py: Filesystem utilities for qsourcelogger.
-@kyleboyle
 """
+
 import json
 import logging
-
 import os
-import platform
-import sys
 import subprocess
+import sys
 from pathlib import Path
 
 from appdata import AppDataPaths

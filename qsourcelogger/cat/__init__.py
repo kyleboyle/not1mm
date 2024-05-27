@@ -8,9 +8,6 @@ from PyQt6.QtCore import QThread, QEventLoop
 from qsourcelogger.lib import event as appevent
 from .RigState import RigState
 
-# TODO hamlib and omnirig
-
-# TODO split
 logger = logging.getLogger("cat")
 _DEFAULT_POLL_INTERVAL_MS = 250
 
@@ -66,7 +63,7 @@ class AbstractCat(QThread):
         state = self.get_state()
 
         if datetime.now() > self.radio_state_broadcast_time or self.previous_state != state:
-            logger.debug("VFO: %s MODE: %s BW: %s", state.vfotx_hz, state.mode, state.bandwidth_hz)
+            #logger.debug("VFO: %s MODE: %s BW: %s", state.vfotx_hz, state.mode, state.bandwidth_hz)
             appevent.emit(appevent.RadioState(state))
             self.radio_state_broadcast_time = datetime.now() + timedelta(seconds=10)
         self.previous_state = state

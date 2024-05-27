@@ -27,6 +27,7 @@ from PyQt6.QtGui import QFontDatabase, QKeyEvent, QCursor, QMouseEvent, QDesktop
 from PyQt6.QtWidgets import QFileDialog, QLineEdit, QLabel, QHBoxLayout, QMessageBox, QMenu, QPushButton
 
 import qsourcelogger.fsutils as fsutils
+from qsourcelogger.cat.hamlib import CatHamlib
 from . import model, contest
 from .bandmap import BandMapWindow
 from .callprofile import ExternalCallProfileWindow
@@ -78,7 +79,7 @@ from .qtcomponents.spotsend import Spotsend
 from .vfo import VfoWindow
 
 def getQss():
-    small_font_pt = QtWidgets.QApplication.instance().font('QLabel').pointSize() - 1
+    small_font_pt = max(9, QtWidgets.QApplication.instance().font('QLabel').pointSize() - 2)
     entry_font_pt = QtWidgets.QApplication.instance().font('QLabel').pointSize() + 12
     return f"""
 QFrame#Band_Mode_Frame_CW QLabel, QFrame#Band_Mode_Frame_RTTY QLabel, QFrame#Band_Mode_Frame_SSB QLabel {{
@@ -1234,7 +1235,7 @@ class MainWindow(QtWidgets.QMainWindow):
         if self.contest:
             contest_name = self.contest.get_display_name()
         line = (
-            f"vfoa:{round(vfoa, 2):,g} ".replace(',', '.') +
+            f"vfo:{round(vfoa, 2):,g} ".replace(',', '.') +
             f"mode:{self.radio_state.mode} "
             f"OP:{self.current_op} {contest_name} "
             f"- QSOurce v{__version__}"
@@ -1377,6 +1378,8 @@ class MainWindow(QtWidgets.QMainWindow):
         if self.contact.gridsquare and self.station.gridsquare:
             kilometers = distance(self.station.gridsquare, self.contact.gridsquare)
             self.contact.distance = kilometers
+        if len(self.contact.gridsquare) > 3:
+            self.contact.gridsquare = self.contact.gridsquare[:2].upper() + self.contact.gridsquare[2:]
 
         # special comment field features (eg pota/iota/sota references)
         if self.contact.comment:
@@ -1665,6 +1668,9 @@ class MainWindow(QtWidgets.QMainWindow):
         elif self.pref.get("cat_enable_omnirig", False):
             logger.debug(f"Using omni rig: {self.pref.get('cat_rigctld_ip')} {self.pref.get('cat_rigctld_port')}")
             self.rig_control = CatOmnirig(self.pref.get("cat_omnirig_index", 1))
+        elif(self.pref.get("cat_enable_hamlib", False)):
+            logger.debug(f"Using hamlib: {self.pref.get('cat_hamlib_rig')} {self.pref.get('cat_hamlib_dev')}")
+            self.rig_control = CatHamlib(self.pref.get('cat_hamlib_rig'), self.pref.get('cat_hamlib_dev'), self.pref.get('cat_hamlib_baud'))
 
         if self.rig_control:
             self.rig_control.start_poll_loop()
@@ -1965,7 +1971,9 @@ class MainWindow(QtWidgets.QMainWindow):
             return
         if mode == "SSB":
             self.setmode("SSB")
-            if int(self.radio_state.vfotx_hz) > 10000000:
+            if int(self.radio_state.vfotx_hz) > 70_000_000:
+                self.radio_state.mode = "FM"
+            elif int(self.radio_state.vfotx_hz) > 10_000_000:
                 self.radio_state.mode = "USB"
             else:
                 self.radio_state.mode = "LSB"
@@ -2292,7 +2300,10 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.set_radio_icon(3)
 
     def set_radio_icon_tooltip(self):
-        if self.radio_state.vfotx_hz is None:
+        if self.radio_state.error:
+            self.radio_icon.setToolTip(self.radio_state.error)
+            return
+        elif self.radio_state.vfotx_hz is None:
             self.radio_icon.setToolTip("Unavailable")
             return
         self.radio_icon.setToolTip(f"<table><tr><td>rig</td><td>{self.radio_state.id}</td></tr>"

@@ -1,9 +1,9 @@
+from . import VhfGeneralLogging
 from .AbstractContest import *
-from .GeneralLogging import GeneralLogging
 from ..lib import event
 
 
-class VhfGeneralSerialLogging(GeneralLogging):
+class VhfGeneralSerialLogging(VhfGeneralLogging):
 
     _fields = [
         ContestField(name='rst_sent', display_label='RST Sent', space_tabs=True, stretch_factor=1, max_chars=3),
@@ -69,17 +69,9 @@ class VhfGeneralSerialLogging(GeneralLogging):
             qso.stx = self.get_serial_to_send()
             qso.stx_string = self.generate_sent_exchange(qso.stx)
 
-        super().intermediate_qso_update(qso, fields)
-
     def pre_process_qso_log(self, qso: QsoLog):
         if not qso.srx_string:
             qso.srx_string = str(qso.srx) + ' ' + qso.gridsquare
         super().pre_process_qso_log(qso)
         self._previously_saved_serial = int(qso.stx)
 
-    def calculate_total_points(self):
-        # No multipliers
-        return QsoLog.select(fn.Sum(QsoLog.points)).where(QsoLog.fk_contest == self.contest).scalar()
-
-    def points_for_qso(self, qso: QsoLog) -> Optional[int]:
-        return qso.distance

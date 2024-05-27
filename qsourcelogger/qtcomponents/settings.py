@@ -3,10 +3,11 @@
 import logging
 import platform
 
+import serial.tools.list_ports
 import sounddevice as sd
 from PyQt6 import QtWidgets, uic
 from PyQt6.QtCore import pyqtSignal
-from PyQt6.QtWidgets import QTabWidget
+from PyQt6.QtWidgets import QTabWidget, QComboBox
 
 from qsourcelogger import fsutils
 
@@ -17,6 +18,11 @@ class Settings(QtWidgets.QDialog):
     """Settings dialog"""
     updated = pyqtSignal(list)
     tabWidget: QTabWidget
+    cat_hamlib_dev: QComboBox
+    cat_hamlib_rig: QComboBox
+    cat_hamlib_baud: QComboBox
+
+    hamlib_available = False
 
     def __init__(self, app_data_path, pref, parent=None):
         """initialize dialog"""
@@ -26,11 +32,19 @@ class Settings(QtWidgets.QDialog):
         self.buttonBox.accepted.connect(self.save_pref_values)
         self.preference = pref
         self.devices = sd.query_devices()
-        self.setup()
+
         if platform.system() != "Windows":
             self.cat_enable_omnirig.setEnabled(False)
-        if platform.system() != "Linux":
-            self.cat_enable_rigctld.setEnabled(False)
+
+        try:
+            from ..cat.libhamlib import Hamlib
+            if Hamlib:
+                Hamlib.rig_load_all_backends()
+                self.hamlib_available = True
+        except Exception as e:
+            logger.error(f"Hamlib not available {e}")
+
+        self.setup()
 
     def show_tab(self, tab_name):
         self.tabWidget.setCurrentWidget(getattr(self, tab_name))
@@ -122,6 +136,31 @@ class Settings(QtWidgets.QDialog):
         self.interface_entry_focus_select.setChecked(self.preference.get('interface_entry_focus_select', True))
         self.interface_entry_focus_end.setChecked(not self.preference.get('interface_entry_focus_select', True))
 
+        if self.hamlib_available:
+            self.cat_enable_hamlib.setEnabled(True)
+            self.cat_enable_hamlib.setChecked(self.preference.get("cat_enable_hamlib", False))
+            self.cat_hamlib_baud.setCurrentText(self.preference.get("cat_hamlib_baud", '38400'))
+
+            self.cat_hamlib_dev.clear()
+            self.cat_hamlib_dev.addItem('')
+            self.cat_hamlib_dev.addItems([x.device for x in serial.tools.list_ports.comports()])
+            if self.preference.get("cat_hamlib_dev", None):
+                self.cat_hamlib_dev.setCurrentText(self.preference.get("cat_hamlib_dev"))
+
+            from qsourcelogger.cat import libhamlib
+            self.cat_hamlib_rig.clear()
+            rigs = libhamlib.rig_get_models()
+            rigs = list(filter(lambda r: r.get('mfg_name') and r.get('model_name'), rigs))
+            rigs.sort(key=lambda r: r['mfg_name'] + '_' + r['model_name'])
+
+            for rig in rigs:
+                self.cat_hamlib_rig.addItem(rig['mfg_name'] + ' ' + rig['model_name'], rig['macro_name'])
+                if self.preference.get('cat_hamlib_rig', None) == rig['macro_name']:
+                    self.cat_hamlib_rig.setCurrentText(rig['macro_name'])
+
+        else:
+            self.cat_enable_hamlib.setEnabled(False)
+
     def save_pref_values(self):
         new_pref = {}
         new_pref["sounddevice"] = self.sounddevice.currentText()
@@ -150,6 +189,11 @@ class Settings(QtWidgets.QDialog):
             new_pref["cat_rigctld_port"] = int(self.cat_rigctld_port.text())
         except ValueError:
             ...
+
+        new_pref["cat_enable_hamlib"] = self.cat_enable_hamlib.isChecked()
+        new_pref["cat_hamlib_dev"] = self.cat_hamlib_dev.currentText()
+        new_pref["cat_hamlib_rig"] = self.cat_hamlib_rig.currentData()
+        new_pref["cat_hamlib_baud"] = self.cat_hamlib_baud.currentText()
 
         new_pref["cat_manual_mode"] = self.cat_manual_mode.currentText()
         try:

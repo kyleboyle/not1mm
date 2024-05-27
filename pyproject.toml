@@ -7,7 +7,7 @@ name = "qsource-logger"
 version = "24.3.24.1"
 description = "QSOurce Logger - Amateur radio log book and utilities"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.9 <3.12"
 authors = [
   { name="Kyle Boyle", email="kyle@kyleboyle.com" },
   { name="Michael Bridak", email="michael.bridak@gmail.com" },
@@ -29,7 +29,7 @@ dependencies = [
     'peewee',
     'feedparser',
     'cartopy',
-    "pywin32; sys_platform == 'windows'"
+    "pywin32; sys_platform == 'win32'"
 ]
 classifiers = [
     "Programming Language :: Python :: 3",

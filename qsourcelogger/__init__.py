@@ -1,4 +1,11 @@
+import platform
+import sys
+
+from . import fsutils
 from .__main__ import run
+
+plat = f"{sys.platform}-{platform.machine()}"
+#sys.path.append(str(fsutils.APP_DATA_PATH / 'hamlib' / plat))
 
 pref_ref = {
     "sounddevice": "default",
