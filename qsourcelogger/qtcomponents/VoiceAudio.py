@@ -23,7 +23,6 @@ class VoiceAudio(QThread):
         self.say = say
         self.operator = operator
         self.radio = radio
-        self.setPriority(QThread.Priority.HighPriority)
 
     def stop_sound(self):
         self.stop = True
@@ -40,6 +39,7 @@ class VoiceAudio(QThread):
         String to voicify.
         """
         logger.debug("Voicing: %s", self.say)
+        self.setPriority(QThread.Priority.HighPriority)
         if sd is None:
             logger.warning("Sounddevice/portaudio not installed.")
             return
@@ -60,8 +60,7 @@ class VoiceAudio(QThread):
                 try:
                     data, _fs = soundfile.read(filename, dtype="float32")
                     self.radio.set_ptt(True)
-                    sd.play(data, blocking=False)
-                    # _status = sd.wait()
+                    sd.play(data, blocking=True)
                     self.radio.set_ptt(False)
                 except Exception as err:
                     self.radio.set_ptt(False)
@@ -84,8 +83,7 @@ class VoiceAudio(QThread):
                     logger.debug("Voicing: %s", filename)
                     try:
                         data, _fs = soundfile.read(filename, dtype="float32")
-                        sd.play(data, blocking=False)
-                        logger.debug("%s", f"{sd.wait()}")
+                        sd.play(data, blocking=True)
                     except Exception as err:
                         self.radio.set_ptt(False)
                         self.show_message_box(f"Couldn't play audio {filename}: {err}")

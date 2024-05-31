@@ -14,6 +14,7 @@ class CatHamlib(AbstractCat):
     rig = None
     online = False
     failure_count = 0
+    poll_base_interval_ms = 1000
 
     def __init__(self, rig_macro: str, rig_dev: str, rig_baud: str) -> None:
         super().__init__()
@@ -29,6 +30,9 @@ class CatHamlib(AbstractCat):
     def connect(self):
         if not Hamlib:
             return
+        if self.rig:
+            self.rig.close()
+            self.rig = None
         try:
             rig_macro = getattr(Hamlib, self.rig_model)
             if Hamlib.rig_check_backend(rig_macro) != 0:
@@ -49,7 +53,7 @@ class CatHamlib(AbstractCat):
             if self.rig.error_status != 0:
                 raise Exception(f"{self.rig_model} connection error: {Hamlib.rigerror(self.rig.error_status)}")
 
-            logger.info(f"connected to {self.rig_model}, state: {self.rig.state}")
+            logger.info(f"connected to {self.rig_model}, state: {self.rig.get_info()}")
 
             self.online = True
         except Exception as exception:
@@ -57,6 +61,7 @@ class CatHamlib(AbstractCat):
             logger.error(f"hamlib connection error {exception}")
 
     def close(self):
+        super().close()
         if self.rig:
             self.rig.close()
             self.rig = None
@@ -75,9 +80,10 @@ class CatHamlib(AbstractCat):
                 return RigState(id=self.get_id(), error='Rig unreachable')
             self.reset_backoff()
             self.failure_count = 0
-        try:
-            state = RigState(id=self.get_id())
 
+        state = RigState(id=self.get_id())
+
+        try:
             vfo = self.rig.get_freq()
             if "RPRT -" not in str(vfo):
                 state.vforx_hz = int(vfo)
@@ -92,16 +98,16 @@ class CatHamlib(AbstractCat):
             state.vfotx_hz = int(self.rig.get_split_freq())
             if state.vforx_hz != state.vfotx_hz:
                 state.is_split = True
-
             return state
-        except IndexError as exception:
-            logger.error(exception)
+
         except Exception as e:
             self.online = False
-            logger.error(f"get_status failed {e}")
-            self.rig.close()
+            state.error = f"get_status failed {e}"
+            if self.rig:
+                self.rig.close()
             self.rig = None
-            RigState(error='Rig unreachable ' + str(e))
+
+        return state
 
     def set_vfo(self, freq: int) -> bool:
         """sets the radios vfo"""

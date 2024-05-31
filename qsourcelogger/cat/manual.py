@@ -1,9 +1,12 @@
+import logging
 from abc import ABC
 
 from qsourcelogger import fsutils
 from qsourcelogger.cat import AbstractCat
 from qsourcelogger.cat.RigState import RigState
 from qsourcelogger.lib import event
+
+logger = logging.getLogger(__name__)
 
 class CatManual(AbstractCat):
 

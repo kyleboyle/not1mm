@@ -13,8 +13,8 @@ _DEFAULT_POLL_INTERVAL_MS = 250
 
 # TODO send cw/morse through cat if supported (rigctld)
 class AbstractCat(QThread):
+    poll_base_interval_ms = _DEFAULT_POLL_INTERVAL_MS
 
-    poll_interval_ms = _DEFAULT_POLL_INTERVAL_MS
     rig_poll_timer: QtCore.QTimer
     _backoff_count = 0
 
@@ -23,6 +23,7 @@ class AbstractCat(QThread):
 
     def __init__(self):
         super().__init__()
+        self.poll_interval_ms = self.poll_base_interval_ms
         self.rig_poll_timer = QtCore.QTimer()
         self.rig_poll_timer.moveToThread(self)
         self.moveToThread(self)
@@ -61,7 +62,6 @@ class AbstractCat(QThread):
 
     def _poll_radio(self):
         state = self.get_state()
-
         if datetime.now() > self.radio_state_broadcast_time or self.previous_state != state:
             #logger.debug("VFO: %s MODE: %s BW: %s", state.vfotx_hz, state.mode, state.bandwidth_hz)
             appevent.emit(appevent.RadioState(state))
@@ -70,7 +70,7 @@ class AbstractCat(QThread):
 
     def reset_backoff(self):
         self._backoff_count = 0
-        self.poll_interval_ms = _DEFAULT_POLL_INTERVAL_MS
+        self.poll_interval_ms = self.poll_base_interval_ms
         self.rig_poll_timer.stop()
         self.rig_poll_timer.start(self.poll_interval_ms)
 

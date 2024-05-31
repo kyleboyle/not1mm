@@ -5,8 +5,12 @@ import logging
 # macos build
 # ./configure --with-python-binding --prefix=$HOME/local PYTHON=$(which python3.11) LIBUSB_LIBS="/opt/homebrew/Cellar/libusb/1.0.27/lib/libusb-1.0.a" --without-cxx-binding CFLAGS=$(pkg-config --cflags libusb-1.0) LDFLAGS="$(pkg-config --libs libusb-1.0)"
 
+# swig module must be created with threads enabled so that hamlib calls don't block main thread
+# and make gui janky. https://www.swig.org/Doc4.0/Python.html#Python_thread_UI
+# before compiling binding, modify hamlib.swg %module("threads"=1) Hamlib
 # darwin arm64
 # linux aarch64
+
 import sys, platform
 
 logger = logging.getLogger(__name__)

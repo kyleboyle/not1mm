@@ -1,9 +1,10 @@
+import datetime
 import logging
 import os
 
 from PyQt6 import QtWidgets, uic
-from PyQt6.QtCore import QThread
-from PyQt6.QtWidgets import QFileDialog, QTableWidget, QLabel, QRadioButton
+from PyQt6.QtCore import QThread, QTime
+from PyQt6.QtWidgets import QFileDialog, QTableWidget, QLabel, QRadioButton, QDateTimeEdit
 
 from qsourcelogger import fsutils
 from qsourcelogger.lib.hamutils.adif import ADIWriter, ADXWriter
@@ -15,12 +16,13 @@ class ExportWorker(QThread):
 
     table_preview: QTableWidget
 
-    def __init__(self, contest: Contest, file: str, is_xml: bool):
+    def __init__(self, contest: Contest, file: str, is_xml: bool, start_time: datetime):
         super().__init__()
         self.file = file
         self.is_xml = is_xml
         self.contest = contest
         self.result = []
+        self.start_time = start_time
 
     def run(self):
         with open(self.file, 'wb') as f:
@@ -30,7 +32,8 @@ class ExportWorker(QThread):
                 self.process_import_list(ADIWriter(f))
 
     def process_import_list(self, writer):
-        for qso in QsoLog.select().where(QsoLog.fk_contest == self.contest):
+        for qso in QsoLog.select().where(QsoLog.fk_contest == self.contest)\
+                .where(QsoLog.time_on >= self.start_time):
             converted = adapters.convert_qso_to_adif(qso)
             writer.add_qso(**converted)
         writer.close()
@@ -40,6 +43,8 @@ class AdifExport(QtWidgets.QDialog):
     label_success: QLabel
     filename: str = None
     radio_adi: QRadioButton
+    export_start_date: QDateTimeEdit
+
     def __init__(self, contest: Contest, parent=None) -> None:
         super().__init__(parent)
 
@@ -59,6 +64,8 @@ class AdifExport(QtWidgets.QDialog):
         self.button_open_file.setVisible(False)
         self.radio_adi.clicked.connect(self.file_type_adi)
         self.radio_xml.clicked.connect(self.file_type_xml)
+        self.export_start_date.setDate(self.contest.start_date.date())
+        self.export_start_date.setTime(QTime(0,0,0))
 
     def choose_file(self):
         self.label_success.setVisible(False)
@@ -105,7 +112,8 @@ class AdifExport(QtWidgets.QDialog):
                         f"{self.contest.id}) {self.contest.fk_contest_meta.display_name} [start: "
                         f"{self.contest.start_date.date()}] to file name {self.filename}")
 
-            self.export_thread = ExportWorker(self.contest, self.filename, self.radio_xml.isChecked())
+            self.export_thread = ExportWorker(self.contest, self.filename, self.radio_xml.isChecked(),
+                                              self.export_start_date.dateTime().toPyDateTime())
             self.export_thread.finished.connect(self.export_finished)
             self.export_thread.start(priority=QThread.Priority.LowPriority)
 

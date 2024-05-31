@@ -23,10 +23,12 @@ class CatRigctld(AbstractCat):
         return 'rigctld'
 
     def connect(self):
-        self.close()
+        if self.rigctrlsocket:
+            self.rigctrlsocket.close()
+            self.rigctrlsocket = None
         try:
             self.rigctrlsocket = socket.socket()
-            self.rigctrlsocket.settimeout(1)
+            self.rigctrlsocket.settimeout(2)
             self.rigctrlsocket.connect((self.host, self.port))
             logger.debug("Connected to rigctrld")
             self.online = True
@@ -36,6 +38,7 @@ class CatRigctld(AbstractCat):
             logger.exception("rigctld connection error")
 
     def close(self):
+        super().close()
         if self.rigctrlsocket:
             self.rigctrlsocket.close()
             self.rigctrlsocket = None
@@ -59,13 +62,17 @@ class CatRigctld(AbstractCat):
         if not self.online:
             self.connect()
             if not self.online:
-                return RigState(error='connection error')
+                return RigState(id=self.get_id(), error='connection error')
         try:
             state = RigState(id=self.get_id())
             self.rigctrlsocket.send(b"f\n")
             vfo = self.rigctrlsocket.recv(1024).decode().strip()
             if "RPRT -" not in vfo:
                 state.vfotx_hz = int(vfo)
+                state.vforx_hz = state.vfotx_hz
+            else:
+                state.error = "rigctld returning bad data"
+                return state
 
             self.rigctrlsocket.send(b"m\n")
             mode = self.rigctrlsocket.recv(1024).decode().strip().split()
@@ -79,21 +86,20 @@ class CatRigctld(AbstractCat):
             state.is_ptt = self.rigctrlsocket.recv(1024).decode().strip == '1'
 
             self.rigctrlsocket.send(b"s\n")
-            state.is_split = self.rigctrlsocket.recv(1024).decode().strip[0] == '1'
+            state.is_split = self.rigctrlsocket.recv(1024).decode().strip()[0] == '1'
             if state.is_split:
-                state.vforx_hz = state.vfotx_hz
                 self.rigctrlsocket.send(b"i\n")
                 vfo = self.rigctrlsocket.recv(1024).decode().strip()
                 state.vfotx_hz = int(vfo)
 
             return state
         except IndexError as exception:
-            logger.debug("%s", f"{exception}")
+            logger.error(f"{exception}")
         except socket.error as exception:
             self.online = False
-            logger.debug("%s", f"{exception}")
+            logger.error(f"{exception}")
             self.rigctrlsocket = None
-            RigState(error='Rig unreachable ' + str(exception))
+            return RigState(error='Rig unreachable ' + str(exception))
 
     def set_vfo(self, freq: int) -> bool:
         """sets the radios vfo"""

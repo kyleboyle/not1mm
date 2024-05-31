@@ -31,7 +31,6 @@ class Settings(QtWidgets.QDialog):
         uic.loadUi(app_data_path / "configuration.ui", self)
         self.buttonBox.accepted.connect(self.save_pref_values)
         self.preference = pref
-        self.devices = sd.query_devices()
 
         if platform.system() != "Windows":
             self.cat_enable_omnirig.setEnabled(False)
@@ -51,9 +50,11 @@ class Settings(QtWidgets.QDialog):
 
     def setup(self):
         """setup dialog"""
-        for device in self.devices:
+        for device in sd.query_devices():
             if device.get("max_output_channels"):
-                self.sounddevice.addItem(device.get("name"))
+                device_id = device['name'] + ", " + sd.query_hostapis(device['hostapi'])['name']
+                self.sounddevice.addItem(device_id)
+
         value = self.preference.get("sounddevice", "default")
         index = self.sounddevice.findText(value)
         if index != -1:
@@ -156,7 +157,7 @@ class Settings(QtWidgets.QDialog):
             for rig in rigs:
                 self.cat_hamlib_rig.addItem(rig['mfg_name'] + ' ' + rig['model_name'], rig['macro_name'])
                 if self.preference.get('cat_hamlib_rig', None) == rig['macro_name']:
-                    self.cat_hamlib_rig.setCurrentText(rig['macro_name'])
+                    self.cat_hamlib_rig.setCurrentIndex(self.cat_hamlib_rig.count() - 1)
 
         else:
             self.cat_enable_hamlib.setEnabled(False)

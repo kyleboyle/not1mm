@@ -112,6 +112,11 @@ QDockWidget#CheckWindow #dxcScrollWidget QLabel {{
     font-family: 'Roboto Mono';
 }}
 
+#MainWindow QLabel#dupe_indicator {{
+    font-size: {entry_font_pt - 5}pt;
+    font-weight: bold;
+}}
+
 """
 
 
@@ -422,7 +427,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.rst_received_entry = QsoEntryField('rst_rcvd', 'Rcv RST', self.centralwidget)
         self.callsign_entry.input_field.setMaxLength(20)
         self.callsign_entry.input_field.textEdited.connect(self.callsign_changed)
-        self.callsign_entry.input_field.returnPressed.connect(self.save_contact)
+        self.callsign_entry.input_field.returnPressed.connect(self.handle_callsign_return)
         self.callsign_entry.input_field.editingFinished.connect(self.callsign_editing_finished)
         self.callsign_entry.input_field.focused.connect(self.handle_input_focus, Qt.ConnectionType.QueuedConnection)
 
@@ -1346,6 +1351,11 @@ class MainWindow(QtWidgets.QMainWindow):
             if self.qso_edit_window:
                 self.qso_edit_window.set_qso(self.contact)
 
+    def handle_callsign_return(self):
+        self.callsign_entry.input_field.text().strip()
+        if not self.handle_callsign_special(self.callsign_entry.input_field.text().strip()):
+            self.save_contact()
+
     def save_contact(self) -> None:
         """
         Save contact to database.
@@ -1835,34 +1845,7 @@ class MainWindow(QtWidgets.QMainWindow):
         if " " in text:
             self.callsign_entry.input_field.setText(stripped_text)
             self.callsign_entry.input_field.setCursorPosition(position)
-            if stripped_text == "CW":
-                self.change_mode(stripped_text)
-                return
-            if stripped_text == "RTTY":
-                self.change_mode(stripped_text)
-                return
-            if stripped_text == "SSB":
-                self.change_mode(stripped_text)
-                return
-            if stripped_text == "OPON":
-                self.get_opon()
-                self.clearinputs()
-                return
-            if stripped_text == "HELP":
-                self.show_help_dialog()
-                self.clearinputs()
-                return
-            if stripped_text == "TEST":
-                result = self.database.get_calls_and_bands()
-                appevent.emit(appevent.WorkedList(result))
-                self.clearinputs()
-                return
-
-            if self.is_floatable(stripped_text):
-                if float(stripped_text) < 1000:
-                    self.change_freq(float(stripped_text) * 1000)
-                else:
-                    self.change_freq(stripped_text)
+            if self.handle_callsign_special(stripped_text):
                 return
 
             self.check_callsign(stripped_text)
@@ -1880,6 +1863,38 @@ class MainWindow(QtWidgets.QMainWindow):
         if not self.call_change_debounce_timer:
             self.call_change_debounce_timer = True
             QTimer.singleShot(50, self.handle_call_change_debounce)
+
+    def handle_callsign_special(self, text) -> bool:
+        if text == "CW":
+            self.change_mode(text)
+            return True
+        if text == "RTTY":
+            self.change_mode(text)
+            return True
+        if text == "SSB":
+            self.change_mode(text)
+            return True
+        if text == "OPON":
+            self.get_opon()
+            self.clearinputs()
+            return True
+        if text == "HELP":
+            self.show_help_dialog()
+            self.clearinputs()
+            return True
+        if text == "TEST":
+            result = self.database.get_calls_and_bands()
+            appevent.emit(appevent.WorkedList(result))
+            self.clearinputs()
+            return True
+
+        if self.is_floatable(text):
+            if float(text) < 1000:
+                self.change_freq(float(text) * 1000)
+            else:
+                self.change_freq(text)
+            return True
+        return False
 
     def handle_call_change_debounce(self):
         self.call_change_debounce_timer = False
@@ -2309,9 +2324,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.radio_icon.setToolTip(f"<table><tr><td>rig</td><td>{self.radio_state.id}</td></tr>"
                                    f"<tr><td>vfo</td><td>{self.radio_state.vforx_hz:,}</td></tr>"
                                    f"<tr><td>mode</td><td>{self.radio_state.mode}</td></tr>"
-                                   f"<tr><td>split tx</td><td>{'N/A' if not self.radio_state.is_split else self.radio_state.vfotx_hz}</td></tr>"
+                                   f"<tr><td>split tx</td><td>{'N/A' if not self.radio_state.is_split else '%,d' % (self.radio_state.vfotx_hz,)}</td></tr>"
                                    f"<tr><td>bandwidth</td><td>{self.radio_state.bandwidth_hz}</td></tr>"
-                                   f"<tr><td>power</td><td>{self.radio_state.power}</td></tr></table>"
+                                   #f"<tr><td>power</td><td>{self.radio_state.power}</td></tr></table>"
                                    )
 
     def edit_window_data_change(self, qso_before, qso_after, field_name, value):
