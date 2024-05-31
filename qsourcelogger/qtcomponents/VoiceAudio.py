@@ -28,6 +28,7 @@ class VoiceAudio(QThread):
         self.stop = True
         if sd is not None:
             sd.stop(True)
+        self.radio.set_ptt(False)
 
     def run(self):
         """
@@ -63,10 +64,9 @@ class VoiceAudio(QThread):
                     sd.play(data, blocking=True)
                     self.radio.set_ptt(False)
                 except Exception as err:
-                    self.radio.set_ptt(False)
+                    self.stop_sound()
                     self.show_message_box(f"Couldn't play audio {filename}: {err}")
                     logger.exception("Could play audio")
-
             return
         self.radio.set_ptt(True)
         for letter in self.say.lower():
@@ -75,7 +75,7 @@ class VoiceAudio(QThread):
             if letter in "abcdefghijklmnopqrstuvwxyz 1234567890/":
                 if letter == " ":
                     letter = "space"
-                if letter == '/':
+                if letter == '/' or letter == '\\':
                     letter = "stroke"
 
                 filename = f"{str(op_path)}/{letter}.wav"
@@ -85,7 +85,7 @@ class VoiceAudio(QThread):
                         data, _fs = soundfile.read(filename, dtype="float32")
                         sd.play(data, blocking=True)
                     except Exception as err:
-                        self.radio.set_ptt(False)
+                        self.stop_sound()
                         self.show_message_box(f"Couldn't play audio {filename}: {err}")
                         logger.exception("Could play audio")
                         break

@@ -1,6 +1,6 @@
 import logging
 import time
-from queue import Queue
+from queue import Queue, SimpleQueue
 from sys import platform
 
 from PyQt6.QtCore import QMutex, QMutexLocker
@@ -292,7 +292,7 @@ if platform == 'win32':
 
         # since the com object can only be written to by the thread that created it, maintain a queue of commands
         # to execute when the get state function is run.
-        command_queue = Queue()
+        command_queue = SimpleQueue()
 
         def __init__(self, rig_num):
             super().__init__()

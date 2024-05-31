@@ -23,6 +23,8 @@ APP_DATA_PATH = MODULE_PATH / "data"
 
 CONTEST_PLUGIN_PATH = MODULE_PATH / 'contest'
 
+# on linux use the user dir $XDG_CONFIG_HOME, falling back to ~/.config
+
 _app_paths = AppDataPaths(name="qsourcelogger")
 _app_paths.setup()
 LOG_FILE = _app_paths.get_log_file_path()

@@ -28,7 +28,6 @@ class CatRigctld(AbstractCat):
             self.rigctrlsocket = None
         try:
             self.rigctrlsocket = socket.socket()
-            self.rigctrlsocket.settimeout(2)
             self.rigctrlsocket.connect((self.host, self.port))
             logger.debug("Connected to rigctrld")
             self.online = True
@@ -83,15 +82,14 @@ class CatRigctld(AbstractCat):
             state.power = int(float(self.rigctrlsocket.recv(1024).decode().strip()) * 100)
 
             self.rigctrlsocket.send(b"t\n")
-            state.is_ptt = self.rigctrlsocket.recv(1024).decode().strip == '1'
+            state.is_ptt = self.rigctrlsocket.recv(1024).decode().strip() == '1'
 
-            self.rigctrlsocket.send(b"s\n")
-            state.is_split = self.rigctrlsocket.recv(1024).decode().strip()[0] == '1'
-            if state.is_split:
-                self.rigctrlsocket.send(b"i\n")
-                vfo = self.rigctrlsocket.recv(1024).decode().strip()
-                state.vfotx_hz = int(vfo)
-
+            self.rigctrlsocket.send(b"i\n")
+            split_tx = self.rigctrlsocket.recv(1024).decode().strip()
+            if not split_tx.startswith('RPRT'):
+                state.vfotx_hz = int(split_tx)
+                if state.vforx_hz != state.vfotx_hz:
+                    state.is_split = True
             return state
         except IndexError as exception:
             logger.error(f"{exception}")

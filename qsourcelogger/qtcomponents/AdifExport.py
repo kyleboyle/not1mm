@@ -66,6 +66,7 @@ class AdifExport(QtWidgets.QDialog):
         self.radio_xml.clicked.connect(self.file_type_xml)
         self.export_start_date.setDate(self.contest.start_date.date())
         self.export_start_date.setTime(QTime(0,0,0))
+        self.export_start_date.dateTimeChanged.connect(lambda: self.label_success.setVisible(False))
 
     def choose_file(self):
         self.label_success.setVisible(False)

@@ -1540,7 +1540,7 @@ class MainWindow(QtWidgets.QMainWindow):
         logger.debug("Function Key: %s", function_key.text())
         if self.n1mm:
             self.n1mm.radio_info["FunctionKeyCaption"] = function_key.text()
-        if self.radio_state.mode in ["LSB", "USB", "SSB"]:
+        if self.radio_state.mode in ["LSB", "USB", "SSB", "FM", "PH"]:
             self.voice_string(self.process_macro(function_key.toolTip()))
             return
         if self.cw:

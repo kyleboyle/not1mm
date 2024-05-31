@@ -68,6 +68,7 @@ class CatHamlib(AbstractCat):
 
     def get_state(self) -> RigState:
         locker = QMutexLocker(self.mutex)
+
         if not Hamlib:
             return RigState(id=self.get_id(), error='Hamlib not installed')
 
@@ -167,7 +168,6 @@ class CatHamlib(AbstractCat):
     def set_ptt(self, is_on) -> bool:
         """Toggle PTT state on"""
         locker = QMutexLocker(self.mutex)
-
         # T, set_ptt 'PTT'
         # Set 'PTT'.
         # PTT is a value: ‘0’ (RX), ‘1’ (TX), ‘2’ (TX mic), or ‘3’ (TX data).
@@ -175,12 +175,13 @@ class CatHamlib(AbstractCat):
         # t, get_ptt
         # Get 'PTT' status.
         # Returns PTT as a value in set_ptt above.
-        try:
-            self.rig.set_ptt(self.rig.get_vfo(), 1 if is_on else 0)
-            return True
-        except Exception as e:
-            self.online = False
-            self.rig.close()
-            self.rig = None
-            logger.error(f"set_ptt failed: {e}")
-            return False
+        if self.online:
+            try:
+                self.rig.set_ptt(self.rig.get_vfo(), 1 if is_on else 0)
+                return True
+            except Exception as e:
+                self.online = False
+                self.rig.close()
+                self.rig = None
+                logger.error(f"set_ptt failed: {e}")
+                return False
